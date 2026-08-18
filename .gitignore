@@ -1,0 +1,7 @@
+# Ver frontend/.gitignore e backend/supabase/.gitignore para regras específicas de cada stack.
+.DS_Store
+*.log
+
+# pastas temporárias criadas durante transferências Claude <-> dispositivo
+_to_delete/
+**/_to_delete/
