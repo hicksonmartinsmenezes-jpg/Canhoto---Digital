@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Filter, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CanhotosTable } from "@/components/canhotos/CanhotosTable";
@@ -18,10 +19,13 @@ export default async function CanhotosPage() {
             motorista responsável e status de cada entrega.
           </p>
         </div>
-        <button className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-[#0A1F44] hover:bg-amber-400">
+        <Link
+          href="/canhotos/nova"
+          className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-[#0A1F44] hover:bg-amber-400"
+        >
           <Plus className="size-4" strokeWidth={2.5} />
           Adicionar Entrega
-        </button>
+        </Link>
       </div>
 
       <Card className="overflow-hidden">
