@@ -4,13 +4,25 @@ import {
   STATUS_BADGE_CLASSES,
   STATUS_LABEL,
 } from "@/lib/status";
-import { CANHOTOS } from "@/lib/canhotos-mock";
+import type { EntregaListItem } from "@/lib/data/entregas";
 
 function Cell({ value }: { value: string | null }) {
   return <span className={value ? "" : "text-slate-300"}>{value ?? "—"}</span>;
 }
 
-export function CanhotosTable() {
+interface CanhotosTableProps {
+  entregas: EntregaListItem[];
+}
+
+export function CanhotosTable({ entregas }: CanhotosTableProps) {
+  if (entregas.length === 0) {
+    return (
+      <p className="px-6 py-14 text-center text-sm text-slate-400">
+        Nenhuma entrega cadastrada ainda.
+      </p>
+    );
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[960px] border-collapse text-left">
@@ -29,7 +41,7 @@ export function CanhotosTable() {
           </tr>
         </thead>
         <tbody>
-          {CANHOTOS.map((c) => (
+          {entregas.map((c) => (
             <tr
               key={c.id}
               className="border-b border-slate-100 text-sm last:border-b-0 hover:bg-slate-50/70"

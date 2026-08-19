@@ -1,0 +1,285 @@
+// Camada de acesso a dados reais de Entregas (Supabase) — substitui os
+// mocks de `@/lib/dashboard-mock` e `@/lib/canhotos-mock` no Dashboard e na
+// tela de Entregas. Ver claude/modelo-de-dados-site.md para o schema.
+//
+// Enquanto o projeto Supabase não estiver criado/configurado (variáveis de
+// ambiente ausentes), `createAdminClient()` devolve `null` e todas as
+// funções aqui devolvem o mesmo resultado "vazio" que um banco real ainda
+// sem dados devolveria — a UI já foi construída para lidar com isso.
+
+import { createAdminClient } from "@/lib/supabase/admin";
+import { formatBRL, formatDateBR } from "@/lib/format";
+import type { FormaPagamento, StatusEntrega } from "@/types/database";
+
+export interface DashboardStats {
+  totalEntregas: number;
+  entregues: number;
+  pendentes: number;
+  motoristasAtivos: number;
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const supabase = createAdminClient();
+  if (!supabase) {
+    return { totalEntregas: 0, entregues: 0, pendentes: 0, motoristasAtivos: 0 };
+  }
+
+  const [total, entregues, pendentes, motoristasAtivos] = await Promise.all([
+    supabase.from("entregas").select("*", { count: "exact", head: true }),
+    supabase
+      .from("entregas")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "entregue"),
+    supabase
+      .from("entregas")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pendente"),
+    supabase
+      .from("motoboys")
+      .select("*", { count: "exact", head: true })
+      .eq("ativo", true),
+  ]);
+
+  return {
+    totalEntregas: total.count ?? 0,
+    entregues: entregues.count ?? 0,
+    pendentes: pendentes.count ?? 0,
+    motoristasAtivos: motoristasAtivos.count ?? 0,
+  };
+}
+
+export interface EntregaRecente {
+  numero: string;
+  cliente: string;
+  valor: string;
+  formaPagamento: FormaPagamento;
+  data: string;
+  status: StatusEntrega;
+}
+
+export async function getEntregasRecentes(limit = 5): Promise<EntregaRecente[]> {
+  const supabase = createAdminClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("entregas")
+    .select("numero, cliente_nome, valor_pagamento, forma_pagamento, data, status")
+    .order("criado_em", { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+
+  return data.map((e) => ({
+    numero: `#${e.numero}`,
+    cliente: e.cliente_nome,
+    valor: formatBRL(Number(e.valor_pagamento)),
+    formaPagamento: e.forma_pagamento,
+    data: formatDateBR(e.data),
+    status: e.status,
+  }));
+}
+
+export interface Alerta {
+  id: string;
+  tag: string;
+  titulo: string;
+  descricao: string;
+  tom: "critico" | "atencao" | "info";
+}
+
+function pluralEntregas(n: number): string {
+  return n === 1 ? "1 entrega" : `${n} entregas`;
+}
+
+export async function getAlertas(): Promise<Alerta[]> {
+  const supabase = createAdminClient();
+  if (!supabase) return [];
+
+  const [pendentesConferencia, aguardandoSaida, semNfe] = await Promise.all([
+    supabase
+      .from("entregas_pendentes_conferencia")
+      .select("*", { count: "exact", head: true }),
+    supabase
+      .from("entregas")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pendente")
+      .is("hora_saida", null),
+    supabase
+      .from("entregas")
+      .select("*", { count: "exact", head: true })
+      .is("numero_nfe", null),
+  ]);
+
+  const alertas: Alerta[] = [];
+
+  if ((pendentesConferencia.count ?? 0) > 0) {
+    alertas.push({
+      id: "conferencia-caixa",
+      tag: "CAIXA",
+      titulo: `${pluralEntregas(pendentesConferencia.count!)} pendente${pendentesConferencia.count === 1 ? "" : "s"} de conferência de caixa`,
+      descricao:
+        "Pagamento recebido pelo motorista na entrega ainda não foi conferido pelo caixa.",
+      tom: "critico",
+    });
+  }
+
+  if ((aguardandoSaida.count ?? 0) > 0) {
+    alertas.push({
+      id: "aguardando-saida",
+      tag: "SAÍDA",
+      titulo: `${pluralEntregas(aguardandoSaida.count!)} aguardando saída`,
+      descricao: "Cadastradas no sistema, mas o motorista ainda não saiu para entrega.",
+      tom: "atencao",
+    });
+  }
+
+  if ((semNfe.count ?? 0) > 0) {
+    alertas.push({
+      id: "sem-nfe",
+      tag: "CADASTRO",
+      titulo: `${pluralEntregas(semNfe.count!)} sem número de NF-e`,
+      descricao: "Cadastro incompleto — dificulta a consulta depois.",
+      tom: "info",
+    });
+  }
+
+  return alertas;
+}
+
+export interface AtividadeItem {
+  id: string;
+  hora: string;
+  titulo: string;
+  descricao: string;
+  cor: "primary" | "success" | "info" | "muted";
+  timestamp: string;
+}
+
+// Feed de atividade real, montado a partir de duas fontes:
+// 1. Cadastro de novas entregas (`entregas.criado_em`).
+// 2. Mudanças de status (`entrega_historico`, gravado automaticamente por
+//    trigger quando `entregas.status` muda).
+// Nota: hoje não existe uma trilha própria para "motorista saiu" (grava só
+// `hora_saida`, sem mudar status) nem "pagamento conferido no caixa" (grava
+// `caixa_confirmou_em`, também sem mudar status) — esses dois eventos não
+// aparecem aqui ainda. Se fizer sentido mostrá-los, precisamos de um
+// trigger adicional gravando em `entrega_historico` nesses updates também.
+export async function getAtividadeRecente(limit = 4): Promise<AtividadeItem[]> {
+  const supabase = createAdminClient();
+  if (!supabase) return [];
+
+  const [cadastros, mudancasStatus] = await Promise.all([
+    supabase
+      .from("entregas")
+      .select(
+        "id, numero, cliente_nome, criado_em, cadastrado_por:colaboradores!cadastrado_por(nome)"
+      )
+      .order("criado_em", { ascending: false })
+      .limit(limit),
+    supabase
+      .from("entrega_historico")
+      .select("id, status_novo, alterado_em, entregas(numero)")
+      .order("alterado_em", { ascending: false })
+      .limit(limit),
+  ]);
+
+  const itens: AtividadeItem[] = [];
+
+  for (const e of cadastros.data ?? []) {
+    const cadastradoPor = Array.isArray(e.cadastrado_por)
+      ? e.cadastrado_por[0]
+      : e.cadastrado_por;
+    itens.push({
+      id: `cadastro-${e.id}`,
+      hora: formatHora(e.criado_em),
+      titulo: "Entrega registrada",
+      descricao: `${cadastradoPor?.nome ?? "Alguém"} cadastrou a entrega #${e.numero} (${e.cliente_nome}).`,
+      cor: "primary",
+      timestamp: e.criado_em,
+    });
+  }
+
+  for (const h of mudancasStatus.data ?? []) {
+    const entrega = Array.isArray(h.entregas) ? h.entregas[0] : h.entregas;
+    const numero = entrega?.numero ?? "?";
+    if (h.status_novo === "entregue") {
+      itens.push({
+        id: `historico-${h.id}`,
+        hora: formatHora(h.alterado_em),
+        titulo: "Entrega confirmada pelo cliente",
+        descricao: `Cliente confirmou o recebimento da entrega #${numero}.`,
+        cor: "info",
+        timestamp: h.alterado_em,
+      });
+    } else if (h.status_novo === "cancelado") {
+      itens.push({
+        id: `historico-${h.id}`,
+        hora: formatHora(h.alterado_em),
+        titulo: "Entrega cancelada",
+        descricao: `A entrega #${numero} foi marcada como cancelada.`,
+        cor: "muted",
+        timestamp: h.alterado_em,
+      });
+    }
+  }
+
+  return itens
+    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
+    .slice(0, limit);
+}
+
+function formatHora(isoTimestamp: string): string {
+  return new Date(isoTimestamp).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export interface EntregaListItem {
+  id: string;
+  numero: string;
+  data: string;
+  cliente: string;
+  numeroPedido: string | null;
+  numeroNfe: string | null;
+  valor: string;
+  formaPagamento: FormaPagamento;
+  motoboy: string | null;
+  caixa: string | null;
+  status: StatusEntrega;
+}
+
+export async function getEntregas(): Promise<EntregaListItem[]> {
+  const supabase = createAdminClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("entregas")
+    .select(
+      `id, numero, data, cliente_nome, numero_pedido, numero_nfe, valor_pagamento,
+       forma_pagamento, status,
+       motoboy:motoboys!motoboy_id ( nome ),
+       caixa:colaboradores!caixa_id ( nome )`
+    )
+    .order("numero", { ascending: false });
+
+  if (error || !data) return [];
+
+  return data.map((e) => {
+    const motoboy = Array.isArray(e.motoboy) ? e.motoboy[0] : e.motoboy;
+    const caixa = Array.isArray(e.caixa) ? e.caixa[0] : e.caixa;
+    return {
+      id: e.id,
+      numero: `#${e.numero}`,
+      data: formatDateBR(e.data),
+      cliente: e.cliente_nome,
+      numeroPedido: e.numero_pedido,
+      numeroNfe: e.numero_nfe,
+      valor: formatBRL(Number(e.valor_pagamento)),
+      formaPagamento: e.forma_pagamento,
+      motoboy: motoboy?.nome ?? null,
+      caixa: caixa?.nome ?? null,
+      status: e.status,
+    };
+  });
+}

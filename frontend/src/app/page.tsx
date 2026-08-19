@@ -5,8 +5,30 @@ import { RecentCanhotosTable } from "@/components/dashboard/RecentCanhotosTable"
 import { MotoboyMapCard } from "@/components/dashboard/MotoboyMapCard";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
+import {
+  getAlertas,
+  getAtividadeRecente,
+  getDashboardStats,
+  getEntregasRecentes,
+} from "@/lib/data/entregas";
 
-export default function DashboardPage() {
+// Renderiza a cada request — dados vêm do Supabase (ver claude/modelo-de-dados-site.md),
+// não faz sentido cachear estaticamente um dashboard operacional.
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  const [stats, entregasRecentes, alertas, atividade] = await Promise.all([
+    getDashboardStats(),
+    getEntregasRecentes(5),
+    getAlertas(),
+    getAtividadeRecente(4),
+  ]);
+
+  const eficiencia =
+    stats.totalEntregas > 0
+      ? ((stats.entregues / stats.totalEntregas) * 100).toFixed(1).replace(".", ",")
+      : "0,0";
+
   return (
     <div>
       <PageHeader title="Dashboard" beta />
@@ -15,9 +37,8 @@ export default function DashboardPage() {
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <StatCard
             label="Total de entregas"
-            value="1.248"
-            sub="vs. mês anterior"
-            trend={{ value: "12,5%", tone: "good" }}
+            value={stats.totalEntregas.toLocaleString("pt-BR")}
+            sub="registradas no sistema"
             variant="accent"
           />
         </div>
@@ -25,32 +46,31 @@ export default function DashboardPage() {
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <StatCard
             label="Entregues"
-            value="1.046"
-            sub="1.046 de 1.248 entregas"
-            mini={{ label: "Eficiência", value: "83,8%" }}
+            value={stats.entregues.toLocaleString("pt-BR")}
+            sub={`${stats.entregues} de ${stats.totalEntregas} entregas`}
+            mini={{ label: "Eficiência", value: `${eficiencia}%` }}
           />
         </div>
 
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <StatCard
             label="Pendentes"
-            value="156"
+            value={stats.pendentes.toLocaleString("pt-BR")}
             sub="aguardando saída ou confirmação"
-            trend={{ value: "2,7%", tone: "bad" }}
           />
         </div>
 
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <StatCard
             label="Motoristas ativos"
-            value="8"
-            sub="terceirizados em rota"
+            value={stats.motoristasAtivos.toLocaleString("pt-BR")}
+            sub="terceirizados cadastrados"
             icon={<Bike className="size-5" strokeWidth={2} />}
           />
         </div>
 
         <div className="col-span-12 xl:col-span-8">
-          <RecentCanhotosTable />
+          <RecentCanhotosTable entregas={entregasRecentes} />
         </div>
 
         <div className="col-span-12 xl:col-span-4">
@@ -58,11 +78,11 @@ export default function DashboardPage() {
         </div>
 
         <div className="col-span-12 xl:col-span-6">
-          <AlertsPanel />
+          <AlertsPanel alertas={alertas} />
         </div>
 
         <div className="col-span-12 xl:col-span-6">
-          <ActivityTimeline />
+          <ActivityTimeline atividades={atividade} />
         </div>
       </div>
     </div>

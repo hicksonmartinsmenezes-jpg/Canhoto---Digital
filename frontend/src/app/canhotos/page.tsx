@@ -1,9 +1,13 @@
 import { Filter, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CanhotosTable } from "@/components/canhotos/CanhotosTable";
-import { CANHOTOS } from "@/lib/canhotos-mock";
+import { getEntregas } from "@/lib/data/entregas";
 
-export default function CanhotosPage() {
+export const dynamic = "force-dynamic";
+
+export default async function CanhotosPage() {
+  const entregas = await getEntregas();
+
   return (
     <div>
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
@@ -23,7 +27,7 @@ export default function CanhotosPage() {
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-5">
           <h2 className="text-[15px] font-bold">
-            {CANHOTOS.length} entregas encontradas
+            {entregas.length} entregas encontradas
           </h2>
           <div className="flex items-center gap-2">
             <select className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none focus:border-amber-500/50">
@@ -41,7 +45,7 @@ export default function CanhotosPage() {
           </div>
         </div>
 
-        <CanhotosTable />
+        <CanhotosTable entregas={entregas} />
       </Card>
     </div>
   );
