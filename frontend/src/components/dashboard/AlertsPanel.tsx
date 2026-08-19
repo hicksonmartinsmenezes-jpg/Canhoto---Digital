@@ -18,8 +18,8 @@ const TOM_STYLES: Record<
   },
   info: {
     icon: CalendarClock,
-    iconClass: "bg-blue-600/10 text-blue-600",
-    tagClass: "text-blue-600",
+    iconClass: "bg-[#0A1F44]/10 text-[#0A1F44]",
+    tagClass: "text-[#0A1F44]",
   },
 };
 
@@ -41,7 +41,7 @@ export function AlertsPanel() {
           return (
             <div
               key={a.id}
-              className="mb-3.5 flex items-start gap-4 rounded-2xl border border-zinc-200/70 bg-zinc-50/50 p-4 transition-colors last:mb-0 hover:border-amber-500/35"
+              className="mb-3.5 flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 transition-colors last:mb-0 hover:border-amber-500/35"
             >
               <span
                 className={`grid size-[46px] shrink-0 place-items-center rounded-xl ${style.iconClass}`}
@@ -57,7 +57,7 @@ export function AlertsPanel() {
                     {a.tag}
                   </span>
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                <p className="mt-1 text-xs leading-relaxed text-slate-400">
                   {a.descricao}
                 </p>
               </div>

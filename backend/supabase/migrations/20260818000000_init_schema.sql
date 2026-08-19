@@ -1,6 +1,7 @@
--- Canhoto Interno — schema inicial
--- Baseado no modelo de dados definido no projeto (claude/modelo-de-dados-site.md)
--- Escopo: fluxo interno de recebimento de documentos (funcionário assina -> setor responsável arquiva)
+-- Canhoto Interno — schema v2 (entrega ao cliente externo)
+-- Baseado no romaneio físico real da Expedição (claude/modelo-de-dados-site.md).
+-- Substitui a v1 (fluxo interno funcionário-para-funcionário), descartada antes
+-- de qualquer deploy real — sem dados em produção a preservar.
 
 create extension if not exists "pgcrypto";
 
@@ -10,14 +11,16 @@ create extension if not exists "pgcrypto";
 
 create type papel_colaborador as enum ('admin', 'gestor_setor', 'colaborador');
 
-create type status_canhoto as enum ('pendente', 'recebido', 'devolvido', 'cancelado');
+create type status_entrega as enum ('pendente', 'entregue', 'cancelado');
 
-create type forma_comprovacao as enum ('assinatura_tela', 'foto', 'canhoto_fisico_digitalizado');
+create type forma_pagamento as enum ('dinheiro', 'pix', 'debito', 'cartao_1x', 'prazo');
 
-create type tipo_anexo as enum ('assinatura', 'foto', 'scan_canhoto_fisico');
+create type tipo_anexo_entrega as enum ('xml_nfe', 'xml_cte', 'assinatura_cliente', 'foto');
 
 -- ---------------------------------------------------------------------------
 -- setores
+-- Mantido no schema por flexibilidade futura, mas na prática só "Expedição"
+-- opera o sistema de entregas hoje — não é uma tela de gestão no site.
 -- ---------------------------------------------------------------------------
 
 create table setores (
@@ -27,10 +30,12 @@ create table setores (
   criado_em   timestamptz not null default now()
 );
 
+insert into setores (nome) values ('Expedição');
+
 -- ---------------------------------------------------------------------------
 -- colaboradores
--- Pessoas da empresa: quem recebe/assina canhotos e/ou usa o sistema.
--- id é o mesmo da auth.users do Supabase quando o colaborador tem login.
+-- Pessoas da empresa: quem cadastra entregas, confere pagamento no caixa,
+-- e/ou usa o sistema. id é o mesmo da auth.users do Supabase quando tem login.
 -- ---------------------------------------------------------------------------
 
 create table colaboradores (
@@ -48,110 +53,111 @@ create table colaboradores (
 create index idx_colaboradores_setor on colaboradores(setor_id);
 
 -- ---------------------------------------------------------------------------
--- tipos_documento
+-- motoboys
+-- Entregadores terceirizados — não são colaboradores da empresa, não têm
+-- login no sistema, só um cadastro leve de referência (nome no romaneio).
 -- ---------------------------------------------------------------------------
 
-create table tipos_documento (
-  id      uuid primary key default gen_random_uuid(),
-  nome    text not null unique,
-  ativo   boolean not null default true
+create table motoboys (
+  id          uuid primary key default gen_random_uuid(),
+  nome        text not null,
+  ativo       boolean not null default true,
+  criado_em   timestamptz not null default now()
 );
 
-insert into tipos_documento (nome) values
-  ('Nota Fiscal'), ('Contrato'), ('Memorando'), ('Ordem de Serviço'),
-  ('Requisição'), ('Recibo'), ('Outro');
-
 -- ---------------------------------------------------------------------------
--- canhotos — entidade central
--- Fluxo de duas etapas: assinatura (responsavel_id) -> arquivamento (setor_id)
+-- entregas — entidade central (antes "canhotos")
+-- Fluxo: cadastro -> saída (motoboy) -> entrega confirmada (cliente) ->
+-- conferência de caixa (quando a forma de pagamento é coletada na entrega).
 -- ---------------------------------------------------------------------------
 
-create sequence canhotos_numero_seq start 1;
+create sequence entregas_numero_seq start 1;
 
-create table canhotos (
-  id                  uuid primary key default gen_random_uuid(),
-  numero              integer not null default nextval('canhotos_numero_seq') unique,
-  tipo_documento_id    uuid not null references tipos_documento(id),
-  numero_documento     text,
-  setor_id             uuid not null references setores(id),        -- setor responsável pelo arquivamento
-  responsavel_id       uuid not null references colaboradores(id),   -- quem recebeu e assinou
-  data_emissao         date,
-  data_assinatura      timestamptz,        -- quando o funcionário assinou o recebimento
-  prazo_arquivamento   timestamptz,        -- prazo para o setor responsável arquivar
-  data_arquivamento    timestamptz,        -- quando o setor responsável de fato arquivou
-  status               status_canhoto not null default 'pendente',
-  forma_comprovacao    forma_comprovacao,
-  observacoes          text,
-  cadastrado_por       uuid references colaboradores(id),
-  criado_em            timestamptz not null default now(),
-  atualizado_em        timestamptz not null default now()
+create table entregas (
+  id                    uuid primary key default gen_random_uuid(),
+  numero                integer not null default nextval('entregas_numero_seq') unique,
+  data                  date not null default current_date,
+  cliente_nome          text not null,          -- texto livre, como no romaneio (não é cadastro de clientes)
+  numero_pedido         text,
+  numero_nfe            text,
+  valor_pagamento       numeric(12,2) not null,
+  forma_pagamento       forma_pagamento not null,
+  hora_saida            time,
+  motoboy_id            uuid references motoboys(id),
+  cliente_assinou_em    timestamptz,             -- confirmação de recebimento pelo cliente
+  caixa_id              uuid references colaboradores(id),   -- quem conferiu o pagamento
+  caixa_confirmou_em    timestamptz,
+  status                status_entrega not null default 'pendente',
+  observacoes           text,
+  cadastrado_por        uuid references colaboradores(id),
+  criado_em             timestamptz not null default now(),
+  atualizado_em         timestamptz not null default now()
 );
 
-create index idx_canhotos_setor on canhotos(setor_id);
-create index idx_canhotos_responsavel on canhotos(responsavel_id);
-create index idx_canhotos_status on canhotos(status);
-create index idx_canhotos_data_assinatura on canhotos(data_assinatura);
-create index idx_canhotos_prazo_arquivamento on canhotos(prazo_arquivamento);
+create index idx_entregas_data on entregas(data);
+create index idx_entregas_motoboy on entregas(motoboy_id);
+create index idx_entregas_caixa on entregas(caixa_id);
+create index idx_entregas_status on entregas(status);
+create index idx_entregas_forma_pagamento on entregas(forma_pagamento);
 
--- "Vencido" é um alerta calculado, não um status:
--- status = 'recebido' AND data_arquivamento IS NULL AND prazo_arquivamento < now()
-create view canhotos_vencidos as
-  select * from canhotos
-  where status = 'recebido'
-    and data_arquivamento is null
-    and prazo_arquivamento is not null
-    and prazo_arquivamento < now();
+-- "Pendente de conferência de caixa" é um alerta calculado, não um status:
+-- entrega já confirmada pelo cliente, com pagamento coletado na entrega
+-- (qualquer forma exceto "prazo"), mas o caixa ainda não conferiu o valor.
+create view entregas_pendentes_conferencia as
+  select * from entregas
+  where status = 'entregue'
+    and forma_pagamento <> 'prazo'
+    and caixa_confirmou_em is null;
 
 -- ---------------------------------------------------------------------------
--- canhoto_anexos — evidências (assinatura, foto, scan) + metadados Decreto 10.278
+-- entrega_anexos — XML da NF-e/CT-e enviado no cadastro, assinatura, fotos
 -- ---------------------------------------------------------------------------
 
-create table canhoto_anexos (
+create table entrega_anexos (
   id             uuid primary key default gen_random_uuid(),
-  canhoto_id     uuid not null references canhotos(id) on delete cascade,
-  tipo           tipo_anexo not null,
+  entrega_id     uuid not null references entregas(id) on delete cascade,
+  tipo           tipo_anexo_entrega not null,
   arquivo_url    text not null,
   capturado_em   timestamptz not null default now(),
-  capturado_por  uuid references colaboradores(id),
-  local_captura  text
+  capturado_por  uuid references colaboradores(id)
 );
 
-create index idx_canhoto_anexos_canhoto on canhoto_anexos(canhoto_id);
+create index idx_entrega_anexos_entrega on entrega_anexos(entrega_id);
 
 -- ---------------------------------------------------------------------------
--- canhoto_historico — trilha de auditoria de mudança de status
+-- entrega_historico — trilha de auditoria de mudança de status
 -- ---------------------------------------------------------------------------
 
-create table canhoto_historico (
+create table entrega_historico (
   id              uuid primary key default gen_random_uuid(),
-  canhoto_id      uuid not null references canhotos(id) on delete cascade,
-  status_anterior status_canhoto,
-  status_novo     status_canhoto not null,
+  entrega_id      uuid not null references entregas(id) on delete cascade,
+  status_anterior status_entrega,
+  status_novo     status_entrega not null,
   alterado_por    uuid references colaboradores(id),
   alterado_em     timestamptz not null default now(),
   observacao      text
 );
 
-create index idx_canhoto_historico_canhoto on canhoto_historico(canhoto_id);
+create index idx_entrega_historico_entrega on entrega_historico(entrega_id);
 
--- Trigger: toda mudança de status em `canhotos` grava uma linha em canhoto_historico
--- e atualiza `atualizado_em` automaticamente.
-create or replace function fn_registrar_historico_canhoto()
+-- Trigger: toda mudança de status em `entregas` grava uma linha em
+-- entrega_historico e atualiza `atualizado_em` automaticamente.
+create or replace function fn_registrar_historico_entrega()
 returns trigger as $$
 begin
   new.atualizado_em := now();
   if (tg_op = 'UPDATE' and new.status is distinct from old.status) then
-    insert into canhoto_historico (canhoto_id, status_anterior, status_novo, alterado_por)
+    insert into entrega_historico (entrega_id, status_anterior, status_novo, alterado_por)
     values (new.id, old.status, new.status, new.cadastrado_por);
   end if;
   return new;
 end;
 $$ language plpgsql;
 
-create trigger trg_canhotos_historico
-  before update on canhotos
+create trigger trg_entregas_historico
+  before update on entregas
   for each row
-  execute function fn_registrar_historico_canhoto();
+  execute function fn_registrar_historico_entrega();
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security — habilitada, políticas a refinar conforme o papel
@@ -161,17 +167,17 @@ create trigger trg_canhotos_historico
 
 alter table setores enable row level security;
 alter table colaboradores enable row level security;
-alter table tipos_documento enable row level security;
-alter table canhotos enable row level security;
-alter table canhoto_anexos enable row level security;
-alter table canhoto_historico enable row level security;
+alter table motoboys enable row level security;
+alter table entregas enable row level security;
+alter table entrega_anexos enable row level security;
+alter table entrega_historico enable row level security;
 
 create policy "leitura autenticada - setores" on setores for select using (auth.role() = 'authenticated');
 create policy "leitura autenticada - colaboradores" on colaboradores for select using (auth.role() = 'authenticated');
-create policy "leitura autenticada - tipos_documento" on tipos_documento for select using (auth.role() = 'authenticated');
-create policy "leitura autenticada - canhotos" on canhotos for select using (auth.role() = 'authenticated');
-create policy "leitura autenticada - canhoto_anexos" on canhoto_anexos for select using (auth.role() = 'authenticated');
-create policy "leitura autenticada - canhoto_historico" on canhoto_historico for select using (auth.role() = 'authenticated');
+create policy "leitura autenticada - motoboys" on motoboys for select using (auth.role() = 'authenticated');
+create policy "leitura autenticada - entregas" on entregas for select using (auth.role() = 'authenticated');
+create policy "leitura autenticada - entrega_anexos" on entrega_anexos for select using (auth.role() = 'authenticated');
+create policy "leitura autenticada - entrega_historico" on entrega_historico for select using (auth.role() = 'authenticated');
 
 -- TODO: políticas de escrita (insert/update/delete) por papel — definir quando
 -- as regras de permissão por papel (admin/gestor_setor/colaborador) forem fechadas.

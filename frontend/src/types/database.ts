@@ -1,4 +1,5 @@
 // Tipos manuais provisórios, espelhando backend/supabase/migrations/20260818000000_init_schema.sql
+// (schema v2 — entrega ao cliente externo, ver claude/modelo-de-dados-site.md)
 //
 // Quando o projeto Supabase estiver criado, gere os tipos reais com:
 //   npx supabase gen types typescript --project-id <ID_DO_PROJETO> > src/types/database.ts
@@ -6,12 +7,18 @@
 // e substitua este arquivo pelo gerado.
 
 export type PapelColaborador = "admin" | "gestor_setor" | "colaborador";
-export type StatusCanhoto = "pendente" | "recebido" | "devolvido" | "cancelado";
-export type FormaComprovacao =
-  | "assinatura_tela"
-  | "foto"
-  | "canhoto_fisico_digitalizado";
-export type TipoAnexo = "assinatura" | "foto" | "scan_canhoto_fisico";
+export type StatusEntrega = "pendente" | "entregue" | "cancelado";
+export type FormaPagamento =
+  | "dinheiro"
+  | "pix"
+  | "debito"
+  | "cartao_1x"
+  | "prazo";
+export type TipoAnexoEntrega =
+  | "xml_nfe"
+  | "xml_cte"
+  | "assinatura_cliente"
+  | "foto";
 
 export interface Setor {
   id: string;
@@ -32,46 +39,48 @@ export interface Colaborador {
   criado_em: string;
 }
 
-export interface TipoDocumento {
+export interface Motoboy {
   id: string;
   nome: string;
   ativo: boolean;
+  criado_em: string;
 }
 
-export interface Canhoto {
+export interface Entrega {
   id: string;
   numero: number;
-  tipo_documento_id: string;
-  numero_documento: string | null;
-  setor_id: string;
-  responsavel_id: string;
-  data_emissao: string | null;
-  data_assinatura: string | null;
-  prazo_arquivamento: string | null;
-  data_arquivamento: string | null;
-  status: StatusCanhoto;
-  forma_comprovacao: FormaComprovacao | null;
+  data: string;
+  cliente_nome: string;
+  numero_pedido: string | null;
+  numero_nfe: string | null;
+  valor_pagamento: number;
+  forma_pagamento: FormaPagamento;
+  hora_saida: string | null;
+  motoboy_id: string | null;
+  cliente_assinou_em: string | null;
+  caixa_id: string | null;
+  caixa_confirmou_em: string | null;
+  status: StatusEntrega;
   observacoes: string | null;
   cadastrado_por: string | null;
   criado_em: string;
   atualizado_em: string;
 }
 
-export interface CanhotoAnexo {
+export interface EntregaAnexo {
   id: string;
-  canhoto_id: string;
-  tipo: TipoAnexo;
+  entrega_id: string;
+  tipo: TipoAnexoEntrega;
   arquivo_url: string;
   capturado_em: string;
   capturado_por: string | null;
-  local_captura: string | null;
 }
 
-export interface CanhotoHistorico {
+export interface EntregaHistorico {
   id: string;
-  canhoto_id: string;
-  status_anterior: StatusCanhoto | null;
-  status_novo: StatusCanhoto;
+  entrega_id: string;
+  status_anterior: StatusEntrega | null;
+  status_novo: StatusEntrega;
   alterado_por: string | null;
   alterado_em: string;
   observacao: string | null;

@@ -1,36 +1,33 @@
-import { Users } from "lucide-react";
+import { Bike } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RecentCanhotosTable } from "@/components/dashboard/RecentCanhotosTable";
-import { StatusDonutChart } from "@/components/dashboard/StatusDonutChart";
+import { MotoboyMapCard } from "@/components/dashboard/MotoboyMapCard";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
 
 export default function DashboardPage() {
   return (
     <div>
-      <div className="mb-7">
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Visão geral do sistema de canhotos internos.
-        </p>
-      </div>
+      <PageHeader title="Dashboard" beta />
 
       <div className="grid grid-cols-12 gap-5">
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <StatCard
-            label="Total de canhotos"
+            label="Total de entregas"
             value="1.248"
             sub="vs. mês anterior"
             trend={{ value: "12,5%", tone: "good" }}
+            variant="accent"
           />
         </div>
 
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <StatCard
-            label="Canhotos arquivados"
-            value="982"
-            sub="982 de 1.248 canhotos"
-            mini={{ label: "Eficiência", value: "78,6%" }}
+            label="Entregues"
+            value="1.046"
+            sub="1.046 de 1.248 entregas"
+            mini={{ label: "Eficiência", value: "83,8%" }}
           />
         </div>
 
@@ -38,17 +35,17 @@ export default function DashboardPage() {
           <StatCard
             label="Pendentes"
             value="156"
-            sub="aguardando assinatura"
+            sub="aguardando saída ou confirmação"
             trend={{ value: "2,7%", tone: "bad" }}
           />
         </div>
 
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <StatCard
-            label="Responsáveis"
-            value="42"
-            sub="ativos nos setores"
-            icon={<Users className="size-5" strokeWidth={2} />}
+            label="Motoristas ativos"
+            value="8"
+            sub="terceirizados em rota"
+            icon={<Bike className="size-5" strokeWidth={2} />}
           />
         </div>
 
@@ -57,7 +54,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="col-span-12 xl:col-span-4">
-          <StatusDonutChart />
+          <MotoboyMapCard />
         </div>
 
         <div className="col-span-12 xl:col-span-6">

@@ -1,73 +1,72 @@
-// Dados de exemplo para o Dashboard — mesmos números do protótipo visual
-// (dashboard-canhoto-interno.html). Substituir por consultas reais ao
-// Supabase quando as tabelas estiverem populadas (ver claude/modelo-de-dados-site.md).
+// Dados de exemplo para o Dashboard — schema v2 (entrega ao cliente externo,
+// baseado no romaneio real da Expedição). Ver claude/modelo-de-dados-site.md.
+// Substituir por consultas reais ao Supabase quando as tabelas estiverem populadas.
 
-import type { StatusCanhoto } from "@/types/database";
+import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
-export interface CanhotoRecente {
+export interface EntregaRecente {
   numero: string;
-  documento: string;
-  responsavel: string;
-  setor: string;
+  cliente: string;
+  valor: string;
+  formaPagamento: FormaPagamento;
   data: string;
-  status: StatusCanhoto;
+  status: StatusEntrega;
 }
 
-export const CANHOTOS_RECENTES: CanhotoRecente[] = [
+export const ENTREGAS_RECENTES: EntregaRecente[] = [
   {
     numero: "#1250",
-    documento: "NF 4582",
-    responsavel: "João Silva",
-    setor: "Financeiro",
+    cliente: "TD Tech",
+    valor: "R$ 57,22",
+    formaPagamento: "prazo",
     data: "18/08/2026",
-    status: "recebido",
+    status: "entregue",
   },
   {
     numero: "#1249",
-    documento: "Contrato 0123",
-    responsavel: "Maria Santos",
-    setor: "RH",
+    cliente: "Rowlson",
+    valor: "R$ 322,72",
+    formaPagamento: "pix",
     data: "18/08/2026",
     status: "pendente",
   },
   {
     numero: "#1248",
-    documento: "Ordem de Serviço 778",
-    responsavel: "Carlos Lima",
-    setor: "Manutenção",
+    cliente: "Robson Corretora",
+    valor: "R$ 235,32",
+    formaPagamento: "dinheiro",
     data: "17/08/2026",
-    status: "recebido",
+    status: "entregue",
   },
   {
     numero: "#1247",
-    documento: "NF 4571",
-    responsavel: "Ana Ferreira",
-    setor: "Compras",
+    cliente: "Automotic",
+    valor: "R$ 143,38",
+    formaPagamento: "debito",
     data: "17/08/2026",
-    status: "devolvido",
+    status: "entregue",
   },
   {
     numero: "#1246",
-    documento: "Memorando 034",
-    responsavel: "Bruno Alves",
-    setor: "Diretoria",
+    cliente: "Jadilson Morais",
+    valor: "R$ 52,59",
+    formaPagamento: "pix",
     data: "16/08/2026",
     status: "cancelado",
   },
 ];
 
 export interface StatusCount {
-  status: StatusCanhoto;
+  status: StatusEntrega;
   label: string;
   value: number;
 }
 
 // value em cada status — soma usada para o gráfico de rosca do Dashboard.
-export const CANHOTOS_POR_STATUS: StatusCount[] = [
-  { status: "recebido", label: "Recebidos", value: 982 },
+export const ENTREGAS_POR_STATUS: StatusCount[] = [
+  { status: "entregue", label: "Entregues", value: 1046 },
   { status: "pendente", label: "Pendentes", value: 156 },
-  { status: "devolvido", label: "Devolvidos", value: 74 },
-  { status: "cancelado", label: "Cancelados", value: 36 },
+  { status: "cancelado", label: "Cancelados", value: 46 },
 ];
 
 export interface Alerta {
@@ -80,25 +79,25 @@ export interface Alerta {
 
 export const ALERTAS: Alerta[] = [
   {
-    id: "vencidos",
-    tag: "48H DE ATRASO",
-    titulo: "7 canhotos vencidos",
-    descricao: "Prazo de arquivamento pelo setor responsável expirado.",
+    id: "conferencia-caixa",
+    tag: "CAIXA",
+    titulo: "7 entregas pendentes de conferência de caixa",
+    descricao:
+      "Pagamento recebido pelo motorista na entrega ainda não foi conferido pelo caixa.",
     tom: "critico",
   },
   {
-    id: "pendentes-assinatura",
-    tag: "ASSINATURA",
-    titulo: "23 canhotos pendentes de recebimento",
-    descricao:
-      "Aguardando assinatura do responsável há mais de 3 dias úteis.",
+    id: "aguardando-saida",
+    tag: "SAÍDA",
+    titulo: "23 entregas aguardando saída",
+    descricao: "Cadastradas no sistema, mas o motorista ainda não saiu para entrega.",
     tom: "atencao",
   },
   {
-    id: "proximos-vencimento",
-    tag: "5 DIAS",
-    titulo: "12 documentos próximos do vencimento",
-    descricao: "Vencem nos próximos 5 dias e precisam de conferência.",
+    id: "sem-nfe",
+    tag: "CADASTRO",
+    titulo: "12 entregas sem número de NF-e",
+    descricao: "Cadastro incompleto — dificulta a consulta depois.",
     tom: "info",
   },
 ];
@@ -115,29 +114,29 @@ export const ATIVIDADE_RECENTE: AtividadeItem[] = [
   {
     id: "1",
     hora: "14:32",
-    titulo: "Documento recebido",
-    descricao: "João Silva recebeu o documento NF 4582 no setor Financeiro.",
+    titulo: "Entrega registrada",
+    descricao: "Hickson cadastrou a entrega #1250 (TD Tech).",
     cor: "primary",
   },
   {
     id: "2",
     hora: "13:10",
-    titulo: "Canhoto cadastrado",
-    descricao: "Maria Santos cadastrou o canhoto #1249 (Contrato 0123).",
+    titulo: "Motorista saiu para entrega",
+    descricao: "Gonçalves saiu com a entrega #1249 às 09:25.",
     cor: "success",
   },
   {
     id: "3",
     hora: "11:47",
-    titulo: "Canhoto devolvido",
-    descricao: "Carlos Lima devolveu o canhoto #1245 ao setor de Manutenção.",
+    titulo: "Entrega confirmada pelo cliente",
+    descricao: "Cliente confirmou o recebimento da entrega #1248.",
     cor: "info",
   },
   {
     id: "4",
     hora: "09:00",
-    titulo: "Relatório exportado",
-    descricao: "Relatório consolidado de pendências enviado à diretoria.",
+    titulo: "Pagamento conferido no caixa",
+    descricao: "Bruna conferiu o pagamento Pix da entrega #1246.",
     cor: "muted",
   },
 ];

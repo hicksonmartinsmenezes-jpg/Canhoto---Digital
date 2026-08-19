@@ -1,39 +1,125 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  Bike,
+  FileBarChart,
+  Menu,
+} from "lucide-react";
 
 // Estrutura de navegação do Portal Web Admin — Canhoto Interno.
 // Escopo confirmado: só o fluxo interno (sem módulo de Entregas externas).
+// "Setores" saiu do menu (18/08/2026): só a Expedição opera o sistema de
+// canhotos de fato — não há múltiplos setores para gerenciar aqui.
+// "Usuários" também saiu do menu (18/08/2026): o sistema terá no mínimo
+// só 2 usuários, não justifica uma tela de gestão de acesso dedicada.
+// "Tipos de Documento" saiu (18/08/2026, schema v2): praticamente toda
+// entrega é do mesmo tipo (NF-e de mercadoria), não há o que categorizar.
+// "Motoristas" entrou no lugar: cadastro dos entregadores terceirizados,
+// necessário no schema v2 (entrega ao cliente externo).
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard" },
-  { href: "/canhotos", label: "Canhotos" },
-  { href: "/colaboradores", label: "Colaboradores" },
-  { href: "/setores", label: "Setores" },
-  { href: "/relatorios", label: "Relatórios" },
-  { href: "/configuracoes/usuarios", label: "Usuários" },
-  { href: "/configuracoes/tipos-documento", label: "Tipos de Documento" },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/canhotos", label: "Entregas", icon: Package },
+  { href: "/colaboradores", label: "Colaboradores", icon: Users },
+  { href: "/motoboys", label: "Motoristas", icon: Bike },
+  { href: "/relatorios", label: "Relatórios", icon: FileBarChart },
 ];
 
+// Barra lateral com auto-abertura (19/08/2026, v2): agora fica sempre
+// visível numa faixa recolhida de 64px (`w-16`) — não mais uma faixa
+// invisível de 3px — mostrando a marca em círculo no topo e os ícones do
+// menu (sem rótulo) abaixo, no estilo de referência trazido pelo Hickson.
+// Passa o mouse por cima e ela abre (animação de largura) até 256px
+// (`w-64`), revelando o hambúrguer ao lado do logo completo e os rótulos
+// dos itens. Por ser "fixed" na viewport, não se move quando a página tem
+// scroll — fica sempre estática no lugar.
+// Classe "peer": permite que o <main> (irmão logo abaixo no layout.tsx)
+// reaja ao hover daqui com `peer-hover:` — arrastando a página pro lado
+// só a DIFERENÇA entre os dois estados (256-64=192px/w-48), já que os 64px
+// da faixa recolhida já são reservados de forma fixa (`md:ml-16` no main).
+// Classe "group": deixa a marca em círculo (filha, some no hover) e o
+// cabeçalho aberto (hambúrguer + logo, aparece no hover) fazerem crossfade
+// via `group-hover:`, já que `peer-hover:` só funciona entre irmãos.
 export function Sidebar() {
+  const pathname = usePathname();
+
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 text-zinc-300 md:flex">
-      <div className="flex items-center gap-3 px-6 py-6">
-        <span className="grid size-8 place-items-center rounded-lg bg-amber-500 font-bold text-zinc-950">
-          C
-        </span>
-        <span className="text-lg font-bold tracking-tight text-white">
-          Canhoto<span className="text-amber-500">Interno</span>
-        </span>
-      </div>
-      <nav className="flex-1 space-y-1 px-4 py-2">
-        {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="block rounded-lg px-3 py-2 text-sm text-zinc-300/80 transition-colors hover:bg-zinc-900 hover:text-white"
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-    </aside>
+    <div className="peer group fixed inset-y-0 left-0 z-40 hidden w-16 overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:w-64 md:block">
+      <aside className="flex h-full w-64 flex-col bg-[#0A1F44] text-white/70">
+        <div className="relative flex h-[68px] shrink-0 items-center px-4">
+          {/* Marca recolhida: círculo branco com a logo (mesma imagem do
+              favicon, 19/08/2026) — visível só com a barra fechada,
+              centralizada nos 64px visíveis. */}
+          <div className="absolute inset-0 flex w-16 items-center justify-center transition-opacity duration-200 group-hover:opacity-0">
+            <div className="grid size-9 place-items-center rounded-full bg-white p-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/rildon-mark.png"
+                alt="Rildon Express"
+                className="size-full object-contain"
+              />
+            </div>
+          </div>
+
+          {/* Cabeçalho aberto: hambúrguer ao lado do logo completo —
+              invisível com a barra fechada, aparece com um pequeno atraso
+              conforme ela termina de abrir. Logo com "max-w" (além do
+              "h-7") pra nunca ultrapassar a largura dos 256px da barra —
+              antes vazava ~16px pra fora e cortava o "S" de "EXPRESS". */}
+          <div className="flex min-w-0 items-center gap-4 opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
+            <Menu className="size-5 shrink-0 text-white" strokeWidth={2.25} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/rildon-express-logo-white.svg"
+              alt="Rildon Express"
+              className="h-7 w-auto max-w-[172px] shrink-0"
+            />
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-1 px-2 py-2">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-colors ${
+                  isActive
+                    ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
+                    : "border-transparent text-white/80 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                {/* Com a barra fechada, só o ícone acende (fundo redondo
+                    clarinho atrás dele); com a barra aberta, esse fundo some
+                    (`group-hover:bg-transparent`) e quem acende é a linha
+                    inteira, via as classes `group-hover:` acima no <Link>.
+                    "group-hover:" (não "peer-hover:") porque o <Link> é
+                    DESCENDENTE do wrapper com overflow-hidden, não irmão —
+                    `peer-hover:` só funciona entre irmãos diretos. */}
+                <span
+                  className={`grid size-9 shrink-0 place-items-center rounded-lg transition-colors ${
+                    isActive ? "bg-white/10 group-hover:bg-transparent" : ""
+                  }`}
+                >
+                  <Icon className="size-5 shrink-0" strokeWidth={2} />
+                </span>
+                <span className="whitespace-nowrap opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+    </div>
   );
 }
