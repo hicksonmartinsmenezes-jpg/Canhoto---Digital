@@ -1,17 +1,17 @@
 "use server";
 
-// Server Action: cadastro manual de uma nova Entrega (wizard "Adicionar
-// Entrega"). Usa o cliente service-role (ver @/lib/supabase/admin) pelo
-// mesmo motivo da camada de leitura: RLS hoje exige usuário autenticado e o
-// site ainda não tem login real — quando existir, `cadastrado_por` deve
-// passar a vir da sessão em vez de ficar nulo.
+// Server Action: edição de uma Entrega já cadastrada (inclui mudar a
+// situação — pendente/entregue/cancelado — já que ainda não existem telas
+// dedicadas para "saída"/"confirmação do cliente"). Mesma justificativa do
+// cliente service-role das outras actions do módulo — ver comentário em
+// @/lib/supabase/admin.
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveMotoboyId } from "@/lib/supabase/motoboy-helpers";
-import type { FormaPagamento } from "@/types/database";
+import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
-export interface CriarEntregaInput {
+export interface AtualizarEntregaInput {
   data: string;
   clienteNome: string;
   numeroPedido: string;
@@ -21,16 +21,18 @@ export interface CriarEntregaInput {
   motoboyNome: string;
   horaSaida: string;
   observacoes: string;
+  status: StatusEntrega;
 }
 
-export interface CriarEntregaResult {
+export interface AtualizarEntregaResult {
   ok: boolean;
   error?: string;
 }
 
-export async function criarEntrega(
-  input: CriarEntregaInput
-): Promise<CriarEntregaResult> {
+export async function atualizarEntrega(
+  id: string,
+  input: AtualizarEntregaInput
+): Promise<AtualizarEntregaResult> {
   const supabase = createAdminClient();
   if (!supabase) {
     return {
@@ -57,20 +59,24 @@ export async function criarEntrega(
   );
   if (erroMotoboy) return { ok: false, error: erroMotoboy };
 
-  const { error } = await supabase.from("entregas").insert({
-    data: input.data,
-    cliente_nome: clienteNome,
-    numero_pedido: input.numeroPedido.trim() || null,
-    numero_nfe: input.numeroNfe.trim() || null,
-    valor_pagamento: input.valorPagamento,
-    forma_pagamento: input.formaPagamento,
-    hora_saida: input.horaSaida || null,
-    motoboy_id: motoboyId,
-    observacoes: input.observacoes.trim() || null,
-  });
+  const { error } = await supabase
+    .from("entregas")
+    .update({
+      data: input.data,
+      cliente_nome: clienteNome,
+      numero_pedido: input.numeroPedido.trim() || null,
+      numero_nfe: input.numeroNfe.trim() || null,
+      valor_pagamento: input.valorPagamento,
+      forma_pagamento: input.formaPagamento,
+      hora_saida: input.horaSaida || null,
+      motoboy_id: motoboyId,
+      observacoes: input.observacoes.trim() || null,
+      status: input.status,
+    })
+    .eq("id", id);
 
   if (error) {
-    return { ok: false, error: `Erro ao salvar a entrega: ${error.message}` };
+    return { ok: false, error: `Erro ao salvar as alterações: ${error.message}` };
   }
 
   revalidatePath("/canhotos");

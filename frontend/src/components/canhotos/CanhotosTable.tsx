@@ -1,9 +1,9 @@
-import { SquarePen, MoreVertical } from "lucide-react";
 import {
   FORMA_PAGAMENTO_LABEL,
   STATUS_BADGE_CLASSES,
   STATUS_LABEL,
 } from "@/lib/status";
+import { EntregaRowActions } from "@/components/canhotos/EntregaRowActions";
 import type { EntregaListItem } from "@/lib/data/entregas";
 
 function Cell({ value }: { value: string | null }) {
@@ -74,20 +74,7 @@ export function CanhotosTable({ entregas }: CanhotosTableProps) {
                 </span>
               </td>
               <td className="px-6 py-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    aria-label="Editar entrega"
-                    className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-amber-500/40 hover:text-amber-600"
-                  >
-                    <SquarePen className="size-4" />
-                  </button>
-                  <button
-                    aria-label="Mais ações"
-                    className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-amber-500/40 hover:text-amber-600"
-                  >
-                    <MoreVertical className="size-4" />
-                  </button>
-                </div>
+                <EntregaRowActions id={c.id} numero={c.numero} cliente={c.cliente} />
               </td>
             </tr>
           ))}

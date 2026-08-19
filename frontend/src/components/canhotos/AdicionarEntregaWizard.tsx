@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { Field, inputClass } from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 import { criarEntrega } from "@/app/canhotos/nova/actions";
 import type { MotoboyOption } from "@/lib/data/motoboys";
@@ -32,35 +33,6 @@ const ETAPAS = [
   { numero: 2, titulo: "Entrega" },
   { numero: 3, titulo: "Revisão" },
 ] as const;
-
-const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10";
-const labelClass =
-  "mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500";
-
-function Field({
-  label,
-  optional,
-  children,
-}: {
-  label: string;
-  optional?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className={labelClass}>
-        {label}
-        {optional && (
-          <span className="ml-1 font-medium normal-case text-slate-400">
-            (opcional)
-          </span>
-        )}
-      </label>
-      {children}
-    </div>
-  );
-}
 
 function Resumo({ label, value }: { label: string; value: string | null }) {
   return (

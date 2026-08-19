@@ -11,6 +11,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
+// pt-BR: garante o formato "AAAA-MM-DD" que os inputs <input type="date">
+// esperam, independente de fuso.
+function paraDataInput(dataIso: string): string {
+  return dataIso.slice(0, 10);
+}
+
+// Postgres devolve `time` como "HH:MM:SS" — <input type="time"> quer "HH:MM".
+function paraHoraInput(hora: string | null): string {
+  return hora ? hora.slice(0, 5) : "";
+}
+
 export interface DashboardStats {
   totalEntregas: number;
   entregues: number;
@@ -282,4 +293,55 @@ export async function getEntregas(): Promise<EntregaListItem[]> {
       status: e.status,
     };
   });
+}
+
+export interface EntregaDetalhe {
+  id: string;
+  numero: number;
+  data: string;
+  clienteNome: string;
+  numeroPedido: string;
+  numeroNfe: string;
+  valorPagamento: string;
+  formaPagamento: FormaPagamento;
+  motoboyNome: string;
+  horaSaida: string;
+  observacoes: string;
+  status: StatusEntrega;
+}
+
+export async function getEntregaById(
+  id: string
+): Promise<EntregaDetalhe | null> {
+  const supabase = createAdminClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("entregas")
+    .select(
+      `id, numero, data, cliente_nome, numero_pedido, numero_nfe, valor_pagamento,
+       forma_pagamento, hora_saida, observacoes, status,
+       motoboy:motoboys!motoboy_id ( nome )`
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const motoboy = Array.isArray(data.motoboy) ? data.motoboy[0] : data.motoboy;
+
+  return {
+    id: data.id,
+    numero: data.numero,
+    data: paraDataInput(data.data),
+    clienteNome: data.cliente_nome,
+    numeroPedido: data.numero_pedido ?? "",
+    numeroNfe: data.numero_nfe ?? "",
+    valorPagamento: String(data.valor_pagamento),
+    formaPagamento: data.forma_pagamento,
+    motoboyNome: motoboy?.nome ?? "",
+    horaSaida: paraHoraInput(data.hora_saida),
+    observacoes: data.observacoes ?? "",
+    status: data.status,
+  };
 }
