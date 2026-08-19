@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,6 +10,8 @@ import {
   Bike,
   FileBarChart,
   Menu,
+  ClipboardList,
+  ChevronDown,
 } from "lucide-react";
 
 // Estrutura de navegação do Portal Web Admin — Canhoto Interno.
@@ -19,14 +22,23 @@ import {
 // só 2 usuários, não justifica uma tela de gestão de acesso dedicada.
 // "Tipos de Documento" saiu (18/08/2026, schema v2): praticamente toda
 // entrega é do mesmo tipo (NF-e de mercadoria), não há o que categorizar.
-// "Motoristas" entrou no lugar: cadastro dos entregadores terceirizados,
-// necessário no schema v2 (entrega ao cliente externo).
+// "Colaboradores" e "Motoristas" (19/08/2026): agrupados dentro de um
+// submenu "Cadastros" (a pedido do Hickson), em vez de dois itens soltos
+// no nível principal — os dois são telas de cadastro de referência, faz
+// sentido ficarem juntos.
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/canhotos", label: "Entregas", icon: Package },
-  { href: "/colaboradores", label: "Colaboradores", icon: Users },
-  { href: "/motoboys", label: "Motoristas", icon: Bike },
-  { href: "/relatorios", label: "Relatórios", icon: FileBarChart },
+  { type: "link" as const, href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { type: "link" as const, href: "/canhotos", label: "Entregas", icon: Package },
+  {
+    type: "group" as const,
+    label: "Cadastros",
+    icon: ClipboardList,
+    children: [
+      { href: "/colaboradores", label: "Colaboradores", icon: Users },
+      { href: "/motoboys", label: "Motoristas", icon: Bike },
+    ],
+  },
+  { type: "link" as const, href: "/relatorios", label: "Relatórios", icon: FileBarChart },
 ];
 
 // Barra lateral com auto-abertura (19/08/2026, v2): agora fica sempre
@@ -46,6 +58,13 @@ const NAV_ITEMS = [
 // via `group-hover:`, já que `peer-hover:` só funciona entre irmãos.
 export function Sidebar() {
   const pathname = usePathname();
+  const cadastrosItem = NAV_ITEMS.find((item) => item.type === "group")!;
+  const cadastrosAtivo = cadastrosItem.children.some((child) =>
+    pathname.startsWith(child.href)
+  );
+  // Começa aberto se a rota atual já é uma das telas de Cadastros — assim
+  // o usuário vê de cara onde está, em vez de precisar clicar pra revelar.
+  const [cadastrosAberto, setCadastrosAberto] = useState(cadastrosAtivo);
 
   return (
     <div className="peer group fixed inset-y-0 left-0 z-40 hidden w-16 overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:w-64 md:block">
@@ -83,39 +102,109 @@ export function Sidebar() {
 
         <nav className="flex-1 space-y-1 px-2 py-2">
           {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-colors ${
-                  isActive
-                    ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
-                    : "border-transparent text-white/80 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                {/* Com a barra fechada, só o ícone acende (fundo redondo
-                    clarinho atrás dele); com a barra aberta, esse fundo some
-                    (`group-hover:bg-transparent`) e quem acende é a linha
-                    inteira, via as classes `group-hover:` acima no <Link>.
-                    "group-hover:" (não "peer-hover:") porque o <Link> é
-                    DESCENDENTE do wrapper com overflow-hidden, não irmão —
-                    `peer-hover:` só funciona entre irmãos diretos. */}
-                <span
-                  className={`grid size-9 shrink-0 place-items-center rounded-lg transition-colors ${
-                    isActive ? "bg-white/10 group-hover:bg-transparent" : ""
+            if (item.type === "link") {
+              const Icon = item.icon;
+              const isActive =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-colors ${
+                    isActive
+                      ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
+                      : "border-transparent text-white/80 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  <Icon className="size-5 shrink-0" strokeWidth={2} />
-                </span>
-                <span className="whitespace-nowrap opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
-                  {item.label}
-                </span>
-              </Link>
+                  {/* Com a barra fechada, só o ícone acende (fundo redondo
+                      clarinho atrás dele); com a barra aberta, esse fundo some
+                      (`group-hover:bg-transparent`) e quem acende é a linha
+                      inteira, via as classes `group-hover:` acima no <Link>.
+                      "group-hover:" (não "peer-hover:") porque o <Link> é
+                      DESCENDENTE do wrapper com overflow-hidden, não irmão —
+                      `peer-hover:` só funciona entre irmãos diretos. */}
+                  <span
+                    className={`grid size-9 shrink-0 place-items-center rounded-lg transition-colors ${
+                      isActive ? "bg-white/10 group-hover:bg-transparent" : ""
+                    }`}
+                  >
+                    <Icon className="size-5 shrink-0" strokeWidth={2} />
+                  </span>
+                  <span className="whitespace-nowrap opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            }
+
+            // Grupo "Cadastros": um botão que expande/recolhe os itens
+            // filhos abaixo dele, em vez de navegar direto.
+            const GroupIcon = item.icon;
+            const grupoAtivo = item.children.some((child) =>
+              pathname.startsWith(child.href)
+            );
+            return (
+              <div key={item.label}>
+                <button
+                  type="button"
+                  onClick={() => setCadastrosAberto((v) => !v)}
+                  className={`flex w-full items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-colors ${
+                    grupoAtivo
+                      ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
+                      : "border-transparent text-white/80 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <span
+                    className={`grid size-9 shrink-0 place-items-center rounded-lg transition-colors ${
+                      grupoAtivo ? "bg-white/10 group-hover:bg-transparent" : ""
+                    }`}
+                  >
+                    <GroupIcon className="size-5 shrink-0" strokeWidth={2} />
+                  </span>
+                  <span className="flex min-w-0 flex-1 items-center justify-between whitespace-nowrap opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
+                    {item.label}
+                    <ChevronDown
+                      className={`size-4 shrink-0 transition-transform ${
+                        cadastrosAberto ? "rotate-180" : ""
+                      }`}
+                      strokeWidth={2}
+                    />
+                  </span>
+                </button>
+
+                {cadastrosAberto && (
+                  <div className="mt-1 space-y-1">
+                    {item.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const isActive = pathname.startsWith(child.href);
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={`flex items-center gap-3 border-l-2 py-2 pr-1 pl-5 text-[15px] transition-colors ${
+                            isActive
+                              ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
+                              : "border-transparent text-white/80 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          <span
+                            className={`grid size-7 shrink-0 place-items-center rounded-lg transition-colors ${
+                              isActive ? "bg-white/10 group-hover:bg-transparent" : ""
+                            }`}
+                          >
+                            <ChildIcon className="size-4 shrink-0" strokeWidth={2} />
+                          </span>
+                          <span className="whitespace-nowrap opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
+                            {child.label}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
