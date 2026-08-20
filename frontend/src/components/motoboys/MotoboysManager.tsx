@@ -3,9 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "motion/react";
-import { Plus, SquarePen, Trash2, X, Loader2, Check } from "lucide-react";
+import { Plus, SquarePen, Trash2, X, Loader2, Check, Bike } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   criarMotoboy,
   atualizarMotoboy,
@@ -56,9 +57,15 @@ export function MotoboysManager({ motoboys }: MotoboysManagerProps) {
         </div>
 
         {motoboys.length === 0 ? (
-          <p className="px-6 py-14 text-center text-sm text-slate-400">
-            Nenhum motorista cadastrado ainda.
-          </p>
+          <EmptyState
+            icon={Bike}
+            title="Nenhum motorista cadastrado ainda"
+            description="Cadastre o primeiro motorista terceirizado pra vincular às entregas."
+            action={{
+              label: "Novo Motorista",
+              onClick: () => setModal({ tipo: "novo" }),
+            }}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] border-collapse text-left">

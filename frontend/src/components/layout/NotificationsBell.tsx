@@ -77,7 +77,7 @@ export function NotificationsBell() {
                         <p className="text-[13px] font-semibold text-[#0A1F44]">
                           {a.titulo}
                         </p>
-                        <p className="mt-0.5 text-xs leading-relaxed text-slate-400">
+                        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
                           {a.descricao}
                         </p>
                       </div>

@@ -1,4 +1,6 @@
+import { Package } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   FORMA_PAGAMENTO_LABEL,
   STATUS_BADGE_CLASSES,
@@ -13,16 +15,19 @@ interface RecentCanhotosTableProps {
 export function RecentCanhotosTable({ entregas }: RecentCanhotosTableProps) {
   return (
     <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-[22px]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-5">
         <h2 className="text-[17px] font-bold">Entregas recentes</h2>
-        <button className="rounded-lg border border-amber-500/25 px-3 py-1.5 text-xs font-bold text-amber-600 hover:bg-amber-500/5">
+        <button className="rounded-lg border border-amber-500/25 px-3 py-1.5 text-xs font-bold text-amber-600 transition-[transform,background-color] duration-150 hover:bg-amber-500/5 active:scale-[0.97]">
           Ver todas
         </button>
       </div>
       {entregas.length === 0 ? (
-        <p className="px-6 py-10 text-center text-sm text-slate-400">
-          Nenhuma entrega cadastrada ainda.
-        </p>
+        <EmptyState
+          compact
+          icon={Package}
+          title="Nenhuma entrega cadastrada ainda"
+          action={{ label: "Nova Entrega", href: "/canhotos/nova" }}
+        />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] border-collapse text-left">
@@ -40,17 +45,17 @@ export function RecentCanhotosTable({ entregas }: RecentCanhotosTableProps) {
               {entregas.map((e) => (
                 <tr
                   key={e.numero}
-                  className="border-t border-slate-200/60 text-sm hover:bg-slate-50/70"
+                  className="border-t border-slate-200/60 text-sm transition-colors hover:bg-slate-50/70"
                 >
-                  <td className="px-6 py-3.5 font-medium tabular-nums text-slate-400">
+                  <td className="px-6 py-3.5 font-medium tabular-nums text-slate-500">
                     {e.numero}
                   </td>
                   <td className="px-6 py-3.5 font-bold">{e.cliente}</td>
                   <td className="px-6 py-3.5 tabular-nums">{e.valor}</td>
-                  <td className="px-6 py-3.5 text-slate-400">
+                  <td className="px-6 py-3.5 text-slate-500">
                     {FORMA_PAGAMENTO_LABEL[e.formaPagamento]}
                   </td>
-                  <td className="px-6 py-3.5 tabular-nums text-slate-400">
+                  <td className="px-6 py-3.5 tabular-nums text-slate-500">
                     {e.data}
                   </td>
                   <td className="px-6 py-3.5">

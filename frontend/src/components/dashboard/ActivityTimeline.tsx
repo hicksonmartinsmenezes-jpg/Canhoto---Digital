@@ -1,4 +1,6 @@
+import { History } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { AtividadeItem } from "@/lib/data/entregas";
 
 const COR_CLASSES: Record<AtividadeItem["cor"], string> = {
@@ -18,7 +20,7 @@ export function ActivityTimeline({ atividades }: ActivityTimelineProps) {
       <h2 className="mb-7 text-[17px] font-bold">Atividade recente</h2>
 
       {atividades.length === 0 ? (
-        <p className="text-sm text-slate-400">Nenhuma atividade registrada ainda.</p>
+        <EmptyState compact icon={History} title="Nenhuma atividade registrada ainda" />
       ) : (
         <div className="relative flex flex-col gap-7">
           <div className="absolute top-1.5 bottom-1.5 left-[17px] w-px bg-slate-200" />
@@ -32,11 +34,11 @@ export function ActivityTimeline({ atividades }: ActivityTimelineProps) {
               </span>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-bold">{item.titulo}</p>
-                <span className="text-[10px] font-bold tabular-nums text-slate-400 uppercase">
+                <span className="text-[10px] font-bold tabular-nums text-slate-500 uppercase">
                   {item.hora}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-400">{item.descricao}</p>
+              <p className="mt-1 text-xs text-slate-500">{item.descricao}</p>
             </div>
           ))}
         </div>
