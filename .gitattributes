@@ -1,0 +1,16 @@
+# Normaliza as quebras de linha dos arquivos de texto do repo para LF,
+# independente do sistema operacional/editor de quem fez o commit.
+# Ver Issue #18.
+* text=auto eol=lf
+
+# Scripts do Windows (PowerShell) esperam CRLF.
+*.ps1 text eol=crlf
+
+# Binarios: nunca normalizar.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
