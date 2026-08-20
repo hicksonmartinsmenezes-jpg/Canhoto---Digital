@@ -21,7 +21,7 @@ export default async function CanhotosPage() {
         </div>
         <Link
           href="/canhotos/nova"
-          className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-[#0A1F44] hover:bg-amber-400"
+          className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400"
         >
           <Plus className="size-4" strokeWidth={2.5} />
           Adicionar Entrega

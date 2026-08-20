@@ -112,7 +112,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   onChange={(e) => set("numeroPedido", e.target.value)}
                 />
               </Field>
-              <Field label="Nº da NFe" optional>
+              <Field label="Nº NFe" optional>
                 <input
                   type="text"
                   className={inputClass}
@@ -226,7 +226,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
             type="button"
             disabled={pending}
             onClick={salvar}
-            className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-[#0A1F44] hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending ? (
               <>

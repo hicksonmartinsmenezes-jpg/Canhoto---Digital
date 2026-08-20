@@ -196,7 +196,7 @@ export function AdicionarEntregaWizard({
               <div
                 className={`grid size-9 place-items-center rounded-full border-2 text-sm font-bold ${
                   step === etapa.numero
-                    ? "border-amber-500 bg-amber-500 text-[#0A1F44]"
+                    ? "border-amber-500 bg-amber-500 text-white"
                     : step > etapa.numero
                       ? "border-emerald-500 bg-emerald-500 text-white"
                       : "border-slate-200 bg-white text-slate-400"
@@ -254,7 +254,7 @@ export function AdicionarEntregaWizard({
                   onChange={(e) => set("numeroPedido", e.target.value)}
                 />
               </Field>
-              <Field label="Nº da NFe" optional>
+              <Field label="Nº NFe" optional>
                 <input
                   type="text"
                   className={inputClass}
@@ -427,7 +427,7 @@ export function AdicionarEntregaWizard({
             <button
               type="button"
               onClick={step === 1 ? irParaEtapa2 : irParaEtapa3}
-              className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-[#0A1F44] hover:bg-amber-400"
+              className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400"
             >
               Avançar
               <ArrowRight className="size-4" />
@@ -437,7 +437,7 @@ export function AdicionarEntregaWizard({
               type="button"
               disabled={pending}
               onClick={salvar}
-              className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-[#0A1F44] hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {pending ? (
                 <>
@@ -448,7 +448,7 @@ export function AdicionarEntregaWizard({
                 <>
                   <Check className="size-4" />
                   Confirmar e salvar
-                  <span className="ml-1 text-xs font-normal text-[#0A1F44]/60">
+                  <span className="ml-1 text-xs font-normal text-white/60">
                     (Ctrl+Enter)
                   </span>
                 </>
