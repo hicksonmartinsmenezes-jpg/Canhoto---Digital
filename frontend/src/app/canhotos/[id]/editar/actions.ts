@@ -8,6 +8,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checarRateLimit } from "@/lib/rate-limit";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 export interface AtualizarEntregaInput {
@@ -32,6 +33,14 @@ export async function atualizarEntrega(
   id: string,
   input: AtualizarEntregaInput
 ): Promise<AtualizarEntregaResult> {
+  const limite = await checarRateLimit("atualizarEntrega");
+  if (!limite.permitido) {
+    return {
+      ok: false,
+      error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
+  }
+
   const supabase = createAdminClient();
   if (!supabase) {
     return {
