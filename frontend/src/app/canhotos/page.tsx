@@ -14,10 +14,7 @@ export default async function CanhotosPage() {
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Entregas</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Registro de entregas ao cliente: valor, forma de pagamento,
-            motorista responsável e status de cada entrega.
-          </p>
+          
         </div>
         <Link
           href="/canhotos/nova"
