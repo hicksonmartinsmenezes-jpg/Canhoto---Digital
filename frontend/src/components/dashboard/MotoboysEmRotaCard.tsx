@@ -10,7 +10,7 @@ export function MotoboysEmRotaCard() {
   return (
     <Card className="p-7">
       <div className="mb-[22px] flex items-center justify-between">
-        <h2 className="text-[17px] font-bold">Motoboys em rota</h2>
+        <h2 className="text-[17px] font-bold">Motoristas em rota</h2>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
           <span className="size-1.5 rounded-full bg-emerald-600" />
           {MOTOBOYS_EM_ROTA.length} agora

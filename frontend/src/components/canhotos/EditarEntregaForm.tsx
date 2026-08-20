@@ -154,7 +154,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   ))}
                 </select>
               </Field>
-              <Field label="Motoboy" optional>
+              <Field label="Motorista" optional>
                 <select
                   className={inputClass}
                   value={form.motoboyId}

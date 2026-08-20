@@ -292,7 +292,7 @@ export function AdicionarEntregaWizard({
                   ))}
                 </select>
               </Field>
-              <Field label="Motoboy" optional>
+              <Field label="Motorista" optional>
                 <select
                   className={inputClass}
                   value={form.motoboyId}
@@ -310,7 +310,7 @@ export function AdicionarEntregaWizard({
                 <input
                   type="text"
                   inputMode="tel"
-                  placeholder="(00) 00000-0000"
+                  placeholder=""
                   className={inputClass}
                   value={form.clienteTelefone}
                   onChange={(e) =>
@@ -372,7 +372,7 @@ export function AdicionarEntregaWizard({
                       : null
                   }
                 />
-                <Resumo label="Motoboy" value={motoboySelecionado?.nome ?? null} />
+                <Resumo label="Motorista" value={motoboySelecionado?.nome ?? null} />
                 <Resumo label="Telefone" value={form.clienteTelefone || null} />
               </dl>
               {form.observacoes && (

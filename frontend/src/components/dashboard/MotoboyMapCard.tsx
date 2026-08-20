@@ -35,7 +35,9 @@ export function MotoboyMapCard() {
       <div className="h-[320px] w-full border-t border-slate-200">
         <MotoboyMap />
       </div>
-
+      <div className="border-t border-slate-200 px-7 py-2.5 text-[11px] text-slate-400">
+        Posições ilustrativas — dado real depende do futuro app do motorista.
+      </div>
     </Card>
   );
 }

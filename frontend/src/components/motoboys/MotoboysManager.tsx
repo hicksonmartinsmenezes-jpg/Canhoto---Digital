@@ -180,7 +180,7 @@ function FormModal({
 
   function salvar() {
     if (!nome.trim()) {
-      setErro("Informe o nome do motoboy.");
+      setErro("Informe o nome do motorista.");
       return;
     }
     setErro(null);
