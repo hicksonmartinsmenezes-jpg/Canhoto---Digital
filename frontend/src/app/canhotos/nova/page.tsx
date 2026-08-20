@@ -11,10 +11,7 @@ export default async function NovaEntregaPage() {
     <div>
       <div className="mb-7">
         <h1 className="text-2xl font-bold tracking-tight">Adicionar Entrega</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Cadastro manual em 3 etapas: documento, dados da entrega e revisão
-          antes de salvar.
-        </p>
+        
       </div>
 
       <AdicionarEntregaWizard motoboys={motoboys} hoje={hoje} />

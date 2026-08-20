@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Clock, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
+import { maskCurrencyInput, parseCurrencyInput } from "@/lib/format";
 import { criarEntrega } from "@/app/canhotos/nova/actions";
 import type { MotoboyOption } from "@/lib/data/motoboys";
 import type { FormaPagamento } from "@/types/database";
@@ -23,7 +24,7 @@ interface FormState {
   numeroNfe: string;
   valorPagamento: string;
   formaPagamento: FormaPagamento | "";
-  motoboyNome: string;
+  motoboyId: string;
   horaSaida: string;
   observacoes: string;
 }
@@ -33,6 +34,18 @@ const ETAPAS = [
   { numero: 2, titulo: "Entrega" },
   { numero: 3, titulo: "Revisão" },
 ] as const;
+
+// Chave usada no localStorage do navegador para lembrar o último motoboy
+// selecionado — economiza um clique/seleção quando o mesmo motoboy sai com
+// várias entregas seguidas (caso comum aqui, já que os motoboys são fixos).
+const ULTIMO_MOTOBOY_KEY = "canhoto-digital:ultimo-motoboy-id";
+
+function horaAtual(): string {
+  const agora = new Date();
+  return `${String(agora.getHours()).padStart(2, "0")}:${String(
+    agora.getMinutes()
+  ).padStart(2, "0")}`;
+}
 
 function Resumo({ label, value }: { label: string; value: string | null }) {
   return (
@@ -62,14 +75,33 @@ export function AdicionarEntregaWizard({
     numeroNfe: "",
     valorPagamento: "",
     formaPagamento: "",
-    motoboyNome: "",
+    motoboyId: "",
     horaSaida: "",
     observacoes: "",
   });
 
+  // Pré-seleciona o último motoboy usado neste navegador — os motoboys
+  // daqui são fixos (terceirizados de longa data), então na maioria das
+  // vezes é o mesmo de antes.
+  useEffect(() => {
+    const ultimo = window.localStorage.getItem(ULTIMO_MOTOBOY_KEY);
+    if (ultimo && motoboys.some((m) => m.id === ultimo)) {
+      setForm((f) => ({ ...f, motoboyId: ultimo }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  // Foco automático no primeiro campo de cada etapa, sem precisar clicar.
+  const clienteInputRef = useRef<HTMLInputElement>(null);
+  const valorInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (step === 1) clienteInputRef.current?.focus();
+    if (step === 2) valorInputRef.current?.focus();
+  }, [step]);
 
   function irParaEtapa2() {
     if (!form.clienteNome.trim()) {
@@ -81,7 +113,7 @@ export function AdicionarEntregaWizard({
   }
 
   function irParaEtapa3() {
-    const valor = Number(form.valorPagamento.replace(",", "."));
+    const valor = parseCurrencyInput(form.valorPagamento);
     if (!valor || valor <= 0) {
       setErro("Informe um valor de pagamento válido.");
       return;
@@ -102,9 +134,9 @@ export function AdicionarEntregaWizard({
         clienteNome: form.clienteNome,
         numeroPedido: form.numeroPedido,
         numeroNfe: form.numeroNfe,
-        valorPagamento: Number(form.valorPagamento.replace(",", ".")),
+        valorPagamento: parseCurrencyInput(form.valorPagamento),
         formaPagamento: form.formaPagamento,
-        motoboyNome: form.motoboyNome,
+        motoboyId: form.motoboyId,
         horaSaida: form.horaSaida,
         observacoes: form.observacoes,
       });
@@ -114,23 +146,44 @@ export function AdicionarEntregaWizard({
         return;
       }
 
+      if (form.motoboyId) {
+        window.localStorage.setItem(ULTIMO_MOTOBOY_KEY, form.motoboyId);
+      }
+
       router.push("/canhotos");
       router.refresh();
     });
   }
 
+  // Enter avança de etapa (equivalente a clicar "Avançar"/"Confirmar e
+  // salvar") a partir de qualquer campo que não seja a textarea de
+  // observações — lá o Enter precisa continuar quebrando linha normalmente.
+  function aoPressionarTecla(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "Enter") return;
+    const alvo = e.target as HTMLElement;
+    if (alvo.tagName === "TEXTAREA") return;
+
+    if (e.ctrlKey || e.metaKey || step === 3) {
+      e.preventDefault();
+      if (step === 3) salvar();
+      return;
+    }
+
+    e.preventDefault();
+    if (step === 1) irParaEtapa2();
+    else if (step === 2) irParaEtapa3();
+  }
+
+  const motoboySelecionado = motoboys.find((m) => m.id === form.motoboyId);
   const dataFormatada = form.data
     ? new Date(`${form.data}T00:00:00`).toLocaleDateString("pt-BR")
     : null;
   const valorFormatado = form.valorPagamento
-    ? Number(form.valorPagamento.replace(",", ".")).toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-      })
+    ? `R$ ${form.valorPagamento}`
     : null;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl" onKeyDown={aoPressionarTecla}>
       {/* Indicador de etapas */}
       <div className="mb-7 flex items-center">
         {ETAPAS.map((etapa, i) => (
@@ -181,6 +234,7 @@ export function AdicionarEntregaWizard({
               </Field>
               <Field label="Cliente">
                 <input
+                  ref={clienteInputRef}
                   type="text"
                   placeholder="Nome do cliente"
                   className={inputClass}
@@ -196,7 +250,7 @@ export function AdicionarEntregaWizard({
                   onChange={(e) => set("numeroPedido", e.target.value)}
                 />
               </Field>
-              <Field label="Nº da NFe" optional>
+              <Field label="Nº NFe" optional>
                 <input
                   type="text"
                   className={inputClass}
@@ -214,12 +268,15 @@ export function AdicionarEntregaWizard({
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="Valor do pagamento">
                 <input
+                  ref={valorInputRef}
                   type="text"
                   inputMode="decimal"
                   placeholder="0,00"
                   className={inputClass}
                   value={form.valorPagamento}
-                  onChange={(e) => set("valorPagamento", e.target.value)}
+                  onChange={(e) =>
+                    set("valorPagamento", maskCurrencyInput(e.target.value))
+                  }
                 />
               </Field>
               <Field label="Forma de pagamento">
@@ -239,27 +296,36 @@ export function AdicionarEntregaWizard({
                 </select>
               </Field>
               <Field label="Motoboy" optional>
-                <input
-                  type="text"
-                  list="motoboys-sugestoes"
-                  placeholder="Nome do motoboy"
+                <select
                   className={inputClass}
-                  value={form.motoboyNome}
-                  onChange={(e) => set("motoboyNome", e.target.value)}
-                />
-                <datalist id="motoboys-sugestoes">
+                  value={form.motoboyId}
+                  onChange={(e) => set("motoboyId", e.target.value)}
+                >
+                  <option value="">Selecione</option>
                   {motoboys.map((m) => (
-                    <option key={m.id} value={m.nome} />
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </Field>
               <Field label="Hora de saída" optional>
-                <input
-                  type="time"
-                  className={inputClass}
-                  value={form.horaSaida}
-                  onChange={(e) => set("horaSaida", e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="time"
+                    className={inputClass}
+                    value={form.horaSaida}
+                    onChange={(e) => set("horaSaida", e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => set("horaSaida", horaAtual())}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-600 hover:border-amber-500/40 hover:text-amber-600"
+                  >
+                    <Clock className="size-4" />
+                    Agora
+                  </button>
+                </div>
               </Field>
             </div>
             <Field label="Observações" optional>
@@ -315,7 +381,7 @@ export function AdicionarEntregaWizard({
                       : null
                   }
                 />
-                <Resumo label="Motoboy" value={form.motoboyNome || null} />
+                <Resumo label="Motoboy" value={motoboySelecionado?.nome ?? null} />
                 <Resumo label="Hora saída" value={form.horaSaida || null} />
               </dl>
               {form.observacoes && (
@@ -378,6 +444,9 @@ export function AdicionarEntregaWizard({
                 <>
                   <Check className="size-4" />
                   Confirmar e salvar
+                  <span className="ml-1 text-xs font-normal text-[#0A1F44]/60">
+                    (Ctrl+Enter)
+                  </span>
                 </>
               )}
             </button>

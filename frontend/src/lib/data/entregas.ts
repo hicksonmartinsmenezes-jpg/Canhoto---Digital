@@ -304,6 +304,7 @@ export interface EntregaDetalhe {
   numeroNfe: string;
   valorPagamento: string;
   formaPagamento: FormaPagamento;
+  motoboyId: string;
   motoboyNome: string;
   horaSaida: string;
   observacoes: string;
@@ -320,7 +321,7 @@ export async function getEntregaById(
     .from("entregas")
     .select(
       `id, numero, data, cliente_nome, numero_pedido, numero_nfe, valor_pagamento,
-       forma_pagamento, hora_saida, observacoes, status,
+       forma_pagamento, hora_saida, observacoes, status, motoboy_id,
        motoboy:motoboys!motoboy_id ( nome )`
     )
     .eq("id", id)
@@ -339,6 +340,7 @@ export async function getEntregaById(
     numeroNfe: data.numero_nfe ?? "",
     valorPagamento: String(data.valor_pagamento),
     formaPagamento: data.forma_pagamento,
+    motoboyId: data.motoboy_id ?? "",
     motoboyNome: motoboy?.nome ?? "",
     horaSaida: paraHoraInput(data.hora_saida),
     observacoes: data.observacoes ?? "",

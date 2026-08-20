@@ -8,7 +8,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveMotoboyId } from "@/lib/supabase/motoboy-helpers";
 import type { FormaPagamento } from "@/types/database";
 
 export interface CriarEntregaInput {
@@ -18,7 +17,7 @@ export interface CriarEntregaInput {
   numeroNfe: string;
   valorPagamento: number;
   formaPagamento: FormaPagamento | "";
-  motoboyNome: string;
+  motoboyId: string;
   horaSaida: string;
   observacoes: string;
 }
@@ -51,12 +50,6 @@ export async function criarEntrega(
     return { ok: false, error: "Selecione a forma de pagamento." };
   }
 
-  const { id: motoboyId, error: erroMotoboy } = await resolveMotoboyId(
-    supabase,
-    input.motoboyNome
-  );
-  if (erroMotoboy) return { ok: false, error: erroMotoboy };
-
   const { error } = await supabase.from("entregas").insert({
     data: input.data,
     cliente_nome: clienteNome,
@@ -65,7 +58,7 @@ export async function criarEntrega(
     valor_pagamento: input.valorPagamento,
     forma_pagamento: input.formaPagamento,
     hora_saida: input.horaSaida || null,
-    motoboy_id: motoboyId,
+    motoboy_id: input.motoboyId || null,
     observacoes: input.observacoes.trim() || null,
   });
 

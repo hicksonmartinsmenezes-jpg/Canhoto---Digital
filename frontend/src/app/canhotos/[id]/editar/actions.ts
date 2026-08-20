@@ -8,7 +8,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveMotoboyId } from "@/lib/supabase/motoboy-helpers";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 export interface AtualizarEntregaInput {
@@ -18,7 +17,7 @@ export interface AtualizarEntregaInput {
   numeroNfe: string;
   valorPagamento: number;
   formaPagamento: FormaPagamento | "";
-  motoboyNome: string;
+  motoboyId: string;
   horaSaida: string;
   observacoes: string;
   status: StatusEntrega;
@@ -53,12 +52,6 @@ export async function atualizarEntrega(
     return { ok: false, error: "Selecione a forma de pagamento." };
   }
 
-  const { id: motoboyId, error: erroMotoboy } = await resolveMotoboyId(
-    supabase,
-    input.motoboyNome
-  );
-  if (erroMotoboy) return { ok: false, error: erroMotoboy };
-
   const { error } = await supabase
     .from("entregas")
     .update({
@@ -69,7 +62,7 @@ export async function atualizarEntrega(
       valor_pagamento: input.valorPagamento,
       forma_pagamento: input.formaPagamento,
       hora_saida: input.horaSaida || null,
-      motoboy_id: motoboyId,
+      motoboy_id: input.motoboyId || null,
       observacoes: input.observacoes.trim() || null,
       status: input.status,
     })
