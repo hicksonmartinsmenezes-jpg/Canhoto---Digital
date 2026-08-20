@@ -8,10 +8,7 @@ export default function ColaboradoresPage() {
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Colaboradores</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Pessoas da empresa — quem cadastra entregas, confere pagamento no
-            caixa e/ou tem acesso ao sistema.
-          </p>
+          
         </div>
         <button className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-[#0A1F44] hover:bg-amber-400">
           <Plus className="size-4" strokeWidth={2.5} />

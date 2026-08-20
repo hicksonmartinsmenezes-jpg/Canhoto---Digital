@@ -14,14 +14,15 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-// Estrutura de navegação do Portal Web Admin — Canhoto Interno.
-// Escopo confirmado: só o fluxo interno (sem módulo de Entregas externas).
-// "Setores" saiu do menu (18/08/2026): só a Expedição opera o sistema de
-// canhotos de fato — não há múltiplos setores para gerenciar aqui.
-// "Usuários" também saiu do menu (18/08/2026): o sistema terá no mínimo
-// só 2 usuários, não justifica uma tela de gestão de acesso dedicada.
-// "Tipos de Documento" saiu (18/08/2026, schema v2): praticamente toda
-// entrega é do mesmo tipo (NF-e de mercadoria), não há o que categorizar.
+// Estrutura de navegação do Portal Web Admin — Canhoto Digital.
+// Escopo confirmado (schema v2, 18/08/2026): entrega ao cliente externo via
+// motoboy — substituiu o fluxo interno funcionário-para-funcionário da v1.
+// "Setores" saiu do menu: só a Expedição opera o sistema de entregas de
+// fato — não há múltiplos setores para gerenciar aqui.
+// "Usuários" também saiu do menu: o sistema terá no mínimo só 2 usuários,
+// não justifica uma tela de gestão de acesso dedicada.
+// "Tipos de Documento" saiu (schema v2): praticamente toda entrega é do
+// mesmo tipo (NF-e de mercadoria), não há o que categorizar.
 // "Colaboradores" e "Motoristas" (19/08/2026): agrupados dentro de um
 // submenu "Cadastros" (a pedido do Hickson), em vez de dois itens soltos
 // no nível principal — os dois são telas de cadastro de referência, faz

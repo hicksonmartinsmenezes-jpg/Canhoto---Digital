@@ -3,9 +3,9 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Canhoto Interno | Rildon Eletropeças",
+  title: "Canhoto Digital | Rildon Eletropeças",
   description:
-    "Portal Web Admin do Canhoto Interno — controle de recebimento de documentos por setor, responsável e status.",
+    "Portal Web Admin do Canhoto Digital — controle de entregas ao cliente: valor, forma de pagamento, motorista responsável e status.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
