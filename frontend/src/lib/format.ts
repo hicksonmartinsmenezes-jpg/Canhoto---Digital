@@ -17,11 +17,22 @@ export function formatDateBR(isoDate: string): string {
   return `${day}/${month}/${year}`;
 }
 
-// Recebe um timestamptz ISO e devolve só o horário "HH:mm" (fuso do servidor).
-export function formatTimeBR(isoTimestamp: string): string {
-  const date = new Date(isoTimestamp);
-  return date.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
+// Máscara de valor monetário para inputs: recebe o texto já digitado + a
+// tecla nova, mantém só os dígitos e trata como centavos (como uma
+// maquininha de cartão) — sempre formata como "R$ 128,25" enquanto digita,
+// sem o usuário precisar acertar vírgula manualmente.
+export function maskCurrencyInput(rawDigits: string): string {
+  const digits = rawDigits.replace(/\D/g, "");
+  if (!digits) return "";
+  const cents = parseInt(digits, 10);
+  return (cents / 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
+}
+
+// Converte o texto mascarado ("1.128,25") de volta para número (1128.25).
+export function parseCurrencyInput(masked: string): number {
+  const semMilhar = masked.replace(/\./g, "").replace(",", ".");
+  return Number(semMilhar) || 0;
 }

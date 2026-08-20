@@ -7,6 +7,7 @@ import { Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL, STATUS_LABEL } from "@/lib/status";
+import { maskCurrencyInput, parseCurrencyInput } from "@/lib/format";
 import { atualizarEntrega } from "@/app/canhotos/[id]/editar/actions";
 import type { EntregaDetalhe } from "@/lib/data/entregas";
 import type { MotoboyOption } from "@/lib/data/motoboys";
@@ -26,9 +27,11 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
     clienteNome: entrega.clienteNome,
     numeroPedido: entrega.numeroPedido,
     numeroNfe: entrega.numeroNfe,
-    valorPagamento: entrega.valorPagamento,
+    valorPagamento: maskCurrencyInput(
+      String(Math.round(Number(entrega.valorPagamento) * 100))
+    ),
     formaPagamento: entrega.formaPagamento as FormaPagamento | "",
-    motoboyNome: entrega.motoboyNome,
+    motoboyId: entrega.motoboyId,
     horaSaida: entrega.horaSaida,
     observacoes: entrega.observacoes,
     status: entrega.status as StatusEntrega,
@@ -39,7 +42,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
   }
 
   function salvar() {
-    const valor = Number(form.valorPagamento.replace(",", "."));
+    const valor = parseCurrencyInput(form.valorPagamento);
     if (!form.clienteNome.trim()) {
       setErro("Informe o nome do cliente.");
       return;
@@ -62,7 +65,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
         numeroNfe: form.numeroNfe,
         valorPagamento: valor,
         formaPagamento: form.formaPagamento,
-        motoboyNome: form.motoboyNome,
+        motoboyId: form.motoboyId,
         horaSaida: form.horaSaida,
         observacoes: form.observacoes,
         status: form.status,
@@ -127,9 +130,12 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                 <input
                   type="text"
                   inputMode="decimal"
+                  placeholder="0,00"
                   className={inputClass}
                   value={form.valorPagamento}
-                  onChange={(e) => set("valorPagamento", e.target.value)}
+                  onChange={(e) =>
+                    set("valorPagamento", maskCurrencyInput(e.target.value))
+                  }
                 />
               </Field>
               <Field label="Forma de pagamento">
@@ -149,18 +155,18 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                 </select>
               </Field>
               <Field label="Motoboy" optional>
-                <input
-                  type="text"
-                  list="motoboys-sugestoes-editar"
+                <select
                   className={inputClass}
-                  value={form.motoboyNome}
-                  onChange={(e) => set("motoboyNome", e.target.value)}
-                />
-                <datalist id="motoboys-sugestoes-editar">
+                  value={form.motoboyId}
+                  onChange={(e) => set("motoboyId", e.target.value)}
+                >
+                  <option value="">Selecione</option>
                   {motoboys.map((m) => (
-                    <option key={m.id} value={m.nome} />
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </Field>
               <Field label="Hora de saída" optional>
                 <input
