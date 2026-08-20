@@ -38,7 +38,7 @@ export default async function DashboardPage() {
           <StatCard
             label="Total de entregas"
             value={stats.totalEntregas.toLocaleString("pt-BR")}
-            sub="registradas no sistema"
+            sub="Registradas no Sistema"
             variant="accent"
           />
         </div>
@@ -47,7 +47,7 @@ export default async function DashboardPage() {
           <StatCard
             label="Entregues"
             value={stats.entregues.toLocaleString("pt-BR")}
-            sub={`${stats.entregues} de ${stats.totalEntregas} entregas`}
+            sub={`${stats.entregues} de ${stats.totalEntregas} Entregas`}
             mini={{ label: "Eficiência", value: `${eficiencia}%` }}
           />
         </div>
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
           <StatCard
             label="Pendentes"
             value={stats.pendentes.toLocaleString("pt-BR")}
-            sub="aguardando saída ou confirmação"
+            sub="Aguardando Saída ou Confirmação"
           />
         </div>
 
@@ -64,7 +64,7 @@ export default async function DashboardPage() {
           <StatCard
             label="Motoristas ativos"
             value={stats.motoristasAtivos.toLocaleString("pt-BR")}
-            sub="terceirizados cadastrados"
+            sub="Terceirizados Cadastrados"
             icon={<Bike className="size-5" strokeWidth={2} />}
           />
         </div>

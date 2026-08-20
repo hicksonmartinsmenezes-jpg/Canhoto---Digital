@@ -81,7 +81,7 @@ export const ALERTAS: Alerta[] = [
   {
     id: "conferencia-caixa",
     tag: "CAIXA",
-    titulo: "7 entregas pendentes de conferência de caixa",
+    titulo: "7 Entregas Pendentes de Conferência de Caixa",
     descricao:
       "Pagamento recebido pelo motorista na entrega ainda não foi conferido pelo caixa.",
     tom: "critico",
