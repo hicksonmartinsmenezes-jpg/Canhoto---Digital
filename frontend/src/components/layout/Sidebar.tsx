@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import {
   LayoutDashboard,
   Package,
@@ -113,7 +114,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-colors ${
+                  className={`flex items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.98] ${
                     isActive
                       ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
                       : "border-transparent text-white/80 hover:bg-white/10 hover:text-white"
@@ -151,7 +152,7 @@ export function Sidebar() {
                 <button
                   type="button"
                   onClick={() => setCadastrosAberto((v) => !v)}
-                  className={`flex w-full items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-colors ${
+                  className={`flex w-full items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.98] ${
                     grupoAtivo
                       ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
                       : "border-transparent text-white/80 hover:bg-white/10 hover:text-white"
@@ -175,36 +176,50 @@ export function Sidebar() {
                   </span>
                 </button>
 
-                {cadastrosAberto && (
-                  <div className="mt-1 space-y-1">
-                    {item.children.map((child) => {
-                      const ChildIcon = child.icon;
-                      const isActive = pathname.startsWith(child.href);
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          className={`flex items-center gap-3 border-l-2 py-2 pr-1 pl-5 text-[15px] transition-colors ${
-                            isActive
-                              ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
-                              : "border-transparent text-white/80 hover:bg-white/10 hover:text-white"
-                          }`}
-                        >
-                          <span
-                            className={`grid size-7 shrink-0 place-items-center rounded-lg transition-colors ${
-                              isActive ? "bg-white/10 group-hover:bg-transparent" : ""
-                            }`}
-                          >
-                            <ChildIcon className="size-4 shrink-0" strokeWidth={2} />
-                          </span>
-                          <span className="whitespace-nowrap opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
-                            {child.label}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
+                {/* Expandir/recolher com altura animada (motion mede o
+                    "auto" real do conteúdo) em vez do corte instantâneo de
+                    antes — mesma duração/curva "spring sem bounce" usada
+                    nos outros elementos utilitários da interface. */}
+                <AnimatePresence initial={false}>
+                  {cadastrosAberto && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-1 space-y-1">
+                        {item.children.map((child) => {
+                          const ChildIcon = child.icon;
+                          const isActive = pathname.startsWith(child.href);
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className={`flex items-center gap-3 border-l-2 py-2 pr-1 pl-5 text-[15px] transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.98] ${
+                                isActive
+                                  ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
+                                  : "border-transparent text-white/80 hover:bg-white/10 hover:text-white"
+                              }`}
+                            >
+                              <span
+                                className={`grid size-7 shrink-0 place-items-center rounded-lg transition-colors ${
+                                  isActive ? "bg-white/10 group-hover:bg-transparent" : ""
+                                }`}
+                              >
+                                <ChildIcon className="size-4 shrink-0" strokeWidth={2} />
+                              </span>
+                              <span className="whitespace-nowrap opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
+                                {child.label}
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}

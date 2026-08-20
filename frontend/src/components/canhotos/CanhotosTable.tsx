@@ -44,7 +44,7 @@ export function CanhotosTable({ entregas }: CanhotosTableProps) {
           {entregas.map((c) => (
             <tr
               key={c.id}
-              className="border-b border-slate-100 text-sm last:border-b-0 hover:bg-slate-50/70"
+              className="border-b border-slate-100 text-sm transition-colors last:border-b-0 hover:bg-slate-50/70"
             >
               <td className="px-6 py-4 font-medium tabular-nums text-amber-600">
                 {c.numero}

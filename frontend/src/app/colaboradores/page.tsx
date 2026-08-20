@@ -9,7 +9,7 @@ export default function ColaboradoresPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Colaboradores</h1>
         </div>
-        <button className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400">
+        <button className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97]">
           <Plus className="size-4" strokeWidth={2.5} />
           Novo Colaborador
         </button>
@@ -39,7 +39,7 @@ export default function ColaboradoresPage() {
               {COLABORADORES.map((c) => (
                 <tr
                   key={c.id}
-                  className="border-b border-slate-100 text-sm last:border-b-0 hover:bg-slate-50/70"
+                  className="border-b border-slate-100 text-sm transition-colors last:border-b-0 hover:bg-slate-50/70"
                 >
                   <td className="px-6 py-4 font-semibold">{c.nome}</td>
                   <td className="px-6 py-4 text-slate-500">
@@ -67,13 +67,13 @@ export default function ColaboradoresPage() {
                     <div className="flex items-center gap-2">
                       <button
                         aria-label="Editar colaborador"
-                        className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-amber-500/40 hover:text-amber-600"
+                        className="rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-[transform,color,border-color] duration-150 hover:border-amber-500/40 hover:text-amber-600 active:scale-90"
                       >
                         <SquarePen className="size-4" />
                       </button>
                       <button
                         aria-label="Mais ações"
-                        className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-amber-500/40 hover:text-amber-600"
+                        className="rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-[transform,color,border-color] duration-150 hover:border-amber-500/40 hover:text-amber-600 active:scale-90"
                       >
                         <MoreVertical className="size-4" />
                       </button>

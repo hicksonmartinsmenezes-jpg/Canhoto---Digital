@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence } from "motion/react";
 import { Plus, SquarePen, Trash2, X, Loader2, Check } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import {
   criarMotoboy,
   atualizarMotoboy,
@@ -39,7 +41,7 @@ export function MotoboysManager({ motoboys }: MotoboysManagerProps) {
         </div>
         <button
           onClick={() => setModal({ tipo: "novo" })}
-          className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400"
+          className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97]"
         >
           <Plus className="size-4" strokeWidth={2.5} />
           Novo Motorista
@@ -72,7 +74,7 @@ export function MotoboysManager({ motoboys }: MotoboysManagerProps) {
                 {motoboys.map((m) => (
                   <tr
                     key={m.id}
-                    className="border-b border-slate-100 text-sm last:border-b-0 hover:bg-slate-50/70"
+                    className="border-b border-slate-100 text-sm transition-colors last:border-b-0 hover:bg-slate-50/70"
                   >
                     <td className="px-6 py-4 font-semibold">{m.nome}</td>
                     <td className="px-6 py-4 tabular-nums text-slate-500">
@@ -94,14 +96,14 @@ export function MotoboysManager({ motoboys }: MotoboysManagerProps) {
                         <button
                           aria-label="Editar motorista"
                           onClick={() => setModal({ tipo: "editar", motoboy: m })}
-                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-amber-500/40 hover:text-amber-600"
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-[transform,color,border-color] duration-150 hover:border-amber-500/40 hover:text-amber-600 active:scale-90"
                         >
                           <SquarePen className="size-4" />
                         </button>
                         <button
                           aria-label="Excluir motorista"
                           onClick={() => setModal({ tipo: "excluir", motoboy: m })}
-                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:border-red-400/50 hover:text-red-600"
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-[transform,color,border-color] duration-150 hover:border-red-400/50 hover:text-red-600 active:scale-90"
                         >
                           <Trash2 className="size-4" />
                         </button>
@@ -115,39 +117,44 @@ export function MotoboysManager({ motoboys }: MotoboysManagerProps) {
         )}
       </Card>
 
-      {modal?.tipo === "novo" && (
-        <FormModal
-          titulo="Novo motorista"
-          nomeInicial=""
-          ativoInicial={true}
-          mostrarAtivo={false}
-          onFechar={() => setModal(null)}
-          onSalvar={(nome) => criarMotoboy(nome)}
-          onSucesso={fecharErecarregar}
-        />
-      )}
+      <AnimatePresence>
+        {modal?.tipo === "novo" && (
+          <FormModal
+            key="novo"
+            titulo="Novo motorista"
+            nomeInicial=""
+            ativoInicial={true}
+            mostrarAtivo={false}
+            onFechar={() => setModal(null)}
+            onSalvar={(nome) => criarMotoboy(nome)}
+            onSucesso={fecharErecarregar}
+          />
+        )}
 
-      {modal?.tipo === "editar" && (
-        <FormModal
-          titulo="Editar motorista"
-          nomeInicial={modal.motoboy.nome}
-          ativoInicial={modal.motoboy.ativo}
-          mostrarAtivo
-          onFechar={() => setModal(null)}
-          onSalvar={(nome, ativo) =>
-            atualizarMotoboy(modal.motoboy.id, { nome, ativo: ativo! })
-          }
-          onSucesso={fecharErecarregar}
-        />
-      )}
+        {modal?.tipo === "editar" && (
+          <FormModal
+            key="editar"
+            titulo="Editar motorista"
+            nomeInicial={modal.motoboy.nome}
+            ativoInicial={modal.motoboy.ativo}
+            mostrarAtivo
+            onFechar={() => setModal(null)}
+            onSalvar={(nome, ativo) =>
+              atualizarMotoboy(modal.motoboy.id, { nome, ativo: ativo! })
+            }
+            onSucesso={fecharErecarregar}
+          />
+        )}
 
-      {modal?.tipo === "excluir" && (
-        <ExcluirModal
-          motoboy={modal.motoboy}
-          onFechar={() => setModal(null)}
-          onSucesso={fecharErecarregar}
-        />
-      )}
+        {modal?.tipo === "excluir" && (
+          <ExcluirModal
+            key="excluir"
+            motoboy={modal.motoboy}
+            onFechar={() => setModal(null)}
+            onSucesso={fecharErecarregar}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -191,78 +198,76 @@ function FormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-start justify-between">
-          <h3 className="text-[15px] font-bold">{titulo}</h3>
-          <button
-            type="button"
-            aria-label="Fechar"
-            onClick={onFechar}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-          Nome
-        </label>
-        <input
-          type="text"
-          autoFocus
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
-        />
-
-        {mostrarAtivo && (
-          <label className="mt-4 flex items-center gap-2 text-sm font-medium text-slate-600">
-            <input
-              type="checkbox"
-              checked={ativo}
-              onChange={(e) => setAtivo(e.target.checked)}
-              className="size-4 rounded border-slate-300 text-amber-500 focus:ring-slate-400/30"
-            />
-            Ativo
-          </label>
-        )}
-
-        {erro && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700">
-            {erro}
-          </div>
-        )}
-
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onFechar}
-            className="text-sm font-bold text-slate-500 hover:text-slate-700"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={salvar}
-            className="inline-flex items-center gap-1.5 bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {pending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <Check className="size-4" />
-                Salvar
-              </>
-            )}
-          </button>
-        </div>
+    <Modal onClose={onFechar}>
+      <div className="mb-4 flex items-start justify-between">
+        <h3 className="text-[15px] font-bold">{titulo}</h3>
+        <button
+          type="button"
+          aria-label="Fechar"
+          onClick={onFechar}
+          className="text-slate-400 transition-colors hover:text-slate-600"
+        >
+          <X className="size-4" />
+        </button>
       </div>
-    </div>
+
+      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
+        Nome
+      </label>
+      <input
+        type="text"
+        autoFocus
+        value={nome}
+        onChange={(e) => setNome(e.target.value)}
+        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
+      />
+
+      {mostrarAtivo && (
+        <label className="mt-4 flex items-center gap-2 text-sm font-medium text-slate-600">
+          <input
+            type="checkbox"
+            checked={ativo}
+            onChange={(e) => setAtivo(e.target.checked)}
+            className="size-4 rounded border-slate-300 text-amber-500 focus:ring-slate-400/30"
+          />
+          Ativo
+        </label>
+      )}
+
+      {erro && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700">
+          {erro}
+        </div>
+      )}
+
+      <div className="mt-6 flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={onFechar}
+          className="text-sm font-bold text-slate-500 hover:text-slate-700"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={salvar}
+          className="inline-flex items-center gap-1.5 bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
+        >
+          {pending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            <>
+              <Check className="size-4" />
+              Salvar
+            </>
+          )}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -291,43 +296,48 @@ function ExcluirModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-start justify-between">
-          <h3 className="text-[15px] font-bold">Excluir {motoboy.nome}?</h3>
-          <button
-            type="button"
-            aria-label="Fechar"
-            onClick={onFechar}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <p className="text-sm text-slate-500">Essa ação não pode ser desfeita.</p>
-        {erro && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700">
-            {erro}
-          </div>
-        )}
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onFechar}
-            className="text-sm font-bold text-slate-500 hover:text-slate-700"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={excluir}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {pending ? "Excluindo..." : "Excluir"}
-          </button>
-        </div>
+    <Modal onClose={onFechar}>
+      <div className="mb-4 flex items-start justify-between">
+        <h3 className="text-[15px] font-bold">Excluir {motoboy.nome}?</h3>
+        <button
+          type="button"
+          aria-label="Fechar"
+          onClick={onFechar}
+          className="text-slate-400 transition-colors hover:text-slate-600"
+        >
+          <X className="size-4" />
+        </button>
       </div>
-    </div>
+      <p className="text-sm text-slate-500">Essa ação não pode ser desfeita.</p>
+      {erro && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700">
+          {erro}
+        </div>
+      )}
+      <div className="mt-6 flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={onFechar}
+          className="text-sm font-bold text-slate-500 hover:text-slate-700"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={excluir}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-red-500 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
+        >
+          {pending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Excluindo...
+            </>
+          ) : (
+            "Excluir"
+          )}
+        </button>
+      </div>
+    </Modal>
   );
 }
