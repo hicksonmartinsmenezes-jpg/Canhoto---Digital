@@ -36,3 +36,19 @@ export function parseCurrencyInput(masked: string): number {
   const semMilhar = masked.replace(/\./g, "").replace(",", ".");
   return Number(semMilhar) || 0;
 }
+
+// Máscara de telefone brasileiro para inputs: mantém só os dígitos e formata
+// como "(79) 99999-9999" (celular, 11 dígitos) ou "(79) 9999-9999" (fixo, 10
+// dígitos) conforme a quantidade digitada — sem exigir DDD ou 9º dígito
+// obrigatório enquanto o usuário ainda está digitando.
+export function maskPhoneInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 11);
+  if (!digits) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  const ddd = digits.slice(0, 2);
+  const resto = digits.slice(2);
+  if (digits.length <= 6) return `(${ddd}) ${resto}`;
+  const meio = digits.length <= 10 ? resto.slice(0, 4) : resto.slice(0, 5);
+  const fim = digits.length <= 10 ? resto.slice(4) : resto.slice(5);
+  return `(${ddd}) ${meio}-${fim}`;
+}

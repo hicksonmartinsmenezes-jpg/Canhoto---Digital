@@ -17,11 +17,6 @@ function paraDataInput(dataIso: string): string {
   return dataIso.slice(0, 10);
 }
 
-// Postgres devolve `time` como "HH:MM:SS" — <input type="time"> quer "HH:MM".
-function paraHoraInput(hora: string | null): string {
-  return hora ? hora.slice(0, 5) : "";
-}
-
 export interface DashboardStats {
   totalEntregas: number;
   entregues: number;
@@ -300,13 +295,13 @@ export interface EntregaDetalhe {
   numero: number;
   data: string;
   clienteNome: string;
+  clienteTelefone: string;
   numeroPedido: string;
   numeroNfe: string;
   valorPagamento: string;
   formaPagamento: FormaPagamento;
   motoboyId: string;
   motoboyNome: string;
-  horaSaida: string;
   observacoes: string;
   status: StatusEntrega;
 }
@@ -320,8 +315,8 @@ export async function getEntregaById(
   const { data, error } = await supabase
     .from("entregas")
     .select(
-      `id, numero, data, cliente_nome, numero_pedido, numero_nfe, valor_pagamento,
-       forma_pagamento, hora_saida, observacoes, status, motoboy_id,
+      `id, numero, data, cliente_nome, cliente_telefone, numero_pedido, numero_nfe,
+       valor_pagamento, forma_pagamento, observacoes, status, motoboy_id,
        motoboy:motoboys!motoboy_id ( nome )`
     )
     .eq("id", id)
@@ -336,13 +331,13 @@ export async function getEntregaById(
     numero: data.numero,
     data: paraDataInput(data.data),
     clienteNome: data.cliente_nome,
+    clienteTelefone: data.cliente_telefone ?? "",
     numeroPedido: data.numero_pedido ?? "",
     numeroNfe: data.numero_nfe ?? "",
     valorPagamento: String(data.valor_pagamento),
     formaPagamento: data.forma_pagamento,
     motoboyId: data.motoboy_id ?? "",
     motoboyNome: motoboy?.nome ?? "",
-    horaSaida: paraHoraInput(data.hora_saida),
     observacoes: data.observacoes ?? "",
     status: data.status,
   };

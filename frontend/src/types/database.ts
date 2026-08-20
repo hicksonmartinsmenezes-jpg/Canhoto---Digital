@@ -51,6 +51,7 @@ export interface Entrega {
   numero: number;
   data: string;
   cliente_nome: string;
+  cliente_telefone: string | null;
   numero_pedido: string | null;
   numero_nfe: string | null;
   valor_pagamento: number;

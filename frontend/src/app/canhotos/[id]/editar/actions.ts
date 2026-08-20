@@ -13,12 +13,12 @@ import type { FormaPagamento, StatusEntrega } from "@/types/database";
 export interface AtualizarEntregaInput {
   data: string;
   clienteNome: string;
+  clienteTelefone: string;
   numeroPedido: string;
   numeroNfe: string;
   valorPagamento: number;
   formaPagamento: FormaPagamento | "";
   motoboyId: string;
-  horaSaida: string;
   observacoes: string;
   status: StatusEntrega;
 }
@@ -57,11 +57,11 @@ export async function atualizarEntrega(
     .update({
       data: input.data,
       cliente_nome: clienteNome,
+      cliente_telefone: input.clienteTelefone.trim() || null,
       numero_pedido: input.numeroPedido.trim() || null,
       numero_nfe: input.numeroNfe.trim() || null,
       valor_pagamento: input.valorPagamento,
       forma_pagamento: input.formaPagamento,
-      hora_saida: input.horaSaida || null,
       motoboy_id: input.motoboyId || null,
       observacoes: input.observacoes.trim() || null,
       status: input.status,

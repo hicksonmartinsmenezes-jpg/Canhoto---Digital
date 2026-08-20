@@ -7,7 +7,7 @@ import { Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL, STATUS_LABEL } from "@/lib/status";
-import { maskCurrencyInput, parseCurrencyInput } from "@/lib/format";
+import { maskCurrencyInput, maskPhoneInput, parseCurrencyInput } from "@/lib/format";
 import { atualizarEntrega } from "@/app/canhotos/[id]/editar/actions";
 import type { EntregaDetalhe } from "@/lib/data/entregas";
 import type { MotoboyOption } from "@/lib/data/motoboys";
@@ -32,7 +32,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
     ),
     formaPagamento: entrega.formaPagamento as FormaPagamento | "",
     motoboyId: entrega.motoboyId,
-    horaSaida: entrega.horaSaida,
+    clienteTelefone: entrega.clienteTelefone,
     observacoes: entrega.observacoes,
     status: entrega.status as StatusEntrega,
   });
@@ -66,7 +66,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
         valorPagamento: valor,
         formaPagamento: form.formaPagamento,
         motoboyId: form.motoboyId,
-        horaSaida: form.horaSaida,
+        clienteTelefone: form.clienteTelefone,
         observacoes: form.observacoes,
         status: form.status,
       });
@@ -168,12 +168,16 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   ))}
                 </select>
               </Field>
-              <Field label="Hora de saída" optional>
+              <Field label="Telefone" optional>
                 <input
-                  type="time"
+                  type="text"
+                  inputMode="tel"
+                  placeholder="(00) 00000-0000"
                   className={inputClass}
-                  value={form.horaSaida}
-                  onChange={(e) => set("horaSaida", e.target.value)}
+                  value={form.clienteTelefone}
+                  onChange={(e) =>
+                    set("clienteTelefone", maskPhoneInput(e.target.value))
+                  }
                 />
               </Field>
             </div>

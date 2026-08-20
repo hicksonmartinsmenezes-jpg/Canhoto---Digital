@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
-import { maskCurrencyInput, parseCurrencyInput } from "@/lib/format";
+import { maskCurrencyInput, maskPhoneInput, parseCurrencyInput } from "@/lib/format";
 import { criarEntrega } from "@/app/canhotos/nova/actions";
 import type { MotoboyOption } from "@/lib/data/motoboys";
 import type { FormaPagamento } from "@/types/database";
@@ -25,7 +25,7 @@ interface FormState {
   valorPagamento: string;
   formaPagamento: FormaPagamento | "";
   motoboyId: string;
-  horaSaida: string;
+  clienteTelefone: string;
   observacoes: string;
 }
 
@@ -39,13 +39,6 @@ const ETAPAS = [
 // selecionado — economiza um clique/seleção quando o mesmo motoboy sai com
 // várias entregas seguidas (caso comum aqui, já que os motoboys são fixos).
 const ULTIMO_MOTOBOY_KEY = "canhoto-digital:ultimo-motoboy-id";
-
-function horaAtual(): string {
-  const agora = new Date();
-  return `${String(agora.getHours()).padStart(2, "0")}:${String(
-    agora.getMinutes()
-  ).padStart(2, "0")}`;
-}
 
 function Resumo({ label, value }: { label: string; value: string | null }) {
   return (
@@ -76,7 +69,7 @@ export function AdicionarEntregaWizard({
     valorPagamento: "",
     formaPagamento: "",
     motoboyId: "",
-    horaSaida: "",
+    clienteTelefone: "",
     observacoes: "",
   });
 
@@ -141,7 +134,7 @@ export function AdicionarEntregaWizard({
         valorPagamento: parseCurrencyInput(form.valorPagamento),
         formaPagamento: form.formaPagamento,
         motoboyId: form.motoboyId,
-        horaSaida: form.horaSaida,
+        clienteTelefone: form.clienteTelefone,
         observacoes: form.observacoes,
       });
 
@@ -313,23 +306,17 @@ export function AdicionarEntregaWizard({
                   ))}
                 </select>
               </Field>
-              <Field label="Hora de saída" optional>
-                <div className="flex gap-2">
-                  <input
-                    type="time"
-                    className={inputClass}
-                    value={form.horaSaida}
-                    onChange={(e) => set("horaSaida", e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => set("horaSaida", horaAtual())}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-600 hover:border-amber-500/40 hover:text-amber-600"
-                  >
-                    <Clock className="size-4" />
-                    Agora
-                  </button>
-                </div>
+              <Field label="Telefone" optional>
+                <input
+                  type="text"
+                  inputMode="tel"
+                  placeholder="(00) 00000-0000"
+                  className={inputClass}
+                  value={form.clienteTelefone}
+                  onChange={(e) =>
+                    set("clienteTelefone", maskPhoneInput(e.target.value))
+                  }
+                />
               </Field>
             </div>
             <Field label="Observações" optional>
@@ -386,7 +373,7 @@ export function AdicionarEntregaWizard({
                   }
                 />
                 <Resumo label="Motoboy" value={motoboySelecionado?.nome ?? null} />
-                <Resumo label="Hora saída" value={form.horaSaida || null} />
+                <Resumo label="Telefone" value={form.clienteTelefone || null} />
               </dl>
               {form.observacoes && (
                 <p className="mt-3 text-sm text-slate-500">
