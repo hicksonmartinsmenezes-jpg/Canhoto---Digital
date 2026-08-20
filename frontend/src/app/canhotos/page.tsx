@@ -18,7 +18,7 @@ export default async function CanhotosPage() {
         </div>
         <Link
           href="/canhotos/nova"
-          className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400"
+          className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97]"
         >
           <Plus className="size-4" strokeWidth={2.5} />
           Adicionar Entrega
@@ -31,7 +31,7 @@ export default async function CanhotosPage() {
             {entregas.length} entregas encontradas
           </h2>
           <div className="flex items-center gap-2">
-            <select className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none focus:border-slate-400">
+            <select className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none transition-colors focus:border-slate-400">
               <option>Filtrar situação</option>
               <option>Entregue</option>
               <option>Pendente</option>
@@ -39,7 +39,7 @@ export default async function CanhotosPage() {
             </select>
             <button
               aria-label="Aplicar filtro"
-              className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:border-amber-500/40 hover:text-amber-600"
+              className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition-[transform,color,border-color] duration-150 hover:border-amber-500/40 hover:text-amber-600 active:scale-90"
             >
               <Filter className="size-4" />
             </button>

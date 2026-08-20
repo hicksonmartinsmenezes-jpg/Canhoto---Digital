@@ -230,7 +230,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
             type="button"
             disabled={pending}
             onClick={salvar}
-            className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
           >
             {pending ? (
               <>

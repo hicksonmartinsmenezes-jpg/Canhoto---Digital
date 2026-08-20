@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/canhotos/form-fields";
@@ -35,6 +36,16 @@ const ETAPAS = [
   { numero: 3, titulo: "Revisão" },
 ] as const;
 
+// Variantes da transição de etapa: "custom" (a direção, 1 ou -1) chega via
+// a prop `custom` do <motion.div>, então a mesma definição serve pras três
+// etapas — cada uma entra do lado de quem foi (direita ao avançar,
+// esquerda ao voltar) e sai discretamente pro lado oposto.
+const stepVariants = {
+  enter: (dir: 1 | -1) => ({ opacity: 0, x: dir * 24 }),
+  center: { opacity: 1, x: 0 },
+  exit: (dir: 1 | -1) => ({ opacity: 0, x: dir * -16 }),
+};
+
 // Chave usada no localStorage do navegador para lembrar o último motoboy
 // selecionado — economiza um clique/seleção quando o mesmo motoboy sai com
 // várias entregas seguidas (caso comum aqui, já que os motoboys são fixos).
@@ -60,6 +71,10 @@ export function AdicionarEntregaWizard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Direção da transição entre etapas — 1 = avançando (conteúdo novo entra
+  // pela direita), -1 = voltando (entra pela esquerda). Guia a animação de
+  // slide do conteúdo do card abaixo.
+  const [direcao, setDirecao] = useState<1 | -1>(1);
   const [erro, setErro] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>({
     data: hoje,
@@ -92,6 +107,11 @@ export function AdicionarEntregaWizard({
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function irPara(novoStep: 1 | 2 | 3) {
+    setDirecao(novoStep > step ? 1 : -1);
+    setStep(novoStep);
+  }
+
   // Foco automático no primeiro campo de cada etapa, sem precisar clicar.
   const clienteInputRef = useRef<HTMLInputElement>(null);
   const valorInputRef = useRef<HTMLInputElement>(null);
@@ -106,7 +126,7 @@ export function AdicionarEntregaWizard({
       return;
     }
     setErro(null);
-    setStep(2);
+    irPara(2);
   }
 
   function irParaEtapa3() {
@@ -120,7 +140,7 @@ export function AdicionarEntregaWizard({
       return;
     }
     setErro(null);
-    setStep(3);
+    irPara(3);
   }
 
   function salvar() {
@@ -187,7 +207,7 @@ export function AdicionarEntregaWizard({
           <div key={etapa.numero} className="flex flex-1 items-center last:flex-none">
             <div className="flex flex-col items-center gap-1.5">
               <div
-                className={`grid size-9 place-items-center rounded-full border-2 text-sm font-bold ${
+                className={`grid size-9 place-items-center rounded-full border-2 text-sm font-bold transition-colors duration-300 ${
                   step === etapa.numero
                     ? "border-amber-500 bg-amber-500 text-white"
                     : step > etapa.numero
@@ -198,7 +218,7 @@ export function AdicionarEntregaWizard({
                 {step > etapa.numero ? <Check className="size-4" /> : etapa.numero}
               </div>
               <span
-                className={`text-xs font-semibold ${
+                className={`text-xs font-semibold transition-colors duration-300 ${
                   step === etapa.numero ? "text-[#0A1F44]" : "text-slate-400"
                 }`}
               >
@@ -207,7 +227,7 @@ export function AdicionarEntregaWizard({
             </div>
             {i < ETAPAS.length - 1 && (
               <div
-                className={`mx-2 mb-5 h-0.5 flex-1 ${
+                className={`mx-2 mb-5 h-0.5 flex-1 transition-colors duration-300 ${
                   step > etapa.numero ? "bg-emerald-500" : "bg-slate-200"
                 }`}
               />
@@ -216,9 +236,24 @@ export function AdicionarEntregaWizard({
         ))}
       </div>
 
-      <Card className="p-7">
+      <Card className="overflow-hidden p-7">
+        {/* Troca de etapa: conteúdo desliza na direção do avanço (direita
+            ao avançar, esquerda ao voltar) com fade — "mode=wait" garante
+            que a etapa antiga termina de sair antes da nova entrar, sem
+            as duas se sobrepondo. Card com overflow-hidden pra não vazar
+            o offset horizontal durante a transição. */}
+        <AnimatePresence mode="wait" initial={false} custom={direcao}>
         {step === 1 && (
-          <div className="flex flex-col gap-5">
+          <motion.div
+            key={1}
+            custom={direcao}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+            className="flex flex-col gap-5"
+          >
             <h2 className="text-[15px] font-bold">Dados do documento</h2>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="Data">
@@ -256,11 +291,20 @@ export function AdicionarEntregaWizard({
                 />
               </Field>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {step === 2 && (
-          <div className="flex flex-col gap-5">
+          <motion.div
+            key={2}
+            custom={direcao}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+            className="flex flex-col gap-5"
+          >
             <h2 className="text-[15px] font-bold">Dados da entrega</h2>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="Valor do pagamento">
@@ -327,17 +371,26 @@ export function AdicionarEntregaWizard({
                 onChange={(e) => set("observacoes", e.target.value)}
               />
             </Field>
-          </div>
+          </motion.div>
         )}
 
         {step === 3 && (
-          <div className="flex flex-col gap-6">
+          <motion.div
+            key={3}
+            custom={direcao}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+            className="flex flex-col gap-6"
+          >
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[15px] font-bold">Dados do documento</h2>
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
+                  onClick={() => irPara(1)}
                   className="text-xs font-bold text-amber-600 hover:underline"
                 >
                   Editar
@@ -356,7 +409,7 @@ export function AdicionarEntregaWizard({
                 <h2 className="text-[15px] font-bold">Dados da entrega</h2>
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={() => irPara(2)}
                   className="text-xs font-bold text-amber-600 hover:underline"
                 >
                   Editar
@@ -382,8 +435,9 @@ export function AdicionarEntregaWizard({
                 </p>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {erro && (
           <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
@@ -402,8 +456,8 @@ export function AdicionarEntregaWizard({
           ) : (
             <button
               type="button"
-              onClick={() => setStep((s) => (s === 3 ? 2 : 1))}
-              className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-700"
+              onClick={() => irPara(step === 3 ? 2 : 1)}
+              className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 transition-[color,transform] duration-150 hover:text-slate-700 active:scale-[0.97]"
             >
               <ArrowLeft className="size-4" />
               Voltar
@@ -414,7 +468,7 @@ export function AdicionarEntregaWizard({
             <button
               type="button"
               onClick={step === 1 ? irParaEtapa2 : irParaEtapa3}
-              className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400"
+              className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97]"
             >
               Avançar
               <ArrowRight className="size-4" />
@@ -424,7 +478,7 @@ export function AdicionarEntregaWizard({
               type="button"
               disabled={pending}
               onClick={salvar}
-              className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
             >
               {pending ? (
                 <>

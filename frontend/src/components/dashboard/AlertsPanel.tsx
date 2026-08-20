@@ -71,7 +71,7 @@ export function AlertsPanel({ alertas }: AlertsPanelProps) {
                       {a.tag}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
                     {a.descricao}
                   </p>
                 </div>

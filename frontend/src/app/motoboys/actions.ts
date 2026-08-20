@@ -6,6 +6,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 
 export interface MotoboyActionResult {
   ok: boolean;
@@ -13,6 +14,14 @@ export interface MotoboyActionResult {
 }
 
 export async function criarMotoboy(nome: string): Promise<MotoboyActionResult> {
+  const limite = await checarRateLimit("criarMotoboy");
+  if (!limite.permitido) {
+    return {
+      ok: false,
+      error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
+  }
+
   const supabase = createAdminClient();
   if (!supabase) {
     return {
@@ -36,6 +45,14 @@ export async function atualizarMotoboy(
   id: string,
   dados: { nome: string; ativo: boolean }
 ): Promise<MotoboyActionResult> {
+  const limite = await checarRateLimit("atualizarMotoboy");
+  if (!limite.permitido) {
+    return {
+      ok: false,
+      error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
+  }
+
   const supabase = createAdminClient();
   if (!supabase) {
     return {
@@ -61,6 +78,14 @@ export async function atualizarMotoboy(
 }
 
 export async function excluirMotoboy(id: string): Promise<MotoboyActionResult> {
+  const limite = await checarRateLimit("excluirMotoboy", RATE_LIMIT_ESTRITO);
+  if (!limite.permitido) {
+    return {
+      ok: false,
+      error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
+  }
+
   const supabase = createAdminClient();
   if (!supabase) {
     return {

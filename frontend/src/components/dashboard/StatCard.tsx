@@ -36,8 +36,11 @@ export function StatCard({
   const accent = variant === "accent";
 
   return (
+    // Gradiente da variante "accent" escurecido um pouco (20/08/2026) —
+    // as cores originais (#FCC531 → #F5820C) deixavam o texto branco com
+    // contraste apertado em monitores mais claros/mal calibrados.
     <Card
-      className={`p-[22px] ${accent ? "border-transparent! bg-linear-to-br from-[#FCC531] to-[#F5820C]" : ""}`}
+      className={`p-[22px] ${accent ? "border-transparent! bg-linear-to-br from-[#F2B22E] to-[#DE6C09]" : ""}`}
     >
       <p
         className={`text-[13px] font-semibold uppercase tracking-wide ${accent ? "text-white" : "text-[#64748B]"}`}
@@ -93,8 +96,13 @@ export function StatCard({
           </div>
         )}
       </div>
+      {/* Contraste (20/08/2026): subtítulo escurecido um tom (slate-600 em
+          vez de slate-500) pra melhorar legibilidade em monitores mais
+          claros; na variante "accent" ganha peso médio em vez de normal
+          pelo mesmo motivo — texto branco fino sobre o gradiente laranja
+          ficava com contraste apertado. */}
       <p
-        className={`mt-2 text-sm font-normal ${accent ? "text-white" : "text-[#64748B]"}`}
+        className={`mt-2 text-sm ${accent ? "font-medium text-white" : "font-normal text-[#475569]"}`}
       >
         {sub}
       </p>

@@ -11,7 +11,7 @@ const MotoboyMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xs text-slate-400">
+      <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xs text-slate-500">
         Carregando mapa…
       </div>
     ),
@@ -25,17 +25,22 @@ const MotoboyMap = dynamic(
 export function MotoboyMapCard() {
   return (
     <Card className="flex flex-col overflow-hidden p-0">
-      <div className="flex items-center justify-between px-7 py-5">
+      {/* Padding do cabeçalho igualado ao card "Entregas recentes" ao lado
+          (px-6 py-5) — antes usava px-7, o que desalinhava as bordas dos
+          dois cards nessa linha do grid. Altura do mapa reduzida (320px →
+          260px) pra não sobrar tanto espaço vazio nessa linha, o que
+          empurrava "Alertas e pendências" pra baixo sem necessidade. */}
+      <div className="flex items-center justify-between px-6 py-5">
         <h2 className="text-[17px] font-bold">Motoristas em tempo real</h2>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
           <span className="size-1.5 rounded-full bg-emerald-600" />
           {MOTOBOYS_LOCALIZACAO.length} em rota
         </span>
       </div>
-      <div className="h-[320px] w-full border-t border-slate-200">
+      <div className="h-[260px] w-full border-t border-slate-200">
         <MotoboyMap />
       </div>
-      <div className="border-t border-slate-200 px-7 py-2.5 text-[11px] text-slate-400">
+      <div className="border-t border-slate-200 px-6 py-3 text-[11px] text-slate-500">
         Posições ilustrativas — dado real depende do futuro app do motorista.
       </div>
     </Card>

@@ -4,7 +4,7 @@
 
 export const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15";
-export const labelClass =
+const labelClass =
   "mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500";
 
 export function Field({

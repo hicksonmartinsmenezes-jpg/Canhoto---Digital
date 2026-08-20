@@ -1,9 +1,11 @@
+import { Package } from "lucide-react";
 import {
   FORMA_PAGAMENTO_LABEL,
   STATUS_BADGE_CLASSES,
   STATUS_LABEL,
 } from "@/lib/status";
 import { EntregaRowActions } from "@/components/canhotos/EntregaRowActions";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { EntregaListItem } from "@/lib/data/entregas";
 
 function Cell({ value }: { value: string | null }) {
@@ -17,9 +19,12 @@ interface CanhotosTableProps {
 export function CanhotosTable({ entregas }: CanhotosTableProps) {
   if (entregas.length === 0) {
     return (
-      <p className="px-6 py-14 text-center text-sm text-slate-400">
-        Nenhuma entrega cadastrada ainda.
-      </p>
+      <EmptyState
+        icon={Package}
+        title="Nenhuma entrega cadastrada ainda"
+        description="Comece cadastrando a primeira entrega do dia."
+        action={{ label: "Nova Entrega", href: "/canhotos/nova" }}
+      />
     );
   }
 
@@ -44,7 +49,7 @@ export function CanhotosTable({ entregas }: CanhotosTableProps) {
           {entregas.map((c) => (
             <tr
               key={c.id}
-              className="border-b border-slate-100 text-sm last:border-b-0 hover:bg-slate-50/70"
+              className="border-b border-slate-100 text-sm transition-colors last:border-b-0 hover:bg-slate-50/70"
             >
               <td className="px-6 py-4 font-medium tabular-nums text-amber-600">
                 {c.numero}
