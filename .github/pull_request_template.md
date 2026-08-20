@@ -1,4 +1,4 @@
-﻿## Issue relacionada
+## Issue relacionada
 
 Closes #
 
@@ -10,6 +10,5 @@ Closes #
 
 
 
-## Riscos, limitaÃ§Ãµes e prÃ³ximos passos
-
+## Riscos, limitações e próximos passos
 
