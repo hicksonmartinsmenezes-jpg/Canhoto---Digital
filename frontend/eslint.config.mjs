@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Lixo temporário movido pra cá quando um arquivo travado (lock do git,
+    // extração de zip antiga) não podia ser apagado direto — nunca faz
+    // parte do código real do site, ver claude/ideias-decisoes-projeto.md.
+    "_to_delete/**",
   ]),
 ]);
 
