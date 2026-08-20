@@ -11,15 +11,29 @@ export function StatusDonutChart() {
   const destaque = ENTREGAS_POR_STATUS[0]; // "Entregues" — mesmo destaque do protótipo original
   const pctDestaque = Math.round((destaque.value / total) * 100);
 
-  let acc = 0;
-  const segments = ENTREGAS_POR_STATUS.map((d) => {
-    const frac = d.value / total;
-    const len = Math.max(frac * CIRCUMFERENCE - GAP, 0);
-    const dashoffset = -acc;
-    acc += frac * CIRCUMFERENCE;
-    const tooltip = `${d.label}: ${d.value} (${(frac * 100).toFixed(1)}%)`;
-    return { ...d, len, dashoffset, tooltip };
-  });
+  // Cada segmento começa onde o anterior parou (`acc`, em unidades de
+  // circunferência) — carregado dentro do próprio acumulador do reduce, sem
+  // reatribuir uma variável externa a cada iteração.
+  const { segments } = ENTREGAS_POR_STATUS.reduce<{
+    segments: Array<(typeof ENTREGAS_POR_STATUS)[number] & {
+      len: number;
+      dashoffset: number;
+      tooltip: string;
+    }>;
+    acc: number;
+  }>(
+    (state, d) => {
+      const frac = d.value / total;
+      const len = Math.max(frac * CIRCUMFERENCE - GAP, 0);
+      const dashoffset = -state.acc;
+      const tooltip = `${d.label}: ${d.value} (${(frac * 100).toFixed(1)}%)`;
+      return {
+        segments: [...state.segments, { ...d, len, dashoffset, tooltip }],
+        acc: state.acc + frac * CIRCUMFERENCE,
+      };
+    },
+    { segments: [], acc: 0 }
+  );
 
   return (
     <Card className="flex flex-col items-center p-7">

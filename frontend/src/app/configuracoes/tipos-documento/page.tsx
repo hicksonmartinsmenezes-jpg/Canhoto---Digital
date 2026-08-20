@@ -12,8 +12,8 @@ export default function TiposDocumentoPage() {
         Decidimos não ter uma tela de tipos de documento — praticamente toda
         entrega é do mesmo tipo (NF-e acompanhando a mercadoria), não haveria
         o que categorizar. O número da NF-e já é registrado direto em cada
-        entrega. Ver "Motoristas" no menu para o cadastro que substituiu esta
-        tela.
+        entrega. Ver &ldquo;Motoristas&rdquo; no menu para o cadastro que
+        substituiu esta tela.
       </div>
     </div>
   );
