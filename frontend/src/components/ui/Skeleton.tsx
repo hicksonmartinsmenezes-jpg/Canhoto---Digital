@@ -5,7 +5,7 @@
 // em loop do sistema — por isso mesmo com uso comedido, respeitando o
 // checklist da skill de Motion Principles (evitar pulsos decorativos
 // espalhados pela interface).
-export function Skeleton({ className = "" }: { className?: string }) {
+function Skeleton({ className = "" }: { className?: string }) {
   return (
     <div
       className={`animate-pulse rounded-lg bg-slate-200/70 ${className}`}

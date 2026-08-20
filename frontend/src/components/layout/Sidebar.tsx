@@ -69,7 +69,10 @@ export function Sidebar() {
   const [cadastrosAberto, setCadastrosAberto] = useState(cadastrosAtivo);
 
   return (
-    <div className="peer group fixed inset-y-0 left-0 z-40 hidden w-16 overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:w-64 md:block">
+    <div
+      data-testid="sidebar"
+      className="peer group fixed inset-y-0 left-0 z-40 hidden w-16 overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:w-64 md:block"
+    >
       <aside className="flex h-full w-64 flex-col bg-[#0A1F44] text-white/70">
         <div className="relative flex h-[68px] shrink-0 items-center px-4">
           {/* Marca recolhida: círculo branco com a logo (mesma imagem do
