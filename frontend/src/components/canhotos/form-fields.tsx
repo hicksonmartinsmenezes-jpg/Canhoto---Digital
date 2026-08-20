@@ -3,7 +3,7 @@
 // visualmente idênticos sem duplicar as classes Tailwind.
 
 export const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15";
 export const labelClass =
   "mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500";
 

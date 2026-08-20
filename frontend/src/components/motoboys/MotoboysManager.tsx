@@ -217,7 +217,7 @@ function FormModal({
           autoFocus
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
         />
 
         {mostrarAtivo && (
@@ -226,7 +226,7 @@ function FormModal({
               type="checkbox"
               checked={ativo}
               onChange={(e) => setAtivo(e.target.checked)}
-              className="size-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500/30"
+              className="size-4 rounded border-slate-300 text-amber-500 focus:ring-slate-400/30"
             />
             Ativo
           </label>

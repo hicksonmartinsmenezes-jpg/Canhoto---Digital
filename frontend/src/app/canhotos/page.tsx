@@ -34,7 +34,7 @@ export default async function CanhotosPage() {
             {entregas.length} entregas encontradas
           </h2>
           <div className="flex items-center gap-2">
-            <select className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none focus:border-amber-500/50">
+            <select className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none focus:border-slate-400">
               <option>Filtrar situação</option>
               <option>Entregue</option>
               <option>Pendente</option>
