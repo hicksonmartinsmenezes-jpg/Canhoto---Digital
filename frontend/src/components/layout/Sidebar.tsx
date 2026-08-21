@@ -68,6 +68,15 @@ export function Sidebar() {
   // o usuário vê de cara onde está, em vez de precisar clicar pra revelar.
   const [cadastrosAberto, setCadastrosAberto] = useState(cadastrosAtivo);
 
+  // App do motorista (Issue #5) tem navegação própria, mobile-first — não
+  // faz parte do Portal Admin que esta barra representa. Fica depois dos
+  // hooks acima (nunca antes) pra não variar a ordem de chamada entre
+  // renders — o Sidebar é montado uma vez só no layout raiz e persiste
+  // entre navegações client-side, então um `return` condicional antes de
+  // um hook quebraria as Rules of Hooks ao navegar entre /motorista e o
+  // resto do site.
+  if (pathname.startsWith("/motorista")) return null;
+
   return (
     <div
       data-testid="sidebar"
