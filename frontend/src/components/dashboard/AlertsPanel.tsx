@@ -1,4 +1,11 @@
-import { CalendarClock, CheckCircle2, FileClock, FileWarning } from "lucide-react";
+import Link from "next/link";
+import {
+  CalendarClock,
+  CheckCircle2,
+  ChevronRight,
+  FileClock,
+  FileWarning,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { Alerta } from "@/lib/data/entregas";
@@ -53,11 +60,8 @@ export function AlertsPanel({ alertas }: AlertsPanelProps) {
           {alertas.map((a) => {
             const style = TOM_STYLES[a.tom];
             const Icon = style.icon;
-            return (
-              <div
-                key={a.id}
-                className="mb-3.5 flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 transition-colors last:mb-0 hover:border-amber-500/35"
-              >
+            const conteudo = (
+              <>
                 <span
                   className={`grid size-[46px] shrink-0 place-items-center rounded-xl ${style.iconClass}`}
                 >
@@ -76,6 +80,30 @@ export function AlertsPanel({ alertas }: AlertsPanelProps) {
                     {a.descricao}
                   </p>
                 </div>
+                {a.href && (
+                  <ChevronRight className="mt-2.5 size-4 shrink-0 self-start text-slate-300" />
+                )}
+              </>
+            );
+
+            // Issue #9: o alerta de conferência de caixa agora leva direto
+            // pra lista de Entregas, onde a ação "Conferir" fica disponível
+            // em cada linha pendente — os outros alertas (ainda sem ação
+            // própria) continuam como um card estático.
+            return a.href ? (
+              <Link
+                key={a.id}
+                href={a.href}
+                className="mb-3.5 flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 transition-colors last:mb-0 hover:border-amber-500/35 hover:bg-amber-500/5"
+              >
+                {conteudo}
+              </Link>
+            ) : (
+              <div
+                key={a.id}
+                className="mb-3.5 flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 transition-colors last:mb-0 hover:border-amber-500/35"
+              >
+                {conteudo}
               </div>
             );
           })}

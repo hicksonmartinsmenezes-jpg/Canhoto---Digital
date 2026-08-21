@@ -3,6 +3,7 @@ import { Filter, Plus, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CanhotosTable } from "@/components/canhotos/CanhotosTable";
 import { getEntregas } from "@/lib/data/entregas";
+import { getColaboradores } from "@/lib/data/colaboradores";
 import { isStatusEntrega } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
@@ -17,14 +18,18 @@ export default async function CanhotosPage({ searchParams }: CanhotosPageProps) 
   // searchParam é string solta (pode vir vazia, ausente ou lixo) — só usa
   // como filtro se bater com um dos 3 status reais (Issue #7).
   const status = isStatusEntrega(statusParam) ? statusParam : undefined;
-  const entregas = await getEntregas(status);
+  const [entregas, colaboradores] = await Promise.all([
+    getEntregas(status),
+    // Alimenta o seletor "Quem está conferindo" da ação Conferir (Issue #9).
+    getColaboradores(),
+  ]);
 
   return (
     <div>
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Entregas</h1>
-          
+
         </div>
         <Link
           href="/canhotos/nova"
@@ -73,7 +78,7 @@ export default async function CanhotosPage({ searchParams }: CanhotosPageProps) 
           </form>
         </div>
 
-        <CanhotosTable entregas={entregas} />
+        <CanhotosTable entregas={entregas} colaboradores={colaboradores} />
       </Card>
     </div>
   );
