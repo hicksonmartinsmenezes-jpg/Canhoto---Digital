@@ -1,13 +1,23 @@
 import Link from "next/link";
-import { Filter, Plus } from "lucide-react";
+import { Filter, Plus, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CanhotosTable } from "@/components/canhotos/CanhotosTable";
 import { getEntregas } from "@/lib/data/entregas";
+import { isStatusEntrega } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
-export default async function CanhotosPage() {
-  const entregas = await getEntregas();
+interface CanhotosPageProps {
+  // Next 16: searchParams chega como Promise em Server Component.
+  searchParams: Promise<{ status?: string }>;
+}
+
+export default async function CanhotosPage({ searchParams }: CanhotosPageProps) {
+  const { status: statusParam } = await searchParams;
+  // searchParam é string solta (pode vir vazia, ausente ou lixo) — só usa
+  // como filtro se bater com um dos 3 status reais (Issue #7).
+  const status = isStatusEntrega(statusParam) ? statusParam : undefined;
+  const entregas = await getEntregas(status);
 
   return (
     <div>
@@ -30,20 +40,37 @@ export default async function CanhotosPage() {
           <h2 className="text-[15px] font-bold">
             {entregas.length} entregas encontradas
           </h2>
-          <div className="flex items-center gap-2">
-            <select className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none transition-colors focus:border-slate-400">
-              <option>Filtrar situação</option>
-              <option>Entregue</option>
-              <option>Pendente</option>
-              <option>Cancelado</option>
+          {/* Form GET simples: recarrega a página com ?status=..., sem
+              precisar de client component pra um filtro tão direto (ver
+              princípio "evitar overengineering" no AGENTS.md). */}
+          <form className="flex items-center gap-2">
+            <select
+              name="status"
+              defaultValue={status ?? ""}
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none transition-colors focus:border-slate-400"
+            >
+              <option value="">Filtrar situação</option>
+              <option value="entregue">Entregue</option>
+              <option value="pendente">Pendente</option>
+              <option value="cancelado">Cancelado</option>
             </select>
             <button
+              type="submit"
               aria-label="Aplicar filtro"
               className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition-[transform,color,border-color] duration-150 hover:border-amber-500/40 hover:text-amber-600 active:scale-90"
             >
               <Filter className="size-4" />
             </button>
-          </div>
+            {status && (
+              <Link
+                href="/canhotos"
+                aria-label="Limpar filtro"
+                className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition-[transform,color,border-color] duration-150 hover:border-red-500/40 hover:text-red-600 active:scale-90"
+              >
+                <X className="size-4" />
+              </Link>
+            )}
+          </form>
         </div>
 
         <CanhotosTable entregas={entregas} />
