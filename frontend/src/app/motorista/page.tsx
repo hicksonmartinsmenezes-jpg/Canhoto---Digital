@@ -1,12 +1,16 @@
-// Tela inicial (logada) do app do motorista (Issue #5, sub-issue #29) — só
-// prova que a sessão/middleware funcionam de ponta a ponta. A lista de
-// entregas do dia e as ações "Iniciar entrega"/"Confirmar entrega" são
-// escopo da sub-issue #30, não desta.
+// Tela logada do app do motorista (Issue #5, sub-issue #30) — lista as
+// entregas de hoje do motorista logado, com "Iniciar entrega" e "Confirmar
+// entrega" por item (ver @/components/motorista/EntregaMotoristaCard e
+// @/app/motorista/actions). Login e proteção de rota vieram na sub-issue
+// #29 (@/lib/motorista-session, @/middleware).
 
 import { redirect } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, PackageCheck } from "lucide-react";
 import { obterMotoboyIdDaSessao } from "@/lib/motorista-session";
 import { getMotoboyNome } from "@/lib/data/motoboys";
+import { getEntregasDoMotorista } from "@/lib/data/entregas";
+import { EntregaMotoristaCard } from "@/components/motorista/EntregaMotoristaCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { sairMotorista } from "./actions";
 
 export default async function MotoristaPage() {
@@ -16,7 +20,10 @@ export default async function MotoristaPage() {
   // middleware não rodar por algum motivo de config de deploy).
   if (!motoboyId) redirect("/motorista/login");
 
-  const nome = (await getMotoboyNome(motoboyId)) ?? "Motorista";
+  const [nome, entregas] = await Promise.all([
+    getMotoboyNome(motoboyId).then((n) => n ?? "Motorista"),
+    getEntregasDoMotorista(motoboyId),
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8">
@@ -39,12 +46,20 @@ export default async function MotoristaPage() {
           </form>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-sm">
-          <p className="text-sm text-slate-500">
-            A lista de entregas do dia chega na próxima etapa. Por enquanto,
-            este acesso confirma que o login e a proteção das rotas do app
-            do motorista já funcionam.
-          </p>
+        <div className="mt-6 flex flex-col gap-4">
+          {entregas.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <EmptyState
+                icon={PackageCheck}
+                title="Nenhuma entrega pra hoje"
+                description="Quando o cadastro tiver entregas de hoje com você como motorista, elas aparecem aqui."
+              />
+            </div>
+          ) : (
+            entregas.map((entrega) => (
+              <EntregaMotoristaCard key={entrega.id} entrega={entrega} />
+            ))
+          )}
         </div>
       </div>
     </div>
