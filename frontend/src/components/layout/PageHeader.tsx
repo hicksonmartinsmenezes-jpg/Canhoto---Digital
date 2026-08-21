@@ -1,11 +1,16 @@
 import { GraduationCap } from "lucide-react";
 import type { ReactNode } from "react";
 import { NotificationsBell } from "./NotificationsBell";
+import type { Alerta } from "@/lib/data/entregas";
 
 interface PageHeaderProps {
   title: string;
   beta?: boolean;
   action?: ReactNode;
+  // Alertas reais pro sininho de notificações (Issue #21) — quem renderiza
+  // o PageHeader já buscou os dados (ex. getAlertas() no Dashboard), então
+  // só repassa em vez do NotificationsBell buscar/mockar por conta própria.
+  alertas: Alerta[];
 }
 
 /**
@@ -13,7 +18,7 @@ interface PageHeaderProps {
  * Hickson (título com badge "BETA" à esquerda e uma ação em destaque à
  * direita, ex. "Treinamento").
  */
-export function PageHeader({ title, beta, action }: PageHeaderProps) {
+export function PageHeader({ title, beta, action, alertas }: PageHeaderProps) {
   return (
     <div className="-mx-6 -mt-6 mb-6 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/60 px-6 py-4 lg:-mx-8 lg:-mt-8 lg:px-8">
       <div className="flex items-center gap-3 border-l-4 border-[#0A1F44] pl-3">
@@ -27,7 +32,7 @@ export function PageHeader({ title, beta, action }: PageHeaderProps) {
         )}
       </div>
       <div className="flex items-center gap-3">
-        <NotificationsBell />
+        <NotificationsBell alertas={alertas} />
         {action ?? <TreinamentoButton />}
       </div>
     </div>
