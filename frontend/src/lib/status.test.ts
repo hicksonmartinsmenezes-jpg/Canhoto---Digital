@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   FORMA_PAGAMENTO_LABEL,
+  isStatusEntrega,
   STATUS_BADGE_CLASSES,
   STATUS_HEX,
   STATUS_LABEL,
@@ -38,5 +39,21 @@ describe("status", () => {
       expect(STATUS_HEX[status]).toMatch(/^#[0-9a-f]{6}$/i);
       expect(STATUS_BADGE_CLASSES[status].length).toBeGreaterThan(0);
     }
+  });
+
+  describe("isStatusEntrega", () => {
+    it("aceita os 3 status válidos", () => {
+      expect(isStatusEntrega("pendente")).toBe(true);
+      expect(isStatusEntrega("entregue")).toBe(true);
+      expect(isStatusEntrega("cancelado")).toBe(true);
+    });
+
+    it("rejeita string vazia, valor desconhecido e tipos não-string (searchParam solto)", () => {
+      expect(isStatusEntrega("")).toBe(false);
+      expect(isStatusEntrega("entregues")).toBe(false);
+      expect(isStatusEntrega(undefined)).toBe(false);
+      expect(isStatusEntrega(null)).toBe(false);
+      expect(isStatusEntrega(["pendente"])).toBe(false);
+    });
   });
 });

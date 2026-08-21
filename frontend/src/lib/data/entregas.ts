@@ -255,19 +255,29 @@ export interface EntregaListItem {
   status: StatusEntrega;
 }
 
-export async function getEntregas(): Promise<EntregaListItem[]> {
+// `status`: filtro opcional do select "Filtrar situação" da tela de
+// Entregas (Issue #7) — quando ausente, devolve todas as entregas como
+// antes.
+export async function getEntregas(
+  status?: StatusEntrega
+): Promise<EntregaListItem[]> {
   const supabase = createAdminClient();
   if (!supabase) return [];
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("entregas")
     .select(
       `id, numero, data, cliente_nome, numero_pedido, numero_nfe, valor_pagamento,
        forma_pagamento, status,
        motoboy:motoboys!motoboy_id ( nome ),
        caixa:colaboradores!caixa_id ( nome )`
-    )
-    .order("numero", { ascending: false });
+    );
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query.order("numero", { ascending: false });
 
   if (error || !data) return [];
 

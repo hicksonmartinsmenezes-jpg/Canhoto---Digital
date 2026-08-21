@@ -29,3 +29,13 @@ export const FORMA_PAGAMENTO_LABEL: Record<FormaPagamento, string> = {
   cartao_1x: "Cartão 1x",
   prazo: "Prazo",
 };
+
+// Type guard pro filtro "Filtrar situação" da tela de Entregas (Issue #7):
+// o valor vem de um searchParam (string solta, pode ser qualquer coisa —
+// inclusive vazio, quando nenhum filtro foi escolhido), então precisa ser
+// validado contra os status reais antes de virar filtro na query.
+export function isStatusEntrega(value: unknown): value is StatusEntrega {
+  return (
+    typeof value === "string" && Object.hasOwn(STATUS_LABEL, value)
+  );
+}
