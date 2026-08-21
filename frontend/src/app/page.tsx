@@ -77,11 +77,14 @@ export default async function DashboardPage() {
           <MotoboyMapCard />
         </div>
 
-        <div className="col-span-12 xl:col-span-6">
+        {/* Mesmo split 8/4 da linha acima (Entregas recentes + Motoristas
+            em tempo real) — Issue #22: com 6/6 aqui, a divisao vertical
+            entre as colunas ficava desalinhada entre as duas linhas. */}
+        <div className="col-span-12 xl:col-span-8">
           <AlertsPanel alertas={alertas} />
         </div>
 
-        <div className="col-span-12 xl:col-span-6">
+        <div className="col-span-12 xl:col-span-4">
           <ActivityTimeline atividades={atividade} />
         </div>
       </div>
