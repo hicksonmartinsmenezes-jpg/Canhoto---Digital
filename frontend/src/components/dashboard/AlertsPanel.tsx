@@ -1,5 +1,6 @@
 import { CalendarClock, CheckCircle2, FileClock, FileWarning } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { Alerta } from "@/lib/data/entregas";
 
 const TOM_STYLES: Record<
@@ -40,13 +41,13 @@ export function AlertsPanel({ alertas }: AlertsPanelProps) {
         )}
       </div>
 
+      {/* Estado vazio padronizado com o mesmo componente que "Atividade
+          recente" e "Entregas recentes" usam (Hickson pediu, 21/08/2026) —
+          antes era uma caixa verde só deste card, com texto próprio ("Tudo
+          em dia — nenhuma pendência no momento."), destoando do resto do
+          Dashboard. */}
       {alertas.length === 0 ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/50 p-4">
-          <CheckCircle2 className="size-5 shrink-0 text-emerald-600" strokeWidth={2} />
-          <p className="text-sm font-semibold text-emerald-700">
-            Tudo em dia — nenhuma pendência no momento.
-          </p>
-        </div>
+        <EmptyState compact icon={CheckCircle2} title="Nenhuma pendência no momento" />
       ) : (
         <div>
           {alertas.map((a) => {
