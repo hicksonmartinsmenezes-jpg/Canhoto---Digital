@@ -31,7 +31,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" beta />
+      <PageHeader title="Dashboard" beta alertas={alertas} />
 
       <div className="grid grid-cols-12 gap-5">
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">
