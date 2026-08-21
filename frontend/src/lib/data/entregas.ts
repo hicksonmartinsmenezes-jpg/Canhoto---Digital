@@ -150,6 +150,10 @@ export interface Alerta {
   titulo: string;
   descricao: string;
   tom: "critico" | "atencao" | "info";
+  /** Quando presente, o card do alerta vira um link — usado pelo alerta de
+   * conferência de caixa (Issue #9) pra levar direto pra lista de Entregas,
+   * onde a ação "Conferir" fica disponível em cada linha pendente. */
+  href?: string;
 }
 
 function pluralEntregas(n: number): string {
@@ -185,6 +189,7 @@ export async function getAlertas(): Promise<Alerta[]> {
       descricao:
         "Pagamento recebido pelo motorista na entrega ainda não foi conferido pelo caixa.",
       tom: "critico",
+      href: "/canhotos?status=entregue",
     });
   }
 
@@ -312,6 +317,11 @@ export interface EntregaListItem {
   motoboy: string | null;
   caixa: string | null;
   status: StatusEntrega;
+  /** Espelha a condição da view `entregas_pendentes_conferencia` (ver
+   * claude/modelo-de-dados-site.md): entrega já entregue, com pagamento
+   * recebido na hora (não "prazo") e que ainda não tem `caixa_id` — mostra
+   * a ação "Conferir" na tabela (Issue #9). */
+  pendenteConferencia: boolean;
 }
 
 // `status`: filtro opcional do select "Filtrar situação" da tela de
@@ -355,6 +365,10 @@ export async function getEntregas(
       motoboy: motoboy?.nome ?? null,
       caixa: caixa?.nome ?? null,
       status: e.status,
+      pendenteConferencia:
+        e.status === "entregue" &&
+        e.forma_pagamento !== "prazo" &&
+        caixa === null,
     };
   });
 }

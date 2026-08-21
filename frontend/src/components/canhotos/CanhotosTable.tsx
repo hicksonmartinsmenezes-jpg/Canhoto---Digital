@@ -5,8 +5,10 @@ import {
   STATUS_LABEL,
 } from "@/lib/status";
 import { EntregaRowActions } from "@/components/canhotos/EntregaRowActions";
+import { ConferirCaixaAction } from "@/components/canhotos/ConferirCaixaAction";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { EntregaListItem } from "@/lib/data/entregas";
+import type { ColaboradorOption } from "@/lib/data/colaboradores";
 
 function Cell({ value }: { value: string | null }) {
   return <span className={value ? "" : "text-slate-300"}>{value ?? "—"}</span>;
@@ -14,9 +16,10 @@ function Cell({ value }: { value: string | null }) {
 
 interface CanhotosTableProps {
   entregas: EntregaListItem[];
+  colaboradores: ColaboradorOption[];
 }
 
-export function CanhotosTable({ entregas }: CanhotosTableProps) {
+export function CanhotosTable({ entregas, colaboradores }: CanhotosTableProps) {
   if (entregas.length === 0) {
     return (
       <EmptyState
@@ -69,7 +72,20 @@ export function CanhotosTable({ entregas }: CanhotosTableProps) {
                 <Cell value={c.motoboy} />
               </td>
               <td className="px-6 py-4">
-                <Cell value={c.caixa} />
+                {/* Issue #9: entregas com pagamento recebido na hora, já
+                    entregues e ainda sem `caixa_id` ganham a ação
+                    "Conferir" aqui em vez do "—" mudo de antes. */}
+                {c.pendenteConferencia ? (
+                  <ConferirCaixaAction
+                    entregaId={c.id}
+                    numero={c.numero}
+                    cliente={c.cliente}
+                    valor={c.valor}
+                    colaboradores={colaboradores}
+                  />
+                ) : (
+                  <Cell value={c.caixa} />
+                )}
               </td>
               <td className="px-6 py-4">
                 <span
