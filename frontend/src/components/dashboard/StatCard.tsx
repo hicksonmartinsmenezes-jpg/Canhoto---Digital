@@ -100,9 +100,10 @@ export function StatCard({
           vez de slate-500) pra melhorar legibilidade em monitores mais
           claros; na variante "accent" ganha peso médio em vez de normal
           pelo mesmo motivo — texto branco fino sobre o gradiente laranja
-          ficava com contraste apertado. */}
+          ficava com contraste apertado. Alinhado à direita a pedido do
+          Hickson (21/08/2026). */}
       <p
-        className={`mt-2 text-sm ${accent ? "font-medium text-white" : "font-normal text-[#475569]"}`}
+        className={`mt-2 text-right text-sm ${accent ? "font-medium text-white" : "font-normal text-[#475569]"}`}
       >
         {sub}
       </p>

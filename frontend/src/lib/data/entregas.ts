@@ -54,6 +54,65 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   };
 }
 
+export interface EntregaPorDia {
+  dataIso: string;
+  dataFormatada: string;
+  total: number;
+}
+
+// Chave "AAAA-MM-DD" em horário local — não usa `toISOString()` (que
+// converte pra UTC e pode empurrar a data pro dia errado perto da meia-noite,
+// dependendo do fuso do servidor).
+function paraChaveDiaLocal(d: Date): string {
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+// Gráfico "Entregas por dia" do Dashboard (Issue #25) — série dos últimos
+// `dias` dias, com todo dia presente mesmo sem nenhuma entrega (aparece como
+// 0 em vez de sumir, senão a leitura visual da tendência fica distorcida).
+// Sem GROUP BY no Postgres/PostgREST: busca as datas do período e agrega em
+// JS — mais simples que criar uma view só pra isso, e o volume de linhas do
+// admin interno não justifica a otimização (ver princípio "evitar
+// overengineering" em AGENTS.md).
+export async function getEntregasPorDia(dias = 14): Promise<EntregaPorDia[]> {
+  const hoje = new Date();
+  const inicio = new Date(hoje);
+  inicio.setDate(inicio.getDate() - (dias - 1));
+
+  const porDia = new Map<string, number>();
+  for (let i = 0; i < dias; i++) {
+    const d = new Date(inicio);
+    d.setDate(d.getDate() + i);
+    porDia.set(paraChaveDiaLocal(d), 0);
+  }
+
+  const supabase = createAdminClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("entregas")
+      .select("data")
+      .gte("data", paraChaveDiaLocal(inicio))
+      .lte("data", paraChaveDiaLocal(hoje));
+
+    if (!error && data) {
+      for (const e of data) {
+        const chave = e.data.slice(0, 10);
+        if (porDia.has(chave)) {
+          porDia.set(chave, (porDia.get(chave) ?? 0) + 1);
+        }
+      }
+    }
+  }
+
+  return Array.from(porDia.entries()).map(([dataIso, total]) => {
+    const [, mes, dia] = dataIso.split("-");
+    return { dataIso, dataFormatada: `${dia}/${mes}`, total };
+  });
+}
+
 export interface EntregaRecente {
   numero: string;
   cliente: string;

@@ -17,7 +17,11 @@ export function RecentCanhotosTable({ entregas }: RecentCanhotosTableProps) {
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-5">
         <h2 className="text-[17px] font-bold">Entregas recentes</h2>
-        <button className="rounded-lg border border-amber-500/25 px-3 py-1.5 text-xs font-bold text-amber-600 transition-[transform,background-color] duration-150 hover:bg-amber-500/5 active:scale-[0.97]">
+        {/* Cor laranja removida (Hickson pediu, 21/08/2026) — o amber já é
+            usado pra CTA principal (ex. "Adicionar Entrega"), então um botão
+            secundário nessa mesma cor competia por atenção. Neutro em cima
+            de slate, com o azul-marinho da marca só no hover. */}
+        <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 transition-[transform,background-color,color] duration-150 hover:bg-slate-50 hover:text-[#0A1F44] active:scale-[0.97]">
           Ver todas
         </button>
       </div>

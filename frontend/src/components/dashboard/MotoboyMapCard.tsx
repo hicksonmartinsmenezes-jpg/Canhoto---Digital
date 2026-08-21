@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { Card } from "@/components/ui/Card";
-import { MOTOBOYS_LOCALIZACAO } from "@/lib/motoboys-localizacao-mock";
 
 // O mapa em si (Leaflet) só roda no cliente — carregado sob demanda com
 // ssr:false pra não quebrar a renderização no servidor.
@@ -32,9 +31,17 @@ export function MotoboyMapCard() {
           empurrava "Alertas e pendências" pra baixo sem necessidade. */}
       <div className="flex items-center justify-between px-6 py-5">
         <h2 className="text-[17px] font-bold">Motoristas em tempo real</h2>
+        {/* A contagem "N em rota" subiu pro mini-badge do card "Motoristas
+            ativos" lá em cima (pedido do Hickson, 21/08/2026) — repetir o
+            número aqui só duplicava informação. Sobra o indicador de que o
+            mapa está ao vivo (mesmo padrão de pulso do badge de alertas em
+            AlertsPanel.tsx, só que em verde). */}
         <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-          <span className="size-1.5 rounded-full bg-emerald-600" />
-          {MOTOBOYS_LOCALIZACAO.length} em rota
+          <span className="relative size-1.5">
+            <span className="absolute inset-0 animate-ping rounded-full bg-emerald-600/60" />
+            <span className="absolute inset-0 rounded-full bg-emerald-600" />
+          </span>
+          Ao vivo
         </span>
       </div>
       <div className="h-[260px] w-full border-t border-slate-200">
