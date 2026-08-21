@@ -427,3 +427,56 @@ export async function getEntregaById(
     status: data.status,
   };
 }
+
+export interface EntregaMotorista {
+  id: string;
+  numero: string;
+  clienteNome: string;
+  endereco: string;
+  valor: string;
+  formaPagamento: FormaPagamento;
+  status: StatusEntrega;
+  horaSaida: string | null;
+  clienteAssinouEm: string | null;
+}
+
+// Lista de entregas do dia pro motorista logado (app do motorista, Issue
+// #5, sub-issue #30) — só as de hoje e nunca as canceladas (não fazem
+// parte do que ele precisa agir). "Em rota" não é um status próprio:
+// continua sendo `status === "pendente" && hora_saida !== null`, calculado
+// aqui do mesmo jeito que em getAlertas — ver claude/ideias-decisoes-projeto.md.
+// `motoboyId` sempre vem do cookie de sessão (@/lib/motorista-session),
+// nunca de um param vindo do client — é o que garante que um motorista só
+// vê as próprias entregas.
+export async function getEntregasDoMotorista(
+  motoboyId: string
+): Promise<EntregaMotorista[]> {
+  const supabase = createAdminClient();
+  if (!supabase) return [];
+
+  const hoje = paraChaveDiaLocal(new Date());
+
+  const { data, error } = await supabase
+    .from("entregas")
+    .select(
+      "id, numero, cliente_nome, endereco, valor_pagamento, forma_pagamento, status, hora_saida, cliente_assinou_em"
+    )
+    .eq("motoboy_id", motoboyId)
+    .eq("data", hoje)
+    .neq("status", "cancelado")
+    .order("numero", { ascending: true });
+
+  if (error || !data) return [];
+
+  return data.map((e) => ({
+    id: e.id,
+    numero: `#${e.numero}`,
+    clienteNome: e.cliente_nome,
+    endereco: e.endereco ?? "",
+    valor: formatBRL(Number(e.valor_pagamento)),
+    formaPagamento: e.forma_pagamento,
+    status: e.status,
+    horaSaida: e.hora_saida,
+    clienteAssinouEm: e.cliente_assinou_em,
+  }));
+}
