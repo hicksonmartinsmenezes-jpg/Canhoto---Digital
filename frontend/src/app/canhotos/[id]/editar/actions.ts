@@ -15,6 +15,7 @@ export interface AtualizarEntregaInput {
   data: string;
   clienteNome: string;
   clienteTelefone: string;
+  endereco: string;
   numeroPedido: string;
   numeroNfe: string;
   valorPagamento: number;
@@ -67,6 +68,7 @@ export async function atualizarEntrega(
       data: input.data,
       cliente_nome: clienteNome,
       cliente_telefone: input.clienteTelefone.trim() || null,
+      endereco: input.endereco.trim() || null,
       numero_pedido: input.numeroPedido.trim() || null,
       numero_nfe: input.numeroNfe.trim() || null,
       valor_pagamento: input.valorPagamento,

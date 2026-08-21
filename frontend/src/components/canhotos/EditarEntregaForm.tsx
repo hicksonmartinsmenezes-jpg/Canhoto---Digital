@@ -33,6 +33,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
     formaPagamento: entrega.formaPagamento as FormaPagamento | "",
     motoboyId: entrega.motoboyId,
     clienteTelefone: entrega.clienteTelefone,
+    endereco: entrega.endereco,
     observacoes: entrega.observacoes,
     status: entrega.status as StatusEntrega,
   });
@@ -67,6 +68,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
         formaPagamento: form.formaPagamento,
         motoboyId: form.motoboyId,
         clienteTelefone: form.clienteTelefone,
+        endereco: form.endereco,
         observacoes: form.observacoes,
         status: form.status,
       });
@@ -178,6 +180,15 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   onChange={(e) =>
                     set("clienteTelefone", maskPhoneInput(e.target.value))
                   }
+                />
+              </Field>
+              <Field label="Endereço" optional>
+                <input
+                  type="text"
+                  placeholder="Rua, número, bairro"
+                  className={inputClass}
+                  value={form.endereco}
+                  onChange={(e) => set("endereco", e.target.value)}
                 />
               </Field>
             </div>

@@ -1,6 +1,6 @@
 // Camada de acesso a dados reais de Motoboys (Supabase) — hoje usada só para
-// alimentar a sugestão de motoboy no wizard "Adicionar Entrega". Ver
-// claude/modelo-de-dados-site.md para o schema.
+// alimentar a sugestão de motoboy no wizard "Adicionar Entrega" e a tela de
+// Motoristas. Ver claude/modelo-de-dados-site.md para o schema.
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -28,6 +28,11 @@ export interface MotoboyListItem {
   nome: string;
   ativo: boolean;
   entregasNoMes: number;
+  // Telefone é o "usuário" do login do app do motorista (Issue #5) —
+  // `temPin` só indica se um PIN já foi gerado, nunca expõe o hash pro
+  // client component.
+  telefone: string | null;
+  temPin: boolean;
 }
 
 // Lista completa (ativos e inativos) para a tela de Motoristas, com a
@@ -42,7 +47,10 @@ export async function getMotoboysList(): Promise<MotoboyListItem[]> {
   const inicioMesStr = inicioMes.toISOString().slice(0, 10);
 
   const [motoboysRes, entregasRes] = await Promise.all([
-    supabase.from("motoboys").select("id, nome, ativo").order("nome"),
+    supabase
+      .from("motoboys")
+      .select("id, nome, ativo, telefone, pin_hash")
+      .order("nome"),
     supabase
       .from("entregas")
       .select("motoboy_id")
@@ -63,5 +71,7 @@ export async function getMotoboysList(): Promise<MotoboyListItem[]> {
     nome: m.nome,
     ativo: m.ativo,
     entregasNoMes: contagem.get(m.id) ?? 0,
+    telefone: m.telefone,
+    temPin: m.pin_hash !== null,
   }));
 }
