@@ -16,17 +16,24 @@
 export const MOTORISTA_COOKIE_NAME = "motorista_sessao";
 export const MOTORISTA_SESSAO_DURACAO_MS = 12 * 60 * 60 * 1000; // 12h
 
-function textoParaBytes(texto: string): Uint8Array {
+// Anotado explicitamente como `Uint8Array<ArrayBuffer>` (não só `Uint8Array`)
+// — a partir do TypeScript 5.7/lib.dom mais recente, `Uint8Array` sem o
+// parâmetro genérico vira um alias mais amplo (`Uint8Array<ArrayBufferLike>`,
+// que inclui `SharedArrayBuffer`) e deixa de bater com o tipo `BufferSource`
+// que `crypto.subtle.importKey/sign/verify` exigem. Sem essa anotação em
+// cada função abaixo, o build falha no typecheck mesmo o código rodando
+// certinho (visto na PR #32 — build/typecheck falharam por isso).
+function textoParaBytes(texto: string): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(texto);
 }
 
-function bytesParaBase64Url(bytes: Uint8Array): string {
+function bytesParaBase64Url(bytes: Uint8Array<ArrayBuffer>): string {
   let binario = "";
   for (const b of bytes) binario += String.fromCharCode(b);
   return btoa(binario).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function base64UrlParaBytes(valor: string): Uint8Array | null {
+function base64UrlParaBytes(valor: string): Uint8Array<ArrayBuffer> | null {
   try {
     const normalizado = valor.replace(/-/g, "+").replace(/_/g, "/");
     const comPadding = normalizado.padEnd(
@@ -55,7 +62,10 @@ async function importarChave(
   );
 }
 
-async function assinar(payload: string, segredo: string): Promise<Uint8Array> {
+async function assinar(
+  payload: string,
+  segredo: string
+): Promise<Uint8Array<ArrayBuffer>> {
   const chave = await importarChave(segredo, ["sign"]);
   const assinatura = await crypto.subtle.sign("HMAC", chave, textoParaBytes(payload));
   return new Uint8Array(assinatura);
@@ -63,7 +73,7 @@ async function assinar(payload: string, segredo: string): Promise<Uint8Array> {
 
 async function conferirAssinatura(
   payload: string,
-  assinatura: Uint8Array,
+  assinatura: Uint8Array<ArrayBuffer>,
   segredo: string
 ): Promise<boolean> {
   const chave = await importarChave(segredo, ["verify"]);
