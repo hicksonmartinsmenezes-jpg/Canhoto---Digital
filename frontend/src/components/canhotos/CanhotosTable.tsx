@@ -5,10 +5,8 @@ import {
   STATUS_LABEL,
 } from "@/lib/status";
 import { EntregaRowActions } from "@/components/canhotos/EntregaRowActions";
-import { ConferirCaixaAction } from "@/components/canhotos/ConferirCaixaAction";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { EntregaListItem } from "@/lib/data/entregas";
-import type { ColaboradorOption } from "@/lib/data/colaboradores";
 
 function Cell({ value }: { value: string | null }) {
   return <span className={value ? "" : "text-slate-300"}>{value ?? "—"}</span>;
@@ -16,10 +14,9 @@ function Cell({ value }: { value: string | null }) {
 
 interface CanhotosTableProps {
   entregas: EntregaListItem[];
-  colaboradores: ColaboradorOption[];
 }
 
-export function CanhotosTable({ entregas, colaboradores }: CanhotosTableProps) {
+export function CanhotosTable({ entregas }: CanhotosTableProps) {
   if (entregas.length === 0) {
     return (
       <EmptyState
@@ -43,7 +40,6 @@ export function CanhotosTable({ entregas, colaboradores }: CanhotosTableProps) {
             <th className="px-6 py-3.5 font-bold">Valor</th>
             <th className="px-6 py-3.5 font-bold">Pagamento</th>
             <th className="px-6 py-3.5 font-bold">Motorista</th>
-            <th className="px-6 py-3.5 font-bold">Ass. Caixa</th>
             <th className="px-6 py-3.5 font-bold">Situação</th>
             <th className="px-6 py-3.5 font-bold">Ações</th>
           </tr>
@@ -70,22 +66,6 @@ export function CanhotosTable({ entregas, colaboradores }: CanhotosTableProps) {
               </td>
               <td className="px-6 py-4">
                 <Cell value={c.motoboy} />
-              </td>
-              <td className="px-6 py-4">
-                {/* Issue #9: entregas com pagamento recebido na hora, já
-                    entregues e ainda sem `caixa_id` ganham a ação
-                    "Conferir" aqui em vez do "—" mudo de antes. */}
-                {c.pendenteConferencia ? (
-                  <ConferirCaixaAction
-                    entregaId={c.id}
-                    numero={c.numero}
-                    cliente={c.cliente}
-                    valor={c.valor}
-                    colaboradores={colaboradores}
-                  />
-                ) : (
-                  <Cell value={c.caixa} />
-                )}
               </td>
               <td className="px-6 py-4">
                 <span
