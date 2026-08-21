@@ -379,6 +379,7 @@ export interface EntregaDetalhe {
   data: string;
   clienteNome: string;
   clienteTelefone: string;
+  endereco: string;
   numeroPedido: string;
   numeroNfe: string;
   valorPagamento: string;
@@ -398,7 +399,7 @@ export async function getEntregaById(
   const { data, error } = await supabase
     .from("entregas")
     .select(
-      `id, numero, data, cliente_nome, cliente_telefone, numero_pedido, numero_nfe,
+      `id, numero, data, cliente_nome, cliente_telefone, endereco, numero_pedido, numero_nfe,
        valor_pagamento, forma_pagamento, observacoes, status, motoboy_id,
        motoboy:motoboys!motoboy_id ( nome )`
     )
@@ -415,6 +416,7 @@ export async function getEntregaById(
     data: paraDataInput(data.data),
     clienteNome: data.cliente_nome,
     clienteTelefone: data.cliente_telefone ?? "",
+    endereco: data.endereco ?? "",
     numeroPedido: data.numero_pedido ?? "",
     numeroNfe: data.numero_nfe ?? "",
     valorPagamento: String(data.valor_pagamento),

@@ -27,6 +27,7 @@ interface FormState {
   formaPagamento: FormaPagamento | "";
   motoboyId: string;
   clienteTelefone: string;
+  endereco: string;
   observacoes: string;
 }
 
@@ -85,6 +86,7 @@ export function AdicionarEntregaWizard({
     formaPagamento: "",
     motoboyId: "",
     clienteTelefone: "",
+    endereco: "",
     observacoes: "",
   });
 
@@ -155,6 +157,7 @@ export function AdicionarEntregaWizard({
         formaPagamento: form.formaPagamento,
         motoboyId: form.motoboyId,
         clienteTelefone: form.clienteTelefone,
+        endereco: form.endereco,
         observacoes: form.observacoes,
       });
 
@@ -362,6 +365,15 @@ export function AdicionarEntregaWizard({
                   }
                 />
               </Field>
+              <Field label="Endereço" optional>
+                <input
+                  type="text"
+                  placeholder="Rua, número, bairro"
+                  className={inputClass}
+                  value={form.endereco}
+                  onChange={(e) => set("endereco", e.target.value)}
+                />
+              </Field>
             </div>
             <Field label="Observações" optional>
               <textarea
@@ -427,6 +439,7 @@ export function AdicionarEntregaWizard({
                 />
                 <Resumo label="Motorista" value={motoboySelecionado?.nome ?? null} />
                 <Resumo label="Telefone" value={form.clienteTelefone || null} />
+                <Resumo label="Endereço" value={form.endereco || null} />
               </dl>
               {form.observacoes && (
                 <p className="mt-3 text-sm text-slate-500">

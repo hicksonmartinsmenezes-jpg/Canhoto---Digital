@@ -43,6 +43,10 @@ export interface Motoboy {
   id: string;
   nome: string;
   ativo: boolean;
+  // Base do login do app do motorista (Issue #5, sub-issue #28) — ambos
+  // opcionais porque motoristas já cadastrados não têm até serem editados.
+  telefone: string | null;
+  pin_hash: string | null;
   criado_em: string;
 }
 
@@ -52,6 +56,9 @@ export interface Entrega {
   data: string;
   cliente_nome: string;
   cliente_telefone: string | null;
+  // Endereço de entrega (texto livre, como cliente_nome) — sem isso o app
+  // do motorista não tem como mostrar pra onde ir (Issue #5, sub-issue #28).
+  endereco: string | null;
   numero_pedido: string | null;
   numero_nfe: string | null;
   valor_pagamento: number;
