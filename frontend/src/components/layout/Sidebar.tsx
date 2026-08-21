@@ -13,6 +13,7 @@ import {
   Menu,
   ClipboardList,
   ChevronDown,
+  Car,
 } from "lucide-react";
 
 // Estrutura de navegação do Portal Web Admin — Canhoto Digital.
@@ -28,6 +29,10 @@ import {
 // submenu "Cadastros" (a pedido do Hickson), em vez de dois itens soltos
 // no nível principal — os dois são telas de cadastro de referência, faz
 // sentido ficarem juntos.
+// "Gestão de Veículos" (21/08/2026): nova aba pedida pelo Hickson — por
+// enquanto só a entrada no menu + página placeholder (`/veiculos`); o
+// controle de gastos por veículo (combustível, multas, lava-jato,
+// manutenção etc.) ainda não foi implementado.
 const NAV_ITEMS = [
   { type: "link" as const, href: "/", label: "Dashboard", icon: LayoutDashboard },
   { type: "link" as const, href: "/canhotos", label: "Entregas", icon: Package },
@@ -40,6 +45,7 @@ const NAV_ITEMS = [
       { href: "/motoboys", label: "Motoristas", icon: Bike },
     ],
   },
+  { type: "link" as const, href: "/veiculos", label: "Gestão de Veículos", icon: Car },
   { type: "link" as const, href: "/relatorios", label: "Relatórios", icon: FileBarChart },
 ];
 
