@@ -164,10 +164,14 @@ export async function getAlertas(): Promise<Alerta[]> {
   const supabase = createAdminClient();
   if (!supabase) return [];
 
-  const [pendentesConferencia, aguardandoSaida, semNfe] = await Promise.all([
-    supabase
-      .from("entregas_pendentes_conferencia")
-      .select("*", { count: "exact", head: true }),
+  // Nota: o alerta de "conferência de caixa" (Issue #9) foi pausado aqui de
+  // propósito — a logística de comprovação de pagamento ficou fora de
+  // escopo por enquanto (decisão de 21/08/2026). A view
+  // `entregas_pendentes_conferencia` e a Server Action `conferirCaixa`
+  // continuam intactas no banco/backend, só não são mais consultadas/
+  // mostradas nesta função. O foco passa a ser só o status da entrega
+  // (pendente → entregue/cancelado).
+  const [aguardandoSaida, semNfe] = await Promise.all([
     supabase
       .from("entregas")
       .select("*", { count: "exact", head: true })
@@ -180,18 +184,6 @@ export async function getAlertas(): Promise<Alerta[]> {
   ]);
 
   const alertas: Alerta[] = [];
-
-  if ((pendentesConferencia.count ?? 0) > 0) {
-    alertas.push({
-      id: "conferencia-caixa",
-      tag: "CAIXA",
-      titulo: `${pluralEntregas(pendentesConferencia.count!)} pendente${pendentesConferencia.count === 1 ? "" : "s"} de conferência de caixa`,
-      descricao:
-        "Pagamento recebido pelo motorista na entrega ainda não foi conferido pelo caixa.",
-      tom: "critico",
-      href: "/canhotos?status=entregue",
-    });
-  }
 
   if ((aguardandoSaida.count ?? 0) > 0) {
     alertas.push({
