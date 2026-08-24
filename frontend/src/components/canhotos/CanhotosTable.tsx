@@ -50,7 +50,7 @@ export function CanhotosTable({ entregas }: CanhotosTableProps) {
               key={c.id}
               className="border-b border-slate-100 text-sm transition-colors last:border-b-0 hover:bg-slate-50/70"
             >
-              <td className="px-6 py-4 font-medium tabular-nums text-amber-600">
+              <td className="px-6 py-4 font-medium tabular-nums text-slate-500">
                 {c.numero}
               </td>
               <td className="px-6 py-4 tabular-nums text-slate-500">
