@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       getEntregasRecentes(5),
       getAlertas(),
       getAtividadeRecente(4),
-      getEntregasPorDia(14),
+      getEntregasPorDia(90), // Issue #42: busca 90 dias; o seletor de período do gráfico filtra no cliente
     ]);
 
   const eficiencia =
