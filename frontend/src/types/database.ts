@@ -32,6 +32,7 @@ export interface Colaborador {
   auth_user_id: string | null;
   nome: string;
   email: string | null;
+  celular: string | null;
   setor_id: string | null;
   cargo: string | null;
   papel: PapelColaborador;

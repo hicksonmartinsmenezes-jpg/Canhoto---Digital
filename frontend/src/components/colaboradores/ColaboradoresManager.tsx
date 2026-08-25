@@ -15,6 +15,7 @@ import {
   type ColaboradorDados,
 } from "@/app/colaboradores/actions";
 import { PAPEL_LABEL } from "@/lib/colaboradores-labels";
+import { maskPhoneInput } from "@/lib/format";
 import type { ColaboradorListItem } from "@/lib/data/colaboradores";
 import type { PapelColaborador } from "@/types/database";
 
@@ -63,7 +64,7 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
           <EmptyState
             icon={Users}
             title="Nenhum colaborador cadastrado ainda"
-            description="Cadastre o primeiro colaborador da empresa pra dar acesso e organizar por setor."
+            description="Cadastre o primeiro colaborador da empresa pra dar acesso ao sistema."
             action={{
               label: "Novo Colaborador",
               onClick: () => setModal({ tipo: "novo" }),
@@ -76,7 +77,7 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
                 <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-400">
                   <th className="px-6 py-3.5 font-bold">Nome</th>
                   <th className="px-6 py-3.5 font-bold">E-mail</th>
-                  <th className="px-6 py-3.5 font-bold">Setor</th>
+                  <th className="px-6 py-3.5 font-bold">Celular</th>
                   <th className="px-6 py-3.5 font-bold">Cargo</th>
                   <th className="px-6 py-3.5 font-bold">Papel</th>
                   <th className="px-6 py-3.5 font-bold">Status</th>
@@ -94,7 +95,11 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
                       {c.email ?? <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-6 py-4 text-slate-500">
-                      {c.setor ?? <span className="text-slate-300">—</span>}
+                      {c.celular ? (
+                        maskPhoneInput(c.celular)
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-slate-500">
                       {c.cargo ?? <span className="text-slate-300">—</span>}
@@ -147,7 +152,7 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
             dadosIniciais={{
               nome: "",
               email: "",
-              setor: "",
+              celular: "",
               cargo: "",
               papel: "colaborador",
               ativo: true,
@@ -166,7 +171,9 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
             dadosIniciais={{
               nome: modal.colaborador.nome,
               email: modal.colaborador.email ?? "",
-              setor: modal.colaborador.setor ?? "",
+              celular: modal.colaborador.celular
+                ? maskPhoneInput(modal.colaborador.celular)
+                : "",
               cargo: modal.colaborador.cargo ?? "",
               papel: modal.colaborador.papel,
               ativo: modal.colaborador.ativo,
@@ -191,6 +198,8 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
   );
 }
 
+const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function FormModal({
   titulo,
   dadosIniciais,
@@ -208,7 +217,7 @@ function FormModal({
 }) {
   const [nome, setNome] = useState(dadosIniciais.nome);
   const [email, setEmail] = useState(dadosIniciais.email);
-  const [setor, setSetor] = useState(dadosIniciais.setor);
+  const [celular, setCelular] = useState(dadosIniciais.celular);
   const [cargo, setCargo] = useState(dadosIniciais.cargo);
   const [papel, setPapel] = useState<PapelColaborador>(dadosIniciais.papel);
   const [ativo, setAtivo] = useState(dadosIniciais.ativo);
@@ -220,9 +229,18 @@ function FormModal({
       setErro("Informe o nome do colaborador.");
       return;
     }
+    if (!email.trim() || !REGEX_EMAIL.test(email.trim())) {
+      setErro("Informe um e-mail válido.");
+      return;
+    }
+    const celularDigitos = celular.replace(/\D/g, "");
+    if (celularDigitos.length !== 10 && celularDigitos.length !== 11) {
+      setErro("Informe um celular válido, com DDD.");
+      return;
+    }
     setErro(null);
     startTransition(async () => {
-      const resultado = await onSalvar({ nome, email, setor, cargo, papel, ativo });
+      const resultado = await onSalvar({ nome, email, celular, cargo, papel, ativo });
       if (!resultado.ok) {
         setErro(resultado.error ?? "Não foi possível salvar.");
         return;
@@ -256,44 +274,44 @@ function FormModal({
         className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
       />
 
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
+            E-mail
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
+            Celular
+          </label>
+          <input
+            type="tel"
+            value={celular}
+            onChange={(e) => setCelular(maskPhoneInput(e.target.value))}
+            placeholder="(79) 99999-9999"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
+          />
+        </div>
+      </div>
+
       <label className="mb-1.5 mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">
-        E-mail
+        Cargo
         <span className="ml-1 font-medium normal-case text-slate-400">
           (opcional)
         </span>
       </label>
       <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        type="text"
+        value={cargo}
+        onChange={(e) => setCargo(e.target.value)}
         className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
       />
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-            Setor
-          </label>
-          <input
-            type="text"
-            value={setor}
-            onChange={(e) => setSetor(e.target.value)}
-            placeholder="Ex.: Expedição"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-            Cargo
-          </label>
-          <input
-            type="text"
-            value={cargo}
-            onChange={(e) => setCargo(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
-          />
-        </div>
-      </div>
 
       <label className="mb-1.5 mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">
         Papel

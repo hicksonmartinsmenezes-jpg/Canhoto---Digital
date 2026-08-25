@@ -8,11 +8,13 @@
 // Login (auth_user_id) fica fora do escopo desta tela por enquanto — o
 // admin login em si (Issue #48/PR #49) ainda não foi validado
 // ponta-a-ponta, e uma tela de convite/vínculo de usuário é trabalho
-// futuro separado.
+// futuro separado. E-mail já é obrigatório aqui porque é pra lá que vai o
+// convite/login quando esse trabalho futuro existir.
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
+import { normalizarTelefone } from "@/lib/motorista-auth";
 import type { PapelColaborador, Database } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -24,11 +26,20 @@ export interface ColaboradorActionResult {
 export interface ColaboradorDados {
   nome: string;
   email: string;
-  setor: string;
+  celular: string;
   cargo: string;
   papel: PapelColaborador;
   ativo: boolean;
 }
+
+const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Único setor que opera o sistema hoje (ver 20260821010000_add_motorista_auth_endereco.sql
+// e a decisão em claude/ideias-decisoes-projeto.md) — a tela de Colaboradores
+// não tem campo de Setor porque não há outra opção pra escolher; o cadastro
+// resolve (ou recria, se por algum motivo a linha tiver sido apagada) essa
+// linha em `setores` sozinho.
+const NOME_SETOR_PADRAO = "Expedição";
 
 // Traduz a violação da constraint `unique` de `colaboradores.email` numa
 // mensagem que faz sentido pra quem está cadastrando, em vez do erro cru do
@@ -40,24 +51,13 @@ function mensagemErroEmailDuplicado(mensagem: string): string | null {
   return null;
 }
 
-// A tela de Colaboradores não tem (e não deve ter, por ora — ver decisão em
-// claude/ideias-decisoes-projeto.md) uma tela dedicada de gestão de
-// Setores; hoje só existe "Expedição" semeado no banco. Em vez de travar o
-// campo a esse único valor, o admin digita o nome do setor livremente e o
-// servidor resolve (ou cria) a linha correspondente em `setores` — assim o
-// FK `colaboradores.setor_id` continua íntegro sem precisar de um CRUD
-// próprio agora.
-async function encontrarOuCriarSetor(
-  supabase: SupabaseClient<Database>,
-  nomeSetor: string
+async function obterSetorPadrao(
+  supabase: SupabaseClient<Database>
 ): Promise<{ id: string | null; error?: string }> {
-  const nomeLimpo = nomeSetor.trim();
-  if (!nomeLimpo) return { id: null };
-
   const { data: existente, error: erroConsulta } = await supabase
     .from("setores")
     .select("id")
-    .ilike("nome", nomeLimpo)
+    .ilike("nome", NOME_SETOR_PADRAO)
     .maybeSingle();
 
   if (erroConsulta) {
@@ -67,17 +67,41 @@ async function encontrarOuCriarSetor(
 
   const { data: criado, error: erroCriacao } = await supabase
     .from("setores")
-    .insert({ nome: nomeLimpo })
+    .insert({ nome: NOME_SETOR_PADRAO })
     .select("id")
     .single();
 
   if (erroCriacao || !criado) {
     return {
       id: null,
-      error: `Erro ao criar o setor "${nomeLimpo}": ${erroCriacao?.message ?? "erro desconhecido"}`,
+      error: `Erro ao criar o setor "${NOME_SETOR_PADRAO}": ${erroCriacao?.message ?? "erro desconhecido"}`,
     };
   }
   return { id: criado.id };
+}
+
+// Valida os campos comuns a criar/atualizar e devolve os valores já
+// normalizados, ou uma mensagem de erro pra devolver direto ao formulário.
+function validarDados(
+  dados: ColaboradorDados
+):
+  | { ok: true; nome: string; email: string; celular: string; cargo: string }
+  | { ok: false; error: string } {
+  const nome = dados.nome.trim();
+  if (!nome) return { ok: false, error: "Informe o nome do colaborador." };
+
+  const email = dados.email.trim();
+  if (!email) return { ok: false, error: "Informe o e-mail do colaborador." };
+  if (!REGEX_EMAIL.test(email)) {
+    return { ok: false, error: "Informe um e-mail válido." };
+  }
+
+  const celular = normalizarTelefone(dados.celular);
+  if (celular.length !== 10 && celular.length !== 11) {
+    return { ok: false, error: "Informe um celular válido, com DDD." };
+  }
+
+  return { ok: true, nome, email, celular, cargo: dados.cargo.trim() };
 }
 
 export async function criarColaborador(
@@ -100,20 +124,18 @@ export async function criarColaborador(
     };
   }
 
-  const nomeLimpo = dados.nome.trim();
-  if (!nomeLimpo) return { ok: false, error: "Informe o nome do colaborador." };
+  const validado = validarDados(dados);
+  if (!validado.ok) return { ok: false, error: validado.error };
 
-  const emailLimpo = dados.email.trim();
-  const cargoLimpo = dados.cargo.trim();
-
-  const setor = await encontrarOuCriarSetor(supabase, dados.setor);
+  const setor = await obterSetorPadrao(supabase);
   if (setor.error) return { ok: false, error: setor.error };
 
   const { error } = await supabase.from("colaboradores").insert({
-    nome: nomeLimpo,
-    email: emailLimpo || null,
+    nome: validado.nome,
+    email: validado.email,
+    celular: validado.celular,
     setor_id: setor.id,
-    cargo: cargoLimpo || null,
+    cargo: validado.cargo || null,
     papel: dados.papel,
   });
 
@@ -151,22 +173,20 @@ export async function atualizarColaborador(
     };
   }
 
-  const nomeLimpo = dados.nome.trim();
-  if (!nomeLimpo) return { ok: false, error: "Informe o nome do colaborador." };
+  const validado = validarDados(dados);
+  if (!validado.ok) return { ok: false, error: validado.error };
 
-  const emailLimpo = dados.email.trim();
-  const cargoLimpo = dados.cargo.trim();
-
-  const setor = await encontrarOuCriarSetor(supabase, dados.setor);
+  const setor = await obterSetorPadrao(supabase);
   if (setor.error) return { ok: false, error: setor.error };
 
   const { error } = await supabase
     .from("colaboradores")
     .update({
-      nome: nomeLimpo,
-      email: emailLimpo || null,
+      nome: validado.nome,
+      email: validado.email,
+      celular: validado.celular,
       setor_id: setor.id,
-      cargo: cargoLimpo || null,
+      cargo: validado.cargo || null,
       papel: dados.papel,
       ativo: dados.ativo,
     })
