@@ -365,6 +365,130 @@ export async function getEntregas(
   });
 }
 
+export interface RelatorioFiltros {
+  dataInicio?: string;
+  dataFim?: string;
+  status?: StatusEntrega;
+  formaPagamento?: FormaPagamento;
+}
+
+export interface RelatorioEntregaItem {
+  id: string;
+  numero: string;
+  data: string;
+  cliente: string;
+  valor: string;
+  valorNumerico: number;
+  formaPagamento: FormaPagamento;
+  motoboy: string | null;
+  status: StatusEntrega;
+}
+
+export interface RelatorioPorFormaPagamento {
+  formaPagamento: FormaPagamento;
+  quantidade: number;
+  valor: string;
+}
+
+export interface RelatorioTotais {
+  quantidade: number;
+  valorTotal: string;
+  ticketMedio: string;
+  porFormaPagamento: RelatorioPorFormaPagamento[];
+}
+
+export interface RelatorioEntregas {
+  itens: RelatorioEntregaItem[];
+  totais: RelatorioTotais;
+}
+
+function relatorioVazio(): RelatorioEntregas {
+  return {
+    itens: [],
+    totais: {
+      quantidade: 0,
+      valorTotal: formatBRL(0),
+      ticketMedio: formatBRL(0),
+      porFormaPagamento: [],
+    },
+  };
+}
+
+// Relatório de entregas (Issue #8) — consulta com filtros de período,
+// situação e forma de pagamento sobre as entregas já registradas, com
+// totais agregados (quantidade, valor total, ticket médio, quebra por
+// forma de pagamento). Reaproveita a mesma tabela `entregas` das telas de
+// Dashboard e Entregas; sem paginação, no mesmo espírito de `getEntregas`
+// (volume do admin interno não justifica a complexidade — ver AGENTS.md).
+// A agregação é feita aqui em JS a partir das linhas já buscadas, em vez de
+// uma segunda query de agregação no Postgres — mesmo raciocínio de
+// `getEntregasPorDia`.
+export async function getRelatorioEntregas(
+  filtros: RelatorioFiltros
+): Promise<RelatorioEntregas> {
+  const supabase = createAdminClient();
+  if (!supabase) return relatorioVazio();
+
+  let query = supabase
+    .from("entregas")
+    .select(
+      `id, numero, data, cliente_nome, valor_pagamento, forma_pagamento, status,
+       motoboy:motoboys!motoboy_id ( nome )`
+    );
+
+  if (filtros.dataInicio) query = query.gte("data", filtros.dataInicio);
+  if (filtros.dataFim) query = query.lte("data", filtros.dataFim);
+  if (filtros.status) query = query.eq("status", filtros.status);
+  if (filtros.formaPagamento) query = query.eq("forma_pagamento", filtros.formaPagamento);
+
+  const { data, error } = await query
+    .order("data", { ascending: false })
+    .order("numero", { ascending: false });
+
+  if (error || !data) return relatorioVazio();
+
+  const itens: RelatorioEntregaItem[] = data.map((e) => {
+    const motoboy = Array.isArray(e.motoboy) ? e.motoboy[0] : e.motoboy;
+    return {
+      id: e.id,
+      numero: `#${e.numero}`,
+      data: formatDateBR(e.data),
+      cliente: e.cliente_nome,
+      valor: formatBRL(Number(e.valor_pagamento)),
+      valorNumerico: Number(e.valor_pagamento),
+      formaPagamento: e.forma_pagamento,
+      motoboy: motoboy?.nome ?? null,
+      status: e.status,
+    };
+  });
+
+  const valorTotalNumerico = itens.reduce((soma, i) => soma + i.valorNumerico, 0);
+
+  const porFormaMapa = new Map<FormaPagamento, { quantidade: number; valor: number }>();
+  for (const item of itens) {
+    const atual = porFormaMapa.get(item.formaPagamento) ?? { quantidade: 0, valor: 0 };
+    atual.quantidade += 1;
+    atual.valor += item.valorNumerico;
+    porFormaMapa.set(item.formaPagamento, atual);
+  }
+
+  return {
+    itens,
+    totais: {
+      quantidade: itens.length,
+      valorTotal: formatBRL(valorTotalNumerico),
+      ticketMedio: formatBRL(itens.length > 0 ? valorTotalNumerico / itens.length : 0),
+      porFormaPagamento: Array.from(porFormaMapa.entries())
+        .map(([formaPagamento, v]) => ({
+          formaPagamento,
+          quantidade: v.quantidade,
+          valor: formatBRL(v.valor),
+        }))
+        .sort((a, b) => b.quantidade - a.quantidade),
+    },
+  };
+}
+
 export interface EntregaDetalhe {
   id: string;
   numero: number;

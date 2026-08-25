@@ -39,3 +39,20 @@ export function isStatusEntrega(value: unknown): value is StatusEntrega {
     typeof value === "string" && Object.hasOwn(STATUS_LABEL, value)
   );
 }
+
+// Type guard equivalente para o filtro "Forma de pagamento" do Relatório
+// (Issue #8) — mesmo raciocínio de isStatusEntrega: o valor vem de um
+// searchParam solto e precisa ser validado antes de virar filtro na query.
+export function isFormaPagamento(value: unknown): value is FormaPagamento {
+  return (
+    typeof value === "string" && Object.hasOwn(FORMA_PAGAMENTO_LABEL, value)
+  );
+}
+
+// Valida "AAAA-MM-DD" vindo de um <input type="date"> via searchParam —
+// aceita só o formato exato que o Postgres espera pra comparar contra a
+// coluna `data` (evita passar lixo/formato errado direto pra query).
+const REGEX_DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+export function isDataIsoValida(value: unknown): value is string {
+  return typeof value === "string" && REGEX_DATA_ISO.test(value);
+}
