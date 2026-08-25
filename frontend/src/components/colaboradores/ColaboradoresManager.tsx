@@ -14,10 +14,8 @@ import {
   type ColaboradorActionResult,
   type ColaboradorDados,
 } from "@/app/colaboradores/actions";
-import {
-  PAPEL_LABEL,
-  type ColaboradorListItem,
-} from "@/lib/data/colaboradores";
+import { PAPEL_LABEL } from "@/lib/colaboradores-labels";
+import type { ColaboradorListItem } from "@/lib/data/colaboradores";
 import type { PapelColaborador } from "@/types/database";
 
 interface ColaboradoresManagerProps {

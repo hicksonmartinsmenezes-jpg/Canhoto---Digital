@@ -6,12 +6,6 @@
 import type { PapelColaborador } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const PAPEL_LABEL: Record<PapelColaborador, string> = {
-  admin: "Admin",
-  gestor_setor: "Gestor de setor",
-  colaborador: "Colaborador",
-};
-
 export interface ColaboradorListItem {
   id: string;
   nome: string;
