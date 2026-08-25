@@ -73,7 +73,7 @@ export function EntregaMotoristaCard({
       </div>
 
       {erro && (
-        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+        <div className="mt-3 rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
           {erro}
         </div>
       )}

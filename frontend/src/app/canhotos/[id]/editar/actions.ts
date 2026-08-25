@@ -9,6 +9,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checarRateLimit } from "@/lib/rate-limit";
+import { descreverErroSupabase } from "@/lib/erros-supabase";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 export interface AtualizarEntregaInput {
@@ -80,7 +81,7 @@ export async function atualizarEntrega(
     .eq("id", id);
 
   if (error) {
-    return { ok: false, error: `Erro ao salvar as alterações: ${error.message}` };
+    return { ok: false, error: `Erro ao salvar as alterações: ${descreverErroSupabase(error.message)}.` };
   }
 
   revalidatePath("/canhotos");

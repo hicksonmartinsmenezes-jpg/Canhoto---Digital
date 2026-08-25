@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checarRateLimit } from "@/lib/rate-limit";
+import { descreverErroSupabase } from "@/lib/erros-supabase";
 import {
   encerrarSessaoMotorista,
   obterMotoboyIdDaSessao,
@@ -64,7 +65,7 @@ export async function iniciarEntrega(
     .maybeSingle();
 
   if (error) {
-    return { ok: false, error: `Erro ao iniciar a entrega: ${error.message}` };
+    return { ok: false, error: `Erro ao iniciar a entrega: ${descreverErroSupabase(error.message)}.` };
   }
   if (!data) {
     return { ok: false, error: "Entrega não encontrada ou já iniciada." };
@@ -105,7 +106,7 @@ export async function confirmarEntrega(
     .maybeSingle();
 
   if (error) {
-    return { ok: false, error: `Erro ao confirmar a entrega: ${error.message}` };
+    return { ok: false, error: `Erro ao confirmar a entrega: ${descreverErroSupabase(error.message)}.` };
   }
   if (!data) {
     return {

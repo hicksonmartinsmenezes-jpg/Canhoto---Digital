@@ -330,7 +330,7 @@ function FormModal({
       )}
 
       {erro && (
-        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700">
+        <div className="mt-4 rounded-xl border border-red-200 px-3.5 py-2.5 text-xs font-semibold text-red-700">
           {erro}
         </div>
       )}
@@ -408,7 +408,7 @@ function FormModal({
             </p>
           )}
           {erroPin && (
-            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+            <div className="mt-3 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
               {erroPin}
             </div>
           )}
@@ -485,7 +485,7 @@ function ExcluirModal({
       </div>
       <p className="text-sm text-slate-500">Essa ação não pode ser desfeita.</p>
       {erro && (
-        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700">
+        <div className="mt-4 rounded-xl border border-red-200 px-3.5 py-2.5 text-xs font-semibold text-red-700">
           {erro}
         </div>
       )}

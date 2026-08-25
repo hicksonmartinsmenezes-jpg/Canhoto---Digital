@@ -7,6 +7,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
+import { descreverErroSupabase } from "@/lib/erros-supabase";
 
 export interface ExcluirEntregaResult {
   ok: boolean;
@@ -34,7 +35,7 @@ export async function excluirEntrega(id: string): Promise<ExcluirEntregaResult> 
   const { error } = await supabase.from("entregas").delete().eq("id", id);
 
   if (error) {
-    return { ok: false, error: `Erro ao excluir a entrega: ${error.message}` };
+    return { ok: false, error: `Erro ao excluir a entrega: ${descreverErroSupabase(error.message)}.` };
   }
 
   revalidatePath("/canhotos");
@@ -97,7 +98,7 @@ export async function conferirCaixa(
     .select("id");
 
   if (error) {
-    return { ok: false, error: `Erro ao confirmar a conferência: ${error.message}` };
+    return { ok: false, error: `Erro ao confirmar a conferência: ${descreverErroSupabase(error.message)}.` };
   }
   if (!data || data.length === 0) {
     return { ok: false, error: "Essa entrega já foi conferida por outra pessoa." };

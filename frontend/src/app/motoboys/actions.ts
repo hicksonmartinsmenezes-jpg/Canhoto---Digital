@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 import { gerarPin, hashPin, normalizarTelefone } from "@/lib/motorista-auth";
+import { descreverErroSupabase } from "@/lib/erros-supabase";
 
 export interface MotoboyActionResult {
   ok: boolean;
@@ -60,7 +61,7 @@ export async function criarMotoboy(
       ok: false,
       error:
         mensagemErroTelefoneDuplicado(error.message) ??
-        `Erro ao cadastrar: ${error.message}`,
+        `Erro ao cadastrar: ${descreverErroSupabase(error.message)}.`,
     };
   }
 
@@ -108,7 +109,7 @@ export async function atualizarMotoboy(
       ok: false,
       error:
         mensagemErroTelefoneDuplicado(error.message) ??
-        `Erro ao salvar: ${error.message}`,
+        `Erro ao salvar: ${descreverErroSupabase(error.message)}.`,
     };
   }
 
@@ -145,7 +146,7 @@ export async function excluirMotoboy(id: string): Promise<MotoboyActionResult> {
       ok: false,
       error: referenciado
         ? "Esse motoboy já tem entregas registradas — desative em vez de excluir."
-        : `Erro ao excluir: ${error.message}`,
+        : `Erro ao excluir: ${descreverErroSupabase(error.message)}.`,
     };
   }
 
@@ -204,7 +205,7 @@ export async function gerarPinMotoboy(id: string): Promise<GerarPinResult> {
     .eq("id", id);
 
   if (error) {
-    return { ok: false, error: `Erro ao gerar o PIN: ${error.message}` };
+    return { ok: false, error: `Erro ao gerar o PIN: ${descreverErroSupabase(error.message)}.` };
   }
 
   revalidatePath("/motoboys");

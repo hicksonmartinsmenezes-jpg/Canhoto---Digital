@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 import { normalizarTelefone } from "@/lib/motorista-auth";
+import { descreverErroSupabase } from "@/lib/erros-supabase";
 import type { PapelColaborador, Database } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -61,7 +62,7 @@ async function obterSetorPadrao(
     .maybeSingle();
 
   if (erroConsulta) {
-    return { id: null, error: `Erro ao consultar o setor: ${erroConsulta.message}` };
+    return { id: null, error: `Erro ao consultar o setor: ${descreverErroSupabase(erroConsulta.message)}.` };
   }
   if (existente) return { id: existente.id };
 
@@ -74,7 +75,7 @@ async function obterSetorPadrao(
   if (erroCriacao || !criado) {
     return {
       id: null,
-      error: `Erro ao criar o setor "${NOME_SETOR_PADRAO}": ${erroCriacao?.message ?? "erro desconhecido"}`,
+      error: `Erro ao criar o setor "${NOME_SETOR_PADRAO}": ${erroCriacao ? descreverErroSupabase(erroCriacao.message) : "erro desconhecido"}.`,
     };
   }
   return { id: criado.id };
@@ -144,7 +145,7 @@ export async function criarColaborador(
       ok: false,
       error:
         mensagemErroEmailDuplicado(error.message) ??
-        `Erro ao cadastrar: ${error.message}`,
+        `Erro ao cadastrar: ${descreverErroSupabase(error.message)}.`,
     };
   }
 
@@ -197,7 +198,7 @@ export async function atualizarColaborador(
       ok: false,
       error:
         mensagemErroEmailDuplicado(error.message) ??
-        `Erro ao salvar: ${error.message}`,
+        `Erro ao salvar: ${descreverErroSupabase(error.message)}.`,
     };
   }
 
@@ -236,7 +237,7 @@ export async function excluirColaborador(
       ok: false,
       error: referenciado
         ? "Esse colaborador já está referenciado em outros registros — desative em vez de excluir."
-        : `Erro ao excluir: ${error.message}`,
+        : `Erro ao excluir: ${descreverErroSupabase(error.message)}.`,
     };
   }
 
