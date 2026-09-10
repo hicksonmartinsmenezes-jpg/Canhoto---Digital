@@ -1,28 +1,27 @@
-// Tela logada do app do motorista (Issue #5, sub-issue #30) — lista as
-// entregas de hoje do motorista logado, com "Iniciar entrega" e "Confirmar
-// entrega" por item (ver @/components/motorista/EntregaMotoristaCard e
-// @/app/motorista/actions). Login e proteção de rota vieram na sub-issue
-// #29 (@/lib/motorista-session, @/middleware).
+// Tela logada do app do motorista — lista as entregas de hoje do motorista
+// autenticado, com "Iniciar entrega" e "Confirmar entrega" por item.
+//
+// A identidade não é passada para a camada de dados: ela é resolvida no
+// servidor a partir da sessão assinada.
 
 import { redirect } from "next/navigation";
 import { LogOut, PackageCheck } from "lucide-react";
 import { obterMotoboyIdDaSessao } from "@/lib/motorista-session";
 import { getMotoboyNome } from "@/lib/data/motoboys";
-import { getEntregasDoMotorista } from "@/lib/data/entregas";
+import { getEntregasDoMotoristaAtual } from "@/lib/data/entregas-motorista";
 import { EntregaMotoristaCard } from "@/components/motorista/EntregaMotoristaCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { sairMotorista } from "./actions";
 
 export default async function MotoristaPage() {
   const motoboyId = await obterMotoboyIdDaSessao();
-  // O middleware (@/middleware) já bloqueia essa rota sem sessão válida —
-  // este redirect é só uma segunda camada de segurança (ex.: se o
-  // middleware não rodar por algum motivo de config de deploy).
+  // O middleware bloqueia a rota sem sessão válida; este redirect mantém uma
+  // segunda camada de segurança caso o middleware não seja executado.
   if (!motoboyId) redirect("/motorista/login");
 
   const [nome, entregas] = await Promise.all([
     getMotoboyNome(motoboyId).then((n) => n ?? "Motorista"),
-    getEntregasDoMotorista(motoboyId),
+    getEntregasDoMotoristaAtual(),
   ]);
 
   return (
