@@ -28,9 +28,14 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // O bypass abaixo só pode ser ativado pelo próprio workflow de testes.
+  // Exige CI=true + E2E_AUTH_BYPASS=true, evitando qualquer bypass acidental
+  // em uma execução normal de produção.
+  if (process.env.CI === "true" && process.env.E2E_AUTH_BYPASS === "true") {
+    return response;
+  }
+
   // Rotas públicas não dependem do Supabase para renderizar a interface.
-  // Isso permite que o login e a confirmação de autenticação carreguem mesmo
-  // quando o ambiente está sem configuração do Supabase (ex.: CI/build).
   const rotaPublica = pathname === "/login" || pathname.startsWith("/auth/");
   if (rotaPublica) return response;
 
