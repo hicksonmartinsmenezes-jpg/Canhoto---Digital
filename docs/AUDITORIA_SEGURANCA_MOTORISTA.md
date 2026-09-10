@@ -6,18 +6,6 @@ Preparar o Canhoto Digital para receber futuramente um aplicativo/PWA de motoris
 
 A regra principal é: **o aplicativo é um cliente; o Canhoto Digital continua sendo a fonte de verdade e responsável pela autorização.**
 
-## Escopo desta auditoria
-
-- autenticação e sessão do motorista;
-- autorização por motorista;
-- acesso às entregas;
-- início e confirmação de entrega;
-- proteção contra manipulação de IDs;
-- campos que o motorista não deve controlar;
-- anexos e histórico;
-- auditoria do ator que executou cada ação;
-- testes necessários antes da integração futura.
-
 ## Situação atual
 
 ### Pontos já protegidos
@@ -29,136 +17,34 @@ A regra principal é: **o aplicativo é um cliente; o Canhoto Digital continua s
 5. `confirmarEntrega` só permite a confirmação de uma entrega pendente que já tenha `hora_saida`.
 6. As ações são executadas no servidor e possuem rate limit.
 7. A sessão do motorista utiliza cookie assinado, `httpOnly`, `sameSite` e `secure` em produção.
+8. A leitura operacional do motorista agora usa `getEntregasDoMotoristaAtual()`, que resolve a identidade no servidor sem receber `motoboyId` do caller.
 
-## Riscos / pontos que ainda precisam ser fechados
+## Pontos ainda pendentes
 
-### 1. Leitura das entregas
+### Leitura
 
-A função que carrega a lista do motorista deve sempre derivar o motorista da sessão no servidor. Não deve aceitar um ID arbitrário do cliente como critério de consulta.
+A função antiga `getEntregasDoMotorista(motoboyId)` permanece no módulo legado e deve ser removida ou encapsulada posteriormente, para evitar que novos callers usem uma API que aceite identidade externa.
 
-**Critério:** motorista A nunca recebe dados de entrega pertencentes ao motorista B, mesmo alterando parâmetros da requisição.
+### Escrita
 
-### 2. Escrita de campos sensíveis
+O cliente motorista não deve conseguir alterar diretamente `motoboy_id`, valores/pagamento, `cadastrado_por`, dados de caixa, número/data administrativa ou status fora das transições autorizadas. As operações devem ser comandos específicos.
 
-O cliente motorista não deve conseguir alterar diretamente:
+### Anexos
 
-- `motoboy_id`;
-- `valor_pagamento`;
-- `forma_pagamento`;
-- `cadastrado_por`;
-- `caixa_id`;
-- `caixa_confirmou_em`;
-- `numero`;
-- `data` administrativa;
-- status fora das transições explicitamente autorizadas.
+Ainda precisamos fechar autorização, tipos, tamanho, MIME, associação à entrega, ator da captura e acesso posterior.
 
-As operações do motorista devem ser comandos específicos, e não uma atualização genérica da tabela `entregas`.
+### Histórico
 
-### 3. Anexos
+O trigger atual usa `cadastrado_por` como `alterado_por`. Isso pode atribuir uma mudança ao usuário que cadastrou a entrega em vez do ator que executou a ação. Precisa ser corrigido antes da integração.
 
-Antes de liberar anexos para o futuro aplicativo, validar:
+### RLS / service role
 
-- quem pode criar um anexo;
-- quais tipos são permitidos;
-- limite de tamanho;
-- validação de MIME/extensão;
-- associação obrigatória com uma entrega pertencente ao motorista;
-- identificação do ator que capturou o arquivo;
-- acesso posterior ao arquivo;
-- prevenção de substituição indevida de anexos.
+A autenticação do motorista é própria, por sessão assinada. Não devemos aplicar RLS baseado em `auth.uid()` sem uma ponte de identidade definida. Enquanto isso, qualquer uso de cliente privilegiado deve ser precedido de autorização explícita no servidor.
 
-### 4. Histórico / auditoria
+## Critério de aceite
 
-O histórico precisa representar o **ator real da ação**.
+Um motorista autenticado não pode acessar, alterar, confirmar ou anexar dados de uma entrega pertencente a outro motorista, mesmo manipulando IDs ou payloads enviados pelo aplicativo.
 
-A implementação atual do banco deve ser revisada porque o trigger de histórico utiliza `cadastrado_por` como `alterado_por`. Isso pode registrar o usuário que cadastrou a entrega, e não necessariamente o motorista que executou a alteração.
+## Próxima etapa
 
-Para integração futura, cada operação relevante deve possuir uma estratégia clara de auditoria.
-
-### 5. RLS e service role
-
-A área do motorista atualmente possui uma autenticação própria por sessão assinada. Por isso, não devemos aplicar simplesmente políticas RLS baseadas em `auth.uid()` sem antes definir a ponte de identidade entre a sessão do motorista e a identidade do banco.
-
-Enquanto essa arquitetura não estiver definida, as operações que usam cliente privilegiado precisam continuar com verificações explícitas de autorização no servidor.
-
-**Regra:** nunca considerar o service role como mecanismo de autorização. Ele apenas permite executar a operação; a autorização deve ocorrer antes dela.
-
-## Testes obrigatórios antes de integrar o aplicativo
-
-### Identidade
-
-- sessão válida permite acesso;
-- sessão ausente bloqueia acesso;
-- sessão expirada bloqueia acesso;
-- token adulterado bloqueia acesso;
-- motorista inativo bloqueia acesso.
-
-### Isolamento entre motoristas
-
-- motorista A consulta própria entrega: permitido;
-- motorista A consulta entrega do motorista B: bloqueado;
-- motorista A inicia entrega de B: bloqueado;
-- motorista A confirma entrega de B: bloqueado;
-- alterar o ID enviado pelo aplicativo não muda a identidade autenticada.
-
-### Estados da entrega
-
-- pendente → iniciar: permitido;
-- iniciar duas vezes: segunda tentativa bloqueada;
-- confirmar sem saída: bloqueado;
-- pendente + saída → confirmar: permitido;
-- confirmar duas vezes: segunda tentativa bloqueada;
-- entregue → iniciar: bloqueado;
-- entregue → confirmar novamente: bloqueado.
-
-### Manipulação de payload
-
-Testar tentativas de enviar pelo cliente:
-
-```json
-{
-  "motoboy_id": "outro-motorista",
-  "valor_pagamento": 99999,
-  "status": "entregue",
-  "cadastrado_por": "outro-usuario"
-}
-```
-
-Esses campos não devem ser aceitos pelas operações destinadas ao motorista.
-
-### Repetição / idempotência
-
-O futuro aplicativo poderá repetir uma requisição por causa de rede instável. As operações precisam produzir um resultado seguro quando forem reenviadas.
-
-Exemplo:
-
-```text
-APP → iniciar entrega
-       ↓
-servidor processa
-       ↓
-resposta perdida por falta de internet
-       ↓
-APP repete
-       ↓
-servidor não cria uma segunda saída
-```
-
-## Critérios de aceite para o futuro aplicativo
-
-O aplicativo somente deve ser integrado quando:
-
-- a identidade do motorista estiver vinculada de forma inequívoca à sessão;
-- nenhuma operação permitir acesso cruzado entre motoristas;
-- os campos administrativos estiverem protegidos;
-- as transições de entrega forem controladas pelo servidor;
-- anexos tiverem autorização e validação próprias;
-- ações relevantes forem auditáveis;
-- requisições repetidas forem tratadas com segurança;
-- os testes de adulteração de ID/payload forem aprovados;
-- o fluxo offline/sincronização estiver definido;
-- a documentação do contrato estiver alinhada entre as duas equipes.
-
-## Próxima etapa técnica
-
-Depois desta auditoria, a prioridade é implementar os testes de isolamento/autorização e revisar o histórico de auditoria. Só depois disso devemos avançar para a camada de integração que será consumida pelo futuro aplicativo.
+Executar o roteiro `docs/TESTES_SEGURANCA_MOTORISTA.md`, corrigir histórico/anexos e validar novamente o isolamento antes de criar a camada de integração do futuro aplicativo.
