@@ -92,6 +92,10 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      # Permite que o smoke test exercite as páginas protegidas sem uma conta
+      # real do Supabase. O middleware só aceita o bypass quando CI=true.
+      E2E_AUTH_BYPASS: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -112,6 +116,10 @@ jobs:
   lighthouse:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      # O Lighthouse precisa visitar as páginas protegidas para medir o portal.
+      # O bypass é restrito ao CI pelo middleware.
+      E2E_AUTH_BYPASS: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
