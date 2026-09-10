@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import {
   LayoutDashboard,
@@ -14,7 +14,9 @@ import {
   ClipboardList,
   ChevronDown,
   Car,
+  LogOut,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 // Estrutura de navegação do Portal Web Admin — Canhoto Digital.
 // Escopo confirmado (schema v2, 18/08/2026): entrega ao cliente externo via
@@ -73,6 +75,8 @@ export function Sidebar() {
   // Começa aberto se a rota atual já é uma das telas de Cadastros — assim
   // o usuário vê de cara onde está, em vez de precisar clicar pra revelar.
   const [cadastrosAberto, setCadastrosAberto] = useState(cadastrosAtivo);
+  const [saindo, setSaindo] = useState(false);
+  const router = useRouter();
 
   // App do motorista (Issue #5) tem navegação própria, mobile-first — não
   // faz parte do Portal Admin que esta barra representa. Fica depois dos
@@ -81,7 +85,18 @@ export function Sidebar() {
   // entre navegações client-side, então um `return` condicional antes de
   // um hook quebraria as Rules of Hooks ao navegar entre /motorista e o
   // resto do site.
-  if (pathname.startsWith("/motorista")) return null;
+  if (pathname.startsWith("/motorista") || pathname === "/login") return null;
+
+  // Sai da conta do admin (Issue #48) — encerra a sessão do Supabase Auth
+  // no navegador (mesma sessão que o middleware valida a cada request) e
+  // manda pra tela de login.
+  async function sair() {
+    setSaindo(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <div
@@ -242,6 +257,25 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        {/* Botão de sair (Issue #48) — mesmo padrão visual dos itens do
+            menu acima (ícone fixo + rótulo que aparece com a barra aberta),
+            fixado no fim da coluna porque "nav" tem flex-1. */}
+        <div className="border-t border-white/10 px-2 py-2">
+          <button
+            type="button"
+            onClick={sair}
+            disabled={saindo}
+            className="flex w-full items-center gap-3 border-l-2 border-transparent px-1 py-2 text-[15px] text-white/80 transition-colors duration-150 hover:bg-white/10 hover:text-white disabled:opacity-60"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg">
+              <LogOut className="size-5 shrink-0" strokeWidth={2} />
+            </span>
+            <span className="whitespace-nowrap opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
+              {saindo ? "Saindo..." : "Sair"}
+            </span>
+          </button>
+        </div>
       </aside>
     </div>
   );
