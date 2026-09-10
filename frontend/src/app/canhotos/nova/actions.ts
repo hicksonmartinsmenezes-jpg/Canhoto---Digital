@@ -1,13 +1,8 @@
 "use server";
 
-// Server Action: cadastro manual de uma nova Entrega (wizard "Adicionar
-// Entrega"). Usa o cliente service-role (ver @/lib/supabase/admin) pelo
-// mesmo motivo da camada de leitura: RLS hoje exige usuário autenticado e o
-// site ainda não tem login real — quando existir, `cadastrado_por` deve
-// passar a vir da sessão em vez de ficar nulo.
-
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { exigirAdminAutenticado } from "@/lib/admin-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { descreverErroSupabase } from "@/lib/erros-supabase";
 import type { FormaPagamento } from "@/types/database";
@@ -33,6 +28,10 @@ export interface CriarEntregaResult {
 export async function criarEntrega(
   input: CriarEntregaInput
 ): Promise<CriarEntregaResult> {
+  if (!(await exigirAdminAutenticado())) {
+    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  }
+
   const limite = await checarRateLimit("criarEntrega");
   if (!limite.permitido) {
     return {
