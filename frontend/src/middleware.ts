@@ -28,6 +28,17 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // O bypass abaixo só pode ser ativado pelo próprio workflow de testes.
+  // Exige CI=true + E2E_AUTH_BYPASS=true, evitando qualquer bypass acidental
+  // em uma execução normal de produção.
+  if (process.env.CI === "true" && process.env.E2E_AUTH_BYPASS === "true") {
+    return response;
+  }
+
+  // Rotas públicas não dependem do Supabase para renderizar a interface.
+  const rotaPublica = pathname === "/login" || pathname.startsWith("/auth/");
+  if (rotaPublica) return response;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

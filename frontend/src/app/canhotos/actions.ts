@@ -1,11 +1,10 @@
 "use server";
 
-// Server Action: exclusão de uma Entrega, usada pela lista (/canhotos).
-// Mesma justificativa do cliente service-role das outras actions do módulo
-// — ver comentário em @/lib/supabase/admin.
+// Server Actions: operações administrativas de Entregas.
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { exigirAdminAutenticado } from "@/lib/admin-auth";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 import { descreverErroSupabase } from "@/lib/erros-supabase";
 
@@ -15,6 +14,10 @@ export interface ExcluirEntregaResult {
 }
 
 export async function excluirEntrega(id: string): Promise<ExcluirEntregaResult> {
+  if (!(await exigirAdminAutenticado())) {
+    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  }
+
   const limite = await checarRateLimit("excluirEntrega", RATE_LIMIT_ESTRITO);
   if (!limite.permitido) {
     return {
@@ -48,20 +51,14 @@ export interface ConferirCaixaResult {
   error?: string;
 }
 
-// Server Action: dá funcionalidade real ao alerta "Pendente de conferência
-// de caixa" do Dashboard (Issue #9) — até aqui só existia a contagem (via
-// view `entregas_pendentes_conferencia`), sem nenhuma ação por trás. Marca
-// a entrega como conferida, gravando quem conferiu (`caixa_id`) e quando
-// (`caixa_confirmou_em`, timestamp do servidor).
-//
-// `colaboradorId` vem de um seletor manual no modal (ver
-// ConferirCaixaAction) — não existe login real ainda, então não há como
-// pegar isso de uma sessão (mesma situação de `cadastrado_por`, ver
-// @/app/canhotos/nova/actions).
 export async function conferirCaixa(
   entregaId: string,
   colaboradorId: string
 ): Promise<ConferirCaixaResult> {
+  if (!(await exigirAdminAutenticado())) {
+    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  }
+
   const limite = await checarRateLimit("conferirCaixa");
   if (!limite.permitido) {
     return {
@@ -83,10 +80,6 @@ export async function conferirCaixa(
     return { ok: false, error: "Selecione quem conferiu o caixa." };
   }
 
-  // `.is("caixa_confirmou_em", null)` trava contra confirmar a mesma
-  // entrega duas vezes (ex. dois cliques rápidos, ou dois admins olhando o
-  // mesmo alerta ao mesmo tempo) — se já tiver sido conferida, o update não
-  // atinge nenhuma linha.
   const { data, error } = await supabase
     .from("entregas")
     .update({

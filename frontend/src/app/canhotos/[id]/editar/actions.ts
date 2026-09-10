@@ -1,13 +1,8 @@
 "use server";
 
-// Server Action: edição de uma Entrega já cadastrada (inclui mudar a
-// situação — pendente/entregue/cancelado — já que ainda não existem telas
-// dedicadas para "saída"/"confirmação do cliente"). Mesma justificativa do
-// cliente service-role das outras actions do módulo — ver comentário em
-// @/lib/supabase/admin.
-
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { exigirAdminAutenticado } from "@/lib/admin-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { descreverErroSupabase } from "@/lib/erros-supabase";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
@@ -35,6 +30,10 @@ export async function atualizarEntrega(
   id: string,
   input: AtualizarEntregaInput
 ): Promise<AtualizarEntregaResult> {
+  if (!(await exigirAdminAutenticado())) {
+    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  }
+
   const limite = await checarRateLimit("atualizarEntrega");
   if (!limite.permitido) {
     return {
