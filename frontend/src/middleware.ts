@@ -28,6 +28,12 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Rotas públicas não dependem do Supabase para renderizar a interface.
+  // Isso permite que o login e a confirmação de autenticação carreguem mesmo
+  // quando o ambiente está sem configuração do Supabase (ex.: CI/build).
+  const rotaPublica = pathname === "/login" || pathname.startsWith("/auth/");
+  if (rotaPublica) return response;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
