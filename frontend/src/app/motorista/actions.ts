@@ -1,14 +1,10 @@
 "use server";
 
-// Server Actions da área logada do app do motorista (Issue #5, sub-issue
-// #30) — "Iniciar entrega" e "Confirmar entrega", além do logout que já
-// existia (sub-issue #29).
+// Server Actions da área logada do app do motorista.
 //
-// Em todas as duas ações novas, o `motoboyId` vem só do cookie de sessão
-// (@/lib/motorista-session) — nunca de um campo enviado pelo client. O
-// `.eq("motoboy_id", motoboyId)` na query é o que garante que um motorista
-// só consegue alterar as próprias entregas, mesmo que descubra/adivinhe o
-// id de uma entrega de outro motorista.
+// A identidade do motorista é sempre derivada da sessão assinada e validada
+// no banco pela camada `motorista-authorization`. O client nunca informa
+// qual motorista está autenticado.
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -16,9 +12,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { descreverErroSupabase } from "@/lib/erros-supabase";
 import {
-  encerrarSessaoMotorista,
-  obterMotoboyIdDaSessao,
-} from "@/lib/motorista-session";
+  ERRO_MOTORISTA_SESSAO,
+  motoristaPodeAcessarEntrega,
+  obterMotoristaAutorizado,
+} from "@/lib/motorista-authorization";
+import { encerrarSessaoMotorista } from "@/lib/motorista-session";
 
 export async function sairMotorista(): Promise<void> {
   await encerrarSessaoMotorista();
@@ -30,13 +28,9 @@ export interface AcaoEntregaResult {
   error?: string;
 }
 
-const ERRO_SESSAO = "Sessão expirada — faça login novamente.";
 const ERRO_SUPABASE =
   "O Supabase ainda não está configurado neste ambiente — confirme o .env.local.";
 
-// Grava `hora_saida` — só quando a entrega é do motorista logado, ainda
-// está "pendente" e ainda não tem saída registrada (evita reiniciar uma
-// entrega já em rota por um duplo clique/duas abas).
 export async function iniciarEntrega(
   entregaId: string
 ): Promise<AcaoEntregaResult> {
@@ -48,8 +42,8 @@ export async function iniciarEntrega(
     };
   }
 
-  const motoboyId = await obterMotoboyIdDaSessao();
-  if (!motoboyId) return { ok: false, error: ERRO_SESSAO };
+  const acesso = await motoristaPodeAcessarEntrega(entregaId);
+  if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
   const supabase = createAdminClient();
   if (!supabase) return { ok: false, error: ERRO_SUPABASE };
@@ -58,7 +52,7 @@ export async function iniciarEntrega(
     .from("entregas")
     .update({ hora_saida: new Date().toISOString() })
     .eq("id", entregaId)
-    .eq("motoboy_id", motoboyId)
+    .eq("motoboy_id", acesso.motoboyId)
     .eq("status", "pendente")
     .is("hora_saida", null)
     .select("id")
@@ -75,9 +69,6 @@ export async function iniciarEntrega(
   return { ok: true };
 }
 
-// Grava `cliente_assinou_em` e muda o status pra "entregue" — só quando a
-// entrega é do motorista logado e já tem `hora_saida` (não dá pra confirmar
-// uma entrega que nunca saiu pra rota).
 export async function confirmarEntrega(
   entregaId: string
 ): Promise<AcaoEntregaResult> {
@@ -89,8 +80,8 @@ export async function confirmarEntrega(
     };
   }
 
-  const motoboyId = await obterMotoboyIdDaSessao();
-  if (!motoboyId) return { ok: false, error: ERRO_SESSAO };
+  const acesso = await motoristaPodeAcessarEntrega(entregaId);
+  if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
   const supabase = createAdminClient();
   if (!supabase) return { ok: false, error: ERRO_SUPABASE };
@@ -99,7 +90,7 @@ export async function confirmarEntrega(
     .from("entregas")
     .update({ cliente_assinou_em: new Date().toISOString(), status: "entregue" })
     .eq("id", entregaId)
-    .eq("motoboy_id", motoboyId)
+    .eq("motoboy_id", acesso.motoboyId)
     .eq("status", "pendente")
     .not("hora_saida", "is", null)
     .select("id")
