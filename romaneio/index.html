@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rildon Express - Sistema de Entregas & Gestão</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0c1b33">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-app: #080f1d;
+      --bg-card: #0e1e38;
+      --bg-card-sub: #162b4d;
+      --primary-yellow: #f5b000;
+      --primary-yellow-hover: #dba000;
+      --border-blue: #1c355e;
+      --text-white: #ffffff;
+      --text-muted: #8e9bb0;
+      --text-dim: #5c6c84;
+      --green-success: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.25);
+      --red-danger: #ef4444;
+      --danger-glow: rgba(239, 68, 68, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      background-color: #03070f;
+      color: var(--text-white);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .viewport {
+      width: 100%;
+      max-width: 440px;
+      height: 100vh;
+      max-height: 900px;
+      background-color: var(--bg-app);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
+      border: 1px solid var(--border-blue);
+    }
+
+    .viewport.admin-mode {
+      max-width: 980px;
+      height: 94vh;
+      border-radius: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .viewport, .viewport.admin-mode {
+        max-width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border: none;
+        border-radius: 0;
+      }
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-weight: 900;
+      font-size: 1.55rem;
+      letter-spacing: 0.5px;
+      color: #ffffff;
+      text-transform: uppercase;
+      padding: 18px 0;
+    }
+
+    .brand-logo span {
+      color: var(--primary-yellow);
+      font-style: italic;
+    }
+
+    .btn-primary {
+      background-color: var(--primary-yellow);
+      color: #080f1d;
+      font-weight: 700;
+      padding: 13px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-primary:active {
+      transform: scale(0.98);
+      background-color: var(--primary-yellow-hover);
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-card-sub);
+      color: var(--text-white);
+      border: 1px solid var(--border-blue);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-secondary:hover {
+      background-color: #1e3966;
+    }
+
+    .input-field {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      width: 100%;
+      outline: none;
+      user-select: text;
+    }
+    .input-field:focus {
+      border-color: var(--primary-yellow);
+    }
+
+    #screen-login {
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      background: radial-gradient(circle at top, #11264a 0%, #080f1d 75%);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .login-card h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .driver-header {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-blue);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .driver-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .driver-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background-color: #172a4a;
+      border: 2px solid var(--border-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary-yellow);
+    }
+
+    .driver-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .driver-name {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: #fff;
+    }
+
+    .driver-meta {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .driver-meta span {
+      background: var(--bg-card-sub);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border-blue);
+    }
+
+    .tabs-nav {
+      display: flex;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-blue);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      color: var(--primary-yellow);
+      border-bottom-color: var(--primary-yellow);
+      background-color: rgba(245, 176, 0, 0.05);
+    }
+
+    .deliveries-container {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .order-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .order-card:active {
+      background-color: var(--bg-card-sub);
+      border-color: var(--primary-yellow);
+    }
+
+    .order-info-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .order-id-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--primary-yellow);
+    }
+
+    .order-client-name {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .order-meta-info {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .order-status-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .order-status-badge.pending {
+      background: rgba(245, 176, 0, 0.15);
+      color: var(--primary-yellow);
+      border: 1px solid rgba(245, 176, 0, 0.3);
+    }
+    .order-status-badge.completed {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green-success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .detail-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      border-radius: 8px;
+      margin: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .detail-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .detail-row span.label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .detail-row span.val {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .proof-actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 12px;
+    }
+
+    .proof-btn {
+      background-color: var(--bg-card);
+      border: 2px dashed var(--border-blue);
+      border-radius: 8px;
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .proof-btn.collected {
+      border-style: solid;
+      border-color: var(--green-success);
+      background-color: rgba(16, 185, 129, 0.08);
+      color: var(--green-success);
+    }
+
+    .modal-overlay {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.96);
+      z-index: 100;
+      flex-direction: column;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .camera-view-container {
+      flex: 1;
+      position: relative;
+      background-color: #000;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #camera-video, #photo-preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .signature-pad-container {
+      flex: 1;
+      background-color: #ffffff;
+      margin: 16px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #signature-canvas {
+      flex: 1;
+      width: 100%;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .modal-action-bar {
+      padding: 16px;
+      background-color: var(--bg-card);
+      border-top: 1px solid var(--border-blue);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    .circle-action-btn {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.4rem;
+      color: #fff;
+    }
+    .circle-action-btn.confirm {
+      background-color: var(--green-success);
+      box-shadow: 0 4px 14px var(--green-glow);
+    }
+    .circle-action-btn.cancel {
+      background-color: var(--red-danger);
+      box-shadow: 0 4px 14px var(--danger-glow);
+    }
+    .circle-action-btn.shutter {
+      background-color: #fff;
+      border: 4px solid var(--primary-yellow);
+    }
+
+    .admin-header {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-blue);
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .admin-nav {
+      display: flex;
+      background-color: var(--bg-card-sub);
+      border-bottom: 1px solid var(--border-blue);
+      overflow-x: auto;
+    }
+
+    .admin-nav-item {
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+    }
+
+    .admin-nav-item.active {
+      color: var(--primary-yellow);
+      border-bottom-color: var(--primary-yellow);
+      background-color: rgba(245, 176, 0, 0.08);
+    }
+
+    .admin-body {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .admin-grid-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .admin-grid-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .admin-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .admin-card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary-yellow);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .admin-table th {
+      text-align: left;
+      padding: 10px 8px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-blue);
+      font-weight: 600;
+    }
+    .admin-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(28, 53, 94, 0.4);
+      color: #fff;
+    }
+
+    .action-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .action-icon-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 0.95rem;
+      transition: color 0.15s;
+    }
+    .action-icon-btn.edit:hover {
+      color: var(--primary-yellow);
+    }
+    .action-icon-btn.delete:hover {
+      color: var(--red-danger);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    select.input-field {
+      appearance: none;
+      cursor: pointer;
+    }
+    select.input-field option {
+      background-color: var(--bg-card);
+      color: #fff;
+    }
+
+    .proof-preview-thumbnail {
+      width: 44px;
+      height: 44px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid var(--border-blue);
+      cursor: pointer;
+      background-color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="viewport" id="app-viewport">
+
+    <!-- 1. TELA DE LOGIN -->
+    <section class="screen active" id="screen-login">
+      <div class="brand-logo">
+        RILDON<span>EXPRESS</span>
+      </div>
+      <div class="login-card">
+        <h2>Acesso ao Sistema</h2>
+        <div class="form-group" style="text-align:left;">
+          <label>Utilizador</label>
+          <input type="text" id="login-user" class="input-field" placeholder="ex: adm ou motoboy1" autocapitalize="none">
+        </div>
+        <div class="form-group" style="text-align:left;">
+          <label>Palavra-passe</label>
+          <input type="password" id="login-pass" class="input-field" placeholder="••••••••">
+        </div>
+        <button class="btn-primary" id="btn-login-submit" onclick="handleLogin()">Entrar</button>
+        <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 10px;">
+          Acesso ADM: <b>adm</b> / <b>@Eletropecas</b>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. PAINEL DE GESTÃO (ADMINISTRADOR) -->
+    <section class="screen" id="screen-admin">
+      <header class="admin-header">
+        <div class="brand-logo" style="padding:0; font-size: 1.2rem;">
+          RILDON<span>EXPRESS</span> &nbsp;<small style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500;">PAINEL ADM</small>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-secondary" onclick="forceAppUpdate()" title="Atualizar dados do servidor">🔄 Atualizar</button>
+          <button class="btn-secondary" onclick="handleLogout()">Terminar Sessão</button>
+        </div>
+      </header>
+
+      <nav class="admin-nav">
+        <div class="admin-nav-item active" onclick="switchAdminTab('tab-encomendas')">Encomendas (OS)</div>
+        <div class="admin-nav-item" onclick="switchAdminTab('tab-usuarios')">Utilizadores / Entregadores</div>
+        <div class="admin-nav-item" onclick="switchAdminTab('tab-veiculos')">Motos & Veículos</div>
+        <div class="admin-nav-item" onclick="switchAdminTab('tab-historico')">Comprovativos Recebidos</div>
+      </nav>
+
+      <div class="admin-body">
+        
+        <!-- SUB-TAB 1: ENCOMENDAS (OS) -->
+        <div id="tab-encomendas" class="admin-tab-content">
+          <div class="admin-grid-layout">
+            <div class="admin-card">
+              <div class="admin-card-title" id="title-form-order">Nova Encomenda</div>
+              <input type="hidden" id="editing-order-id" value="">
+              <div class="form-group">
+                <label>Cliente</label>
+                <input type="text" id="order-client" class="input-field" placeholder="Nome do Cliente / Empresa">
+              </div>
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label>CNPJ / CPF</label>
+                  <input type="text" id="order-doc" class="input-field" placeholder="000.000.000-00">
+                </div>
+                <div class="form-group">
+                  <label>Valor (R$)</label>
+                  <input type="text" id="order-val" class="input-field" placeholder="0,00">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Morada / Endereço de Entrega</label>
+                <input type="text" id="order-address" class="input-field" placeholder="Rua, Número, Bairro">
+              </div>
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label>Nº Pedido</label>
+                  <input type="text" id="order-num" class="input-field" placeholder="2568">
+                </div>
+                <div class="form-group">
+                  <label>Nota Fiscal (NF)</label>
+                  <input type="text" id="order-nf" class="input-field" placeholder="2568">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Atribuir a Entregador</label>
+                <select id="order-driver-select" class="input-field"></select>
+              </div>
+              <button class="btn-primary" id="btn-save-order" onclick="adminSaveOrder()">Cadastrar Encomenda</button>
+              <button class="btn-secondary" id="btn-cancel-order" onclick="adminCancelEditOrder()" style="display:none;">Cancelar Edição</button>
+            </div>
+
+            <div class="admin-card">
+              <div class="admin-card-title">Encomendas Cadastradas</div>
+              <div style="overflow-x:auto;">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Cliente</th>
+                      <th>NF / Ped.</th>
+                      <th>Entregador</th>
+                      <th>Estado</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-orders-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 2: UTILIZADORES -->
+        <div id="tab-usuarios" class="admin-tab-content" style="display:none;">
+          <div class="admin-grid-layout">
+            <div class="admin-card">
+              <div class="admin-card-title" id="title-form-user">Registar Utilizador</div>
+              <input type="hidden" id="editing-user-id" value="">
+              <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" id="user-name" class="input-field" placeholder="Ex: Carlos Silva">
+              </div>
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label>Nome de Utilizador</label>
+                  <input type="text" id="user-username" class="input-field" placeholder="carlos.silva" autocapitalize="none">
+                </div>
+                <div class="form-group">
+                  <label>Palavra-passe</label>
+                  <input type="password" id="user-password" class="input-field" placeholder="••••••">
+                </div>
+              </div>
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label>Tipo de Função</label>
+                  <select id="user-role" class="input-field">
+                    <option value="motoboy">Motoboy</option>
+                    <option value="taxista">Taxista</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Vínculo</label>
+                  <select id="user-contract" class="input-field">
+                    <option value="Terceirizado">Terceirizado</option>
+                    <option value="Próprio">Próprio</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn-primary" id="btn-save-user" onclick="adminSaveUser()">Criar Utilizador</button>
+              <button class="btn-secondary" id="btn-cancel-user" onclick="adminCancelEditUser()" style="display:none;">Cancelar Edição</button>
+            </div>
+
+            <div class="admin-card">
+              <div class="admin-card-title">Utilizadores Ativos</div>
+              <div style="overflow-x:auto;">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>Login</th>
+                      <th>Função</th>
+                      <th>Vínculo</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-users-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 3: MOTOS E VEÍCULOS -->
+        <div id="tab-veiculos" class="admin-tab-content" style="display:none;">
+          <div class="admin-grid-layout">
+            <div class="admin-card">
+              <div class="admin-card-title" id="title-form-vehicle">Registar Veículo</div>
+              <input type="hidden" id="editing-vehicle-id" value="">
+              <div class="form-group">
+                <label>Modelo do Veículo</label>
+                <input type="text" id="vehicle-model" class="input-field" placeholder="Ex: Honda CG 160 / Shineray">
+              </div>
+              <div class="form-group">
+                <label>Placa da Moto / Veículo</label>
+                <input type="text" id="vehicle-plate" class="input-field" placeholder="Ex: IAN-3256" style="text-transform:uppercase;">
+              </div>
+              <div class="form-group">
+                <label>Vincular a Entregador</label>
+                <select id="vehicle-user-select" class="input-field"></select>
+              </div>
+              <button class="btn-primary" id="btn-save-vehicle" onclick="adminSaveVehicle()">Registar Veículo</button>
+              <button class="btn-secondary" id="btn-cancel-vehicle" onclick="adminCancelEditVehicle()" style="display:none;">Cancelar Edição</button>
+            </div>
+
+            <div class="admin-card">
+              <div class="admin-card-title">Frotas & Veículos</div>
+              <div style="overflow-x:auto;">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Modelo</th>
+                      <th>Placa</th>
+                      <th>Condutor Atribuído</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-vehicles-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 4: HISTÓRICO E COMPROVATIVOS -->
+        <div id="tab-historico" class="admin-tab-content" style="display:none;">
+          <div class="admin-card">
+            <div class="admin-card-title">Comprovativos Coletados em Tempo Real</div>
+            <div style="overflow-x:auto;">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>OS</th>
+                    <th>Cliente</th>
+                    <th>Entregador</th>
+                    <th>Data/Hora</th>
+                    <th>Foto</th>
+                    <th>Assinatura</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-history-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3. TELA DO ENTREGADOR: LISTAGEM -->
+    <section class="screen" id="screen-driver-list">
+      <div class="brand-logo" style="padding: 10px 0 6px 0;">
+        RILDON<span>EXPRESS</span>
+      </div>
+
+      <header class="driver-header">
+        <div class="driver-info">
+          <div class="driver-avatar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+          </div>
+          <div class="driver-details">
+            <span class="driver-name" id="driver-display-name">Fulano de Tal</span>
+            <div class="driver-meta">
+              <span id="driver-display-role">Motoboy</span>
+              <span id="driver-display-vehicle">Shineray | IAN3256</span>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="action-icon-btn" onclick="forceAppUpdate()" title="Atualizar Entregas">
+            🔄
+          </button>
+          <button class="action-icon-btn" onclick="handleLogout()" title="Sair">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div style="background-color: var(--bg-card); padding: 8px 16px; font-size: 0.8rem; font-weight: 700; color: #fff; border-bottom: 1px solid var(--border-blue);">
+        Minhas Entregas
+      </div>
+
+      <nav class="tabs-nav">
+        <button class="tab-btn active" id="tab-btn-pending" onclick="switchDriverOrdersTab('pending')">
+          A fazer (<span id="count-pending">0</span>)
+        </button>
+        <button class="tab-btn" id="tab-btn-completed" onclick="switchDriverOrdersTab('completed')">
+          Feitas (<span id="count-completed">0</span>)
+        </button>
+      </nav>
+
+      <div class="deliveries-container" id="driver-orders-container"></div>
+    </section>
+
+    <!-- 4. TELA DO ENTREGADOR: DETALHES -->
+    <section class="screen" id="screen-driver-detail">
+      <div class="brand-logo" style="padding: 10px 0 6px 0;">
+        RILDON<span>EXPRESS</span>
+      </div>
+
+      <header class="driver-header">
+        <div class="driver-info">
+          <div class="driver-avatar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+          </div>
+          <div class="driver-details">
+            <span class="driver-name" id="detail-driver-name">Fulano de Tal</span>
+            <div class="driver-meta">
+              <span id="detail-driver-meta">Motoboy | Terceirizado</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn-secondary" onclick="showScreen('screen-driver-list')" style="padding: 6px 10px;">Voltar</button>
+      </header>
+
+      <div style="background-color: var(--bg-card); padding: 8px 16px; font-size: 0.8rem; font-weight: 700; color: #fff; border-bottom: 1px solid var(--border-blue);">
+        Minhas Entregas &bull; <span id="detail-order-badge-title" style="color:var(--primary-yellow);">Entrega 001</span>
+      </div>
+
+      <div class="detail-card">
+        <div class="detail-row">
+          <span class="label">Cliente</span>
+          <span class="val" id="detail-client-name">Sicrano Auto Center</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);" id="detail-client-doc">CNPJ: 050.658.0001/02</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Endereço de Entrega</span>
+          <span class="val" id="detail-address">Rua dos Bobos, nº 0</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;">
+          <div class="detail-row">
+            <span class="label">Pedido Nº</span>
+            <span class="val" id="detail-order-num">2568</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Nota Fiscal</span>
+            <span class="val" id="detail-nf-num">2568</span>
+          </div>
+        </div>
+        <div class="detail-row" style="margin-top: 4px;">
+          <span class="label">Valor da Entrega</span>
+          <span class="val" id="detail-order-val" style="color:var(--primary-yellow); font-size: 1.1rem;">R$ 1.056,00</span>
+        </div>
+      </div>
+
+      <div style="padding: 0 16px; font-size: 0.8rem; font-weight: 800; color: #fff; text-align: center; text-transform: uppercase;">
+        Comprovante de Entrega
+      </div>
+
+      <div class="proof-actions-grid">
+        <div class="proof-btn" id="btn-proof-photo" onclick="openCameraModal()">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          <span style="font-weight: 700; font-size: 0.8rem;" id="label-proof-photo">Bater Foto</span>
+        </div>
+
+        <div class="proof-btn" id="btn-proof-sign" onclick="openSignatureModal()">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+          </svg>
+          <span style="font-weight: 700; font-size: 0.8rem;" id="label-proof-sign">Coletar Assinatura</span>
+        </div>
+      </div>
+
+      <div style="padding: 12px 16px; margin-top: auto;">
+        <button class="btn-primary" id="btn-finalize-order" onclick="submitOrderProtocol()" style="width: 100%; display:none;">
+          Encaminhar Protocolo à Empresa
+        </button>
+      </div>
+    </section>
+
+    <!-- 5. MODAL: FOTO -->
+    <div class="modal-overlay" id="modal-camera">
+      <div class="brand-logo" style="padding: 12px 0;">
+        RILDON<span>EXPRESS</span> &bull; FOTO
+      </div>
+      <div class="camera-view-container">
+        <video id="camera-video" autoplay playsinline></video>
+        <img id="photo-preview-img" style="display:none;" alt="Pré-visualização">
+        <canvas id="camera-canvas" style="display:none;"></canvas>
+      </div>
+      <div class="modal-action-bar">
+        <button class="circle-action-btn cancel" onclick="closeCameraModal()">✕</button>
+        <button class="circle-action-btn shutter" id="btn-take-shutter" onclick="takeSnapshot()"></button>
+        <button class="circle-action-btn confirm" id="btn-confirm-photo" style="display:none;" onclick="confirmSnapshot()">✓</button>
+      </div>
+    </div>
+
+    <!-- 6. MODAL: ASSINATURA -->
+    <div class="modal-overlay" id="modal-signature">
+      <div class="brand-logo" style="padding: 12px 0;">
+        RILDON<span>EXPRESS</span> &bull; ASSINATURA
+      </div>
+      <div class="signature-pad-container">
+        <div style="position: absolute; bottom: 40px; width: 80%; left: 10%; border-bottom: 2px solid #cbd5e1; text-align: center;">
+          <span style="color: #94a3b8; font-size: 0.75rem;">Assinatura do Recebedor</span>
+        </div>
+        <canvas id="signature-canvas"></canvas>
+      </div>
+      <div class="modal-action-bar">
+        <button class="circle-action-btn cancel" onclick="closeSignatureModal()">✕</button>
+        <button class="btn-secondary" onclick="clearSignatureCanvas()">Limpar</button>
+        <button class="circle-action-btn confirm" onclick="confirmSignature()">✓</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let DB = {
+      users: [],
+      vehicles: [],
+      orders: []
+    };
+
+    let currentUser = null;
+    let selectedOrder = null;
+    let currentDriverTab = 'pending';
+    let tempCapturedPhoto = null;
+
+    // Carrega a base diretamente do api.php
+    async function loadDB() {
+      try {
+        const res = await fetch('api.php?action=load_all', { cache: 'no-store' });
+        const json = await res.json();
+        if (json.status === 'success') {
+          DB = json.data;
+        }
+      } catch (err) {
+        console.error('Falha ao conectar com api.php:', err);
+      }
+    }
+
+    async function persistEntity(entityName, payloadData) {
+      try {
+        const res = await fetch('api.php?action=save_entity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entity: entityName, payload: payloadData })
+        });
+        return await res.json();
+      } catch (err) {
+        console.error(`Erro ao salvar ${entityName}:`, err);
+        return { status: 'error' };
+      }
+    }
+
+    // Atualização silenciosa: recarrega os dados sem recarregar o navegador
+    async function forceAppUpdate() {
+      const btn = event?.currentTarget;
+      if (btn) btn.style.opacity = '0.5';
+
+      await loadDB();
+
+      if (currentUser) {
+        if (currentUser.role === 'admin') {
+          renderAdminAll();
+        } else {
+          renderDriverOrders();
+        }
+      }
+
+      if (btn) {
+        setTimeout(() => { btn.style.opacity = '1'; }, 300);
+      }
+    }
+
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(screenId);
+      if (target) target.classList.add('active');
+
+      const viewport = document.getElementById('app-viewport');
+      if (screenId === 'screen-admin') {
+        viewport.classList.add('admin-mode');
+      } else {
+        viewport.classList.remove('admin-mode');
+      }
+    }
+
+    async function handleLogin() {
+      const userVal = document.getElementById('login-user').value.trim();
+      const passVal = document.getElementById('login-pass').value.trim();
+
+      await loadDB();
+
+      const user = DB.users.find(u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal);
+
+      if (!user) {
+        alert('Credenciais inválidas. Verifique o utilizador e a palavra-passe.');
+        return;
+      }
+
+      currentUser = user;
+      // Salva na sessão do navegador
+      sessionStorage.setItem('rildon_session_user', JSON.stringify(user));
+
+      if (user.role === 'admin') {
+        renderAdminAll();
+        showScreen('screen-admin');
+      } else {
+        renderDriverInterface();
+        showScreen('screen-driver-list');
+      }
+    }
+
+    function handleLogout() {
+      sessionStorage.removeItem('rildon_session_user');
+      currentUser = null;
+      selectedOrder = null;
+      document.getElementById('login-user').value = '';
+      document.getElementById('login-pass').value = '';
+      showScreen('screen-login');
+    }
+
+    function switchAdminTab(tabId) {
+      document.querySelectorAll('.admin-nav-item').forEach(el => el.classList.remove('active'));
+      event.target.classList.add('active');
+
+      document.querySelectorAll('.admin-tab-content').forEach(c => c.style.display = 'none');
+      document.getElementById(tabId).style.display = 'block';
+    }
+
+    function renderAdminAll() {
+      renderAdminOrders();
+      renderAdminUsers();
+      renderAdminVehicles();
+      renderAdminHistory();
+      populateAdminSelects();
+    }
+
+    function populateAdminSelects() {
+      const driverSelect = document.getElementById('order-driver-select');
+      const vehUserSelect = document.getElementById('vehicle-user-select');
+
+      const drivers = DB.users.filter(u => u.role !== 'admin');
+
+      driverSelect.innerHTML = drivers.map(d => `<option value="${d.id}">${d.name} (${d.role})</option>`).join('');
+      vehUserSelect.innerHTML = `<option value="">-- Sem vínculo --</option>` + 
+        drivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    }
+
+    /* ADMIN: ENCOMENDAS */
+    async function adminSaveOrder() {
+      const editId = document.getElementById('editing-order-id').value;
+      const client = document.getElementById('order-client').value.trim();
+      const doc = document.getElementById('order-doc').value.trim();
+      const val = document.getElementById('order-val').value.trim();
+      const address = document.getElementById('order-address').value.trim();
+      const num = document.getElementById('order-num').value.trim();
+      const nf = document.getElementById('order-nf').value.trim();
+      const driverId = document.getElementById('order-driver-select').value;
+
+      if (!client || !address || !num) {
+        alert('Preencha os campos obrigatórios: Cliente, Endereço e Nº Pedido.');
+        return;
+      }
+
+      if (editId) {
+        const order = DB.orders.find(o => o.id === editId);
+        if (order) {
+          order.client = client;
+          order.doc = doc || 'Não informado';
+          order.value = val || '0,00';
+          order.address = address;
+          order.orderNum = num;
+          order.nfNum = nf || num;
+          order.driverId = driverId;
+        }
+      } else {
+        const newOrder = {
+          id: 'ord_' + Date.now(),
+          code: String(DB.orders.length + 1).padStart(3, '0'),
+          client,
+          doc: doc || 'Não informado',
+          address,
+          orderNum: num,
+          nfNum: nf || num,
+          value: val || '0,00',
+          driverId,
+          status: 'pending',
+          photo: null,
+          signature: null,
+          deliveredAt: null
+        };
+        DB.orders.push(newOrder);
+      }
+
+      await persistEntity('encomendas', DB.orders);
+      adminCancelEditOrder();
+      renderAdminOrders();
+      renderAdminHistory();
+      alert('Encomenda guardada com sucesso!');
+    }
+
+    function adminEditOrder(orderId) {
+      const order = DB.orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      document.getElementById('editing-order-id').value = order.id;
+      document.getElementById('order-client').value = order.client;
+      document.getElementById('order-doc').value = order.doc;
+      document.getElementById('order-val').value = order.value;
+      document.getElementById('order-address').value = order.address;
+      document.getElementById('order-num').value = order.orderNum;
+      document.getElementById('order-nf').value = order.nfNum;
+      document.getElementById('order-driver-select').value = order.driverId;
+
+      document.getElementById('title-form-order').textContent = `Editar Encomenda #${order.code}`;
+      document.getElementById('btn-save-order').textContent = 'Salvar Alterações';
+      document.getElementById('btn-cancel-order').style.display = 'inline-flex';
+    }
+
+    function adminCancelEditOrder() {
+      document.getElementById('editing-order-id').value = '';
+      document.getElementById('order-client').value = '';
+      document.getElementById('order-doc').value = '';
+      document.getElementById('order-val').value = '';
+      document.getElementById('order-address').value = '';
+      document.getElementById('order-num').value = '';
+      document.getElementById('order-nf').value = '';
+      document.getElementById('title-form-order').textContent = 'Nova Encomenda';
+      document.getElementById('btn-save-order').textContent = 'Cadastrar Encomenda';
+      document.getElementById('btn-cancel-order').style.display = 'none';
+    }
+
+    function renderAdminOrders() {
+      const tbody = document.getElementById('admin-orders-tbody');
+      tbody.innerHTML = DB.orders.map(o => {
+        const driver = DB.users.find(u => u.id === o.driverId);
+        const statusBadge = o.status === 'completed' 
+          ? `<span class="order-status-badge completed">Concluída</span>`
+          : `<span class="order-status-badge pending">Pendente</span>`;
+
+        return `
+          <tr>
+            <td><b>${o.code}</b></td>
+            <td>${o.client}</td>
+            <td>${o.nfNum} / ${o.orderNum}</td>
+            <td>${driver ? driver.name : 'Não atribuído'}</td>
+            <td>${statusBadge}</td>
+            <td>
+              <div class="action-group">
+                <button class="action-icon-btn edit" onclick="adminEditOrder('${o.id}')" title="Editar">✎</button>
+                <button class="action-icon-btn delete" onclick="adminDeleteOrder('${o.id}')" title="Excluir">✕</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function adminDeleteOrder(orderId) {
+      if (!confirm('Deseja eliminar esta encomenda?')) return;
+      DB.orders = DB.orders.filter(o => o.id !== orderId);
+      await persistEntity('encomendas', DB.orders);
+      renderAdminOrders();
+      renderAdminHistory();
+    }
+
+    /* ADMIN: UTILIZADORES */
+    async function adminSaveUser() {
+      const editId = document.getElementById('editing-user-id').value;
+      const name = document.getElementById('user-name').value.trim();
+      const username = document.getElementById('user-username').value.trim();
+      const password = document.getElementById('user-password').value.trim();
+      const role = document.getElementById('user-role').value;
+      const contract = document.getElementById('user-contract').value;
+
+      if (!name || !username || !password) {
+        alert('Preencha todos os campos do utilizador.');
+        return;
+      }
+
+      const duplicate = DB.users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== editId);
+      if (duplicate) {
+        alert('Este nome de utilizador já se encontra registado.');
+        return;
+      }
+
+      if (editId) {
+        const user = DB.users.find(u => u.id === editId);
+        if (user) {
+          user.name = name;
+          user.username = username;
+          user.password = password;
+          user.role = role;
+          user.contract = contract;
+        }
+      } else {
+        const newUser = {
+          id: 'usr_' + Date.now(),
+          name,
+          username,
+          password,
+          role,
+          contract
+        };
+        DB.users.push(newUser);
+      }
+
+      await persistEntity('usuarios', DB.users);
+      adminCancelEditUser();
+      renderAdminUsers();
+      populateAdminSelects();
+      alert('Utilizador guardado com sucesso!');
+    }
+
+    function adminEditUser(userId) {
+      const user = DB.users.find(u => u.id === userId);
+      if (!user) return;
+
+      document.getElementById('editing-user-id').value = user.id;
+      document.getElementById('user-name').value = user.name;
+      document.getElementById('user-username').value = user.username;
+      document.getElementById('user-password').value = user.password;
+      document.getElementById('user-role').value = user.role;
+      document.getElementById('user-contract').value = user.contract || 'Terceirizado';
+
+      document.getElementById('title-form-user').textContent = `Editar Utilizador: ${user.name}`;
+      document.getElementById('btn-save-user').textContent = 'Salvar Alterações';
+      document.getElementById('btn-cancel-user').style.display = 'inline-flex';
+    }
+
+    function adminCancelEditUser() {
+      document.getElementById('editing-user-id').value = '';
+      document.getElementById('user-name').value = '';
+      document.getElementById('user-username').value = '';
+      document.getElementById('user-password').value = '';
+      document.getElementById('title-form-user').textContent = 'Registar Utilizador';
+      document.getElementById('btn-save-user').textContent = 'Criar Utilizador';
+      document.getElementById('btn-cancel-user').style.display = 'none';
+    }
+
+    function renderAdminUsers() {
+      const tbody = document.getElementById('admin-users-tbody');
+      tbody.innerHTML = DB.users.map(u => `
+        <tr>
+          <td><b>${u.name}</b></td>
+          <td>${u.username}</td>
+          <td>${u.role}</td>
+          <td>${u.contract || '-'}</td>
+          <td>
+            <div class="action-group">
+              <button class="action-icon-btn edit" onclick="adminEditUser('${u.id}')" title="Editar">✎</button>
+              ${u.username === 'adm' 
+                ? '<small style="color:var(--text-dim)">Protegido</small>' 
+                : `<button class="action-icon-btn delete" onclick="adminDeleteUser('${u.id}')" title="Excluir">✕</button>`}
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function adminDeleteUser(userId) {
+      if (!confirm('Deseja remover este utilizador?')) return;
+      DB.users = DB.users.filter(u => u.id !== userId);
+      await persistEntity('usuarios', DB.users);
+      renderAdminUsers();
+      populateAdminSelects();
+    }
+
+    /* ADMIN: VEÍCULOS */
+    async function adminSaveVehicle() {
+      const editId = document.getElementById('editing-vehicle-id').value;
+      const model = document.getElementById('vehicle-model').value.trim();
+      const plate = document.getElementById('vehicle-plate').value.trim().toUpperCase();
+      const userId = document.getElementById('vehicle-user-select').value;
+
+      if (!model || !plate) {
+        alert('Indique o modelo e a placa do veículo.');
+        return;
+      }
+
+      if (editId) {
+        const veh = DB.vehicles.find(v => v.id === editId);
+        if (veh) {
+          if (veh.userId && veh.userId !== userId) {
+            const oldUser = DB.users.find(u => u.id === veh.userId);
+            if (oldUser && oldUser.vehicleId === editId) delete oldUser.vehicleId;
+          }
+
+          veh.model = model;
+          veh.plate = plate;
+          veh.userId = userId || null;
+
+          if (userId) {
+            const u = DB.users.find(usr => usr.id === userId);
+            if (u) u.vehicleId = veh.id;
+          }
+        }
+      } else {
+        const newVeh = {
+          id: 'veh_' + Date.now(),
+          model,
+          plate,
+          userId: userId || null
+        };
+
+        DB.vehicles.push(newVeh);
+
+        if (userId) {
+          const u = DB.users.find(usr => usr.id === userId);
+          if (u) u.vehicleId = newVeh.id;
+        }
+      }
+
+      await persistEntity('veiculos', DB.vehicles);
+      await persistEntity('usuarios', DB.users);
+      adminCancelEditVehicle();
+      renderAdminVehicles();
+      alert('Veículo guardado com sucesso!');
+    }
+
+    function adminEditVehicle(vehicleId) {
+      const veh = DB.vehicles.find(v => v.id === vehicleId);
+      if (!veh) return;
+
+      document.getElementById('editing-vehicle-id').value = veh.id;
+      document.getElementById('vehicle-model').value = veh.model;
+      document.getElementById('vehicle-plate').value = veh.plate;
+      document.getElementById('vehicle-user-select').value = veh.userId || '';
+
+      document.getElementById('title-form-vehicle').textContent = `Editar Veículo: ${veh.plate}`;
+      document.getElementById('btn-save-vehicle').textContent = 'Salvar Alterações';
+      document.getElementById('btn-cancel-vehicle').style.display = 'inline-flex';
+    }
+
+    function adminCancelEditVehicle() {
+      document.getElementById('editing-vehicle-id').value = '';
+      document.getElementById('vehicle-model').value = '';
+      document.getElementById('vehicle-plate').value = '';
+      document.getElementById('vehicle-user-select').value = '';
+      document.getElementById('title-form-vehicle').textContent = 'Registar Veículo';
+      document.getElementById('btn-save-vehicle').textContent = 'Registar Veículo';
+      document.getElementById('btn-cancel-vehicle').style.display = 'none';
+    }
+
+    function renderAdminVehicles() {
+      const tbody = document.getElementById('admin-vehicles-tbody');
+      tbody.innerHTML = DB.vehicles.map(v => {
+        const user = DB.users.find(u => u.id === v.userId);
+        return `
+          <tr>
+            <td>${v.model}</td>
+            <td><b>${v.plate}</b></td>
+            <td>${user ? user.name : 'Nenhum'}</td>
+            <td>
+              <div class="action-group">
+                <button class="action-icon-btn edit" onclick="adminEditVehicle('${v.id}')" title="Editar">✎</button>
+                <button class="action-icon-btn delete" onclick="adminDeleteVehicle('${v.id}')" title="Excluir">✕</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function adminDeleteVehicle(vehicleId) {
+      if (!confirm('Deseja remover este veículo?')) return;
+      DB.vehicles = DB.vehicles.filter(v => v.id !== vehicleId);
+      DB.users.forEach(u => {
+        if (u.vehicleId === vehicleId) delete u.vehicleId;
+      });
+      await persistEntity('veiculos', DB.vehicles);
+      await persistEntity('usuarios', DB.users);
+      renderAdminVehicles();
+    }
+
+    function renderAdminHistory() {
+      const tbody = document.getElementById('admin-history-tbody');
+      const completed = DB.orders.filter(o => o.status === 'completed');
+
+      if (completed.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">Nenhum comprovativo recebido até ao momento.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = completed.map(o => {
+        const driver = DB.users.find(u => u.id === o.driverId);
+        return `
+          <tr>
+            <td><b>${o.code}</b></td>
+            <td>${o.client}</td>
+            <td>${driver ? driver.name : '-'}</td>
+            <td>${o.deliveredAt || '-'}</td>
+            <td>
+              ${o.photo ? `<img src="${o.photo}" class="proof-preview-thumbnail" onclick="window.open('${o.photo}')">` : '-'}
+            </td>
+            <td>
+              ${o.signature ? `<img src="${o.signature}" class="proof-preview-thumbnail" onclick="window.open('${o.signature}')">` : '-'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    /* FLUXO DO ENTREGADOR */
+    function renderDriverInterface() {
+      document.getElementById('driver-display-name').textContent = currentUser.name;
+      document.getElementById('driver-display-role').textContent = `${currentUser.role.toUpperCase()} | ${currentUser.contract || 'Terceirizado'}`;
+
+      const veh = DB.vehicles.find(v => v.id === currentUser.vehicleId || v.userId === currentUser.id);
+      document.getElementById('driver-display-vehicle').textContent = veh ? `${veh.model} | ${veh.plate}` : 'Sem veículo registado';
+
+      renderDriverOrders();
+    }
+
+    function switchDriverOrdersTab(tab) {
+      currentDriverTab = tab;
+      document.getElementById('tab-btn-pending').classList.toggle('active', tab === 'pending');
+      document.getElementById('tab-btn-completed').classList.toggle('active', tab === 'completed');
+      renderDriverOrders();
+    }
+
+    function renderDriverOrders() {
+      const container = document.getElementById('driver-orders-container');
+      const userOrders = DB.orders.filter(o => o.driverId === currentUser.id);
+
+      const pendingOrders = userOrders.filter(o => o.status === 'pending');
+      const completedOrders = userOrders.filter(o => o.status === 'completed');
+
+      document.getElementById('count-pending').textContent = pendingOrders.length;
+      document.getElementById('count-completed').textContent = completedOrders.length;
+
+      const listToRender = currentDriverTab === 'pending' ? pendingOrders : completedOrders;
+
+      if (listToRender.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding: 40px 20px; color: var(--text-dim); font-size: 0.85rem;">
+            Nenhuma entrega encontrada nesta aba.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = listToRender.map(o => `
+        <div class="order-card" onclick="openOrderDetail('${o.id}')">
+          <div class="order-info-left">
+            <span class="order-id-badge">ENTREGA #${o.code}</span>
+            <span class="order-client-name">${o.client}</span>
+            <span class="order-meta-info">NF: ${o.nfNum} &bull; Pedido: ${o.orderNum}</span>
+          </div>
+          <div>
+            <span class="order-status-badge ${o.status}">${o.status === 'pending' ? 'A Fazer' : 'Concluída'}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openOrderDetail(orderId) {
+      selectedOrder = DB.orders.find(o => o.id === orderId);
+      if (!selectedOrder) return;
+
+      document.getElementById('detail-driver-name').textContent = currentUser.name;
+      document.getElementById('detail-driver-meta').textContent = `${currentUser.role.toUpperCase()} | ${currentUser.contract || 'Terceirizado'}`;
+
+      document.getElementById('detail-order-badge-title').textContent = `Entrega ${selectedOrder.code}`;
+      document.getElementById('detail-client-name').textContent = selectedOrder.client;
+      document.getElementById('detail-client-doc').textContent = `DOC: ${selectedOrder.doc}`;
+      document.getElementById('detail-address').textContent = selectedOrder.address;
+      document.getElementById('detail-order-num').textContent = selectedOrder.orderNum;
+      document.getElementById('detail-nf-num').textContent = selectedOrder.nfNum;
+      document.getElementById('detail-order-val').textContent = `R$ ${selectedOrder.value}`;
+
+      refreshProofButtonsState();
+      showScreen('screen-driver-detail');
+    }
+
+    function refreshProofButtonsState() {
+      const btnPhoto = document.getElementById('btn-proof-photo');
+      const btnSign = document.getElementById('btn-proof-sign');
+      const btnSubmit = document.getElementById('btn-finalize-order');
+
+      if (selectedOrder.photo) {
+        btnPhoto.classList.add('collected');
+        document.getElementById('label-proof-photo').textContent = '✓ Foto Coletada';
+      } else {
+        btnPhoto.classList.remove('collected');
+        document.getElementById('label-proof-photo').textContent = 'Bater Foto';
+      }
+
+      if (selectedOrder.signature) {
+        btnSign.classList.add('collected');
+        document.getElementById('label-proof-sign').textContent = '✓ Assinatura Coletada';
+      } else {
+        btnSign.classList.remove('collected');
+        document.getElementById('label-proof-sign').textContent = 'Coletar Assinatura';
+      }
+
+      if (selectedOrder.status === 'pending' && (selectedOrder.photo || selectedOrder.signature)) {
+        btnSubmit.style.display = 'flex';
+      } else {
+        btnSubmit.style.display = 'none';
+      }
+    }
+
+    // Grava as imagens físicas via PHP e finaliza o protocolo
+    async function submitOrderProtocol() {
+      if (!selectedOrder) return;
+
+      const payload = {
+        orderId: selectedOrder.id,
+        photo: selectedOrder.photo,
+        signature: selectedOrder.signature
+      };
+
+      try {
+        const res = await fetch('api.php?action=submit_protocol', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+        if (json.status === 'success') {
+          alert('Protocolo de entrega enviado e arquivado com sucesso!');
+          await loadDB();
+          showScreen('screen-driver-list');
+          renderDriverOrders();
+        } else {
+          alert('Erro ao enviar protocolo: ' + (json.message || 'Falha no servidor'));
+        }
+      } catch (err) {
+        console.error('Erro na submissão:', err);
+        alert('Erro ao conectar ao servidor local.');
+      }
+    }
+
+    /* CÂMARA */
+    let videoStream = null;
+
+    async function openCameraModal() {
+      const modal = document.getElementById('modal-camera');
+      const video = document.getElementById('camera-video');
+      const preview = document.getElementById('photo-preview-img');
+      const shutter = document.getElementById('btn-take-shutter');
+      const confirmBtn = document.getElementById('btn-confirm-photo');
+
+      preview.style.display = 'none';
+      video.style.display = 'block';
+      shutter.style.display = 'flex';
+      confirmBtn.style.display = 'none';
+      modal.classList.add('active');
+
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false
+        });
+        video.srcObject = videoStream;
+      } catch (err) {
+        console.warn('Câmara indisponível:', err);
+        const inputFallback = document.createElement('input');
+        inputFallback.type = 'file';
+        inputFallback.accept = 'image/*';
+        inputFallback.capture = 'environment';
+        inputFallback.onchange = (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              selectedOrder.photo = evt.target.result;
+              closeCameraModal();
+              refreshProofButtonsState();
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+        inputFallback.click();
+      }
+    }
+
+    function takeSnapshot() {
+      const video = document.getElementById('camera-video');
+      const canvas = document.getElementById('camera-canvas');
+      const preview = document.getElementById('photo-preview-img');
+
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+      ctx.fillStyle = '#f5b000';
+      ctx.font = 'bold 16px Inter, sans-serif';
+      ctx.fillText(`OS #${selectedOrder.code} - ${new Date().toLocaleString('pt-BR')}`, 14, canvas.height - 15);
+
+      tempCapturedPhoto = canvas.toDataURL('image/jpeg', 0.8);
+      preview.src = tempCapturedPhoto;
+      preview.style.display = 'block';
+      video.style.display = 'none';
+
+      document.getElementById('btn-take-shutter').style.display = 'none';
+      document.getElementById('btn-confirm-photo').style.display = 'flex';
+    }
+
+    function confirmSnapshot() {
+      if (tempCapturedPhoto && selectedOrder) {
+        selectedOrder.photo = tempCapturedPhoto;
+      }
+      closeCameraModal();
+      refreshProofButtonsState();
+    }
+
+    function closeCameraModal() {
+      if (videoStream) {
+        videoStream.getTracks().forEach(t => t.stop());
+        videoStream = null;
+      }
+      document.getElementById('modal-camera').classList.remove('active');
+    }
+
+    /* ASSINATURA */
+    const signCanvas = document.getElementById('signature-canvas');
+    const signCtx = signCanvas.getContext('2d');
+    let isDrawing = false;
+    let hasSignatureDrawn = false;
+
+    function initSignatureCanvas() {
+      const rect = signCanvas.getBoundingClientRect();
+      signCanvas.width = rect.width || 340;
+      signCanvas.height = rect.height || 260;
+      signCtx.strokeStyle = '#0f274a';
+      signCtx.lineWidth = 3;
+      signCtx.lineCap = 'round';
+      signCtx.lineJoin = 'round';
+    }
+
+    function openSignatureModal() {
+      document.getElementById('modal-signature').classList.add('active');
+      setTimeout(initSignatureCanvas, 100);
+      hasSignatureDrawn = false;
+    }
+
+    function closeSignatureModal() {
+      document.getElementById('modal-signature').classList.remove('active');
+    }
+
+    function clearSignatureCanvas() {
+      signCtx.clearRect(0, 0, signCanvas.width, signCanvas.height);
+      hasSignatureDrawn = false;
+    }
+
+    function getCanvasCoords(evt) {
+      const rect = signCanvas.getBoundingClientRect();
+      const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+      const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    signCanvas.addEventListener('mousedown', (e) => {
+      isDrawing = true;
+      const { x, y } = getCanvasCoords(e);
+      signCtx.beginPath();
+      signCtx.moveTo(x, y);
+    });
+
+    signCanvas.addEventListener('mousemove', (e) => {
+      if (!isDrawing) return;
+      const { x, y } = getCanvasCoords(e);
+      signCtx.lineTo(x, y);
+      signCtx.stroke();
+      hasSignatureDrawn = true;
+    });
+
+    window.addEventListener('mouseup', () => { isDrawing = false; });
+
+    signCanvas.addEventListener('touchstart', (e) => {
+      isDrawing = true;
+      const { x, y } = getCanvasCoords(e);
+      signCtx.beginPath();
+      signCtx.moveTo(x, y);
+      e.preventDefault();
+    }, { passive: false });
+
+    signCanvas.addEventListener('touchmove', (e) => {
+      if (!isDrawing) return;
+      const { x, y } = getCanvasCoords(e);
+      signCtx.lineTo(x, y);
+      signCtx.stroke();
+      hasSignatureDrawn = true;
+      e.preventDefault();
+    }, { passive: false });
+
+    signCanvas.addEventListener('touchend', () => { isDrawing = false; });
+
+    function confirmSignature() {
+      if (!hasSignatureDrawn) {
+        alert('Por favor, recolha a assinatura antes de confirmar.');
+        return;
+      }
+      selectedOrder.signature = signCanvas.toDataURL('image/png');
+      closeSignatureModal();
+      refreshProofButtonsState();
+    }
+
+    // Inicialização da aplicação com restauração de sessão
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadDB();
+
+      const savedSession = sessionStorage.getItem('rildon_session_user');
+      if (savedSession) {
+        try {
+          currentUser = JSON.parse(savedSession);
+          if (currentUser.role === 'admin') {
+            renderAdminAll();
+            showScreen('screen-admin');
+          } else {
+            renderDriverInterface();
+            showScreen('screen-driver-list');
+          }
+        } catch (e) {
+          sessionStorage.removeItem('rildon_session_user');
+        }
+      }
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      }
+    });
+  </script>
+</body>
+</html>

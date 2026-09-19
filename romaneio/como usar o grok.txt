@@ -1,0 +1,18 @@
+Endereço ngrok
+https://ripeness-qualified-donut.ngrok-free.dev
+
+----------------------------------------------------------------------
+Endereço do App Romaneio
+
+https://ripeness-qualified-donut.ngrok-free.dev/romaneio/
+
+----------------------------------------------------------------------
+
+Para acessar o romaneio pelo celular no inicio do dia.
+Inicie o Xamp
+Inicie o modulo apache do Xamp
+Abra o powershell como adm e execute o comando
+
+ngrok http 80 --url https://ripeness-qualified-donut.ngrok-free.dev
+
+-----------------------------------------------------------------------

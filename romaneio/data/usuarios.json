@@ -1,0 +1,35 @@
+[
+    {
+        "id": "usr_adm",
+        "name": "Administrador",
+        "username": "adm",
+        "password": "@Eletropecas",
+        "role": "admin",
+        "contract": "Próprio"
+    },
+    {
+        "id": "usr_1789760324631",
+        "name": "ERALDINO DE JESUS NASCIMENTO",
+        "username": "Eraldino",
+        "password": "223344",
+        "role": "motoboy",
+        "contract": "Terceirizado",
+        "vehicleId": "veh_1"
+    },
+    {
+        "id": "usr_1789760359479",
+        "name": "Lidiane",
+        "username": "lidiane",
+        "password": "223344",
+        "role": "admin",
+        "contract": "Próprio"
+    },
+    {
+        "id": "usr_1789823498045",
+        "name": "Hickson Martins",
+        "username": "Hicson",
+        "password": "223344",
+        "role": "admin",
+        "contract": "Próprio"
+    }
+]
