@@ -68,7 +68,7 @@ function configurarAcao(
 ) {
   checarRateLimitMock.mockResolvedValue({
     permitido: true,
-    restantes: 9,
+    restante: 9,
   });
   motoristaPodeAcessarEntregaMock.mockResolvedValue({
     motoboyId: "motorista-a",
@@ -161,7 +161,7 @@ describe("ações de entrega do motorista", () => {
   it("não toca no banco quando a entrega não pertence ao motorista", async () => {
     checarRateLimitMock.mockResolvedValue({
       permitido: true,
-      restantes: 9,
+      restante: 9,
     });
     motoristaPodeAcessarEntregaMock.mockResolvedValue(null);
 
