@@ -11,7 +11,7 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, Loader2, MapPin, Truck } from "lucide-react";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 import { confirmarEntrega, iniciarEntrega } from "@/app/motorista/actions";
-import type { EntregaMotorista } from "@/lib/data/entregas";
+import type { EntregaMotorista } from "@/lib/data/entregas-motorista";
 
 export function EntregaMotoristaCard({
   entrega,
