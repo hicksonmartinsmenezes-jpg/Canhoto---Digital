@@ -21,6 +21,7 @@ import {
   entregaHistorico,
   entregas,
   motoboys,
+  usuariosAdmin,
 } from "@/lib/db/schema";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
@@ -244,11 +245,16 @@ export async function getAtividadeRecente(
         clienteNome: entregas.clienteNome,
         criadoEm: entregas.criadoEm,
         cadastradoPorNome: colaboradores.nome,
+        cadastradoPorAdminEmail: usuariosAdmin.email,
       })
       .from(entregas)
       .leftJoin(
         colaboradores,
         eq(entregas.cadastradoPor, colaboradores.id)
+      )
+      .leftJoin(
+        usuariosAdmin,
+        eq(entregas.cadastradoPorAdmin, usuariosAdmin.id)
       )
       .orderBy(desc(entregas.criadoEm))
       .limit(limit),
@@ -272,7 +278,7 @@ export async function getAtividadeRecente(
       id: `cadastro-${entrega.id}`,
       hora: formatHora(entrega.criadoEm),
       titulo: "Entrega registrada",
-      descricao: `${entrega.cadastradoPorNome ?? "Alguém"} cadastrou a entrega #${entrega.numero} (${entrega.clienteNome}).`,
+      descricao: `${entrega.cadastradoPorNome ?? entrega.cadastradoPorAdminEmail ?? "Alguém"} cadastrou a entrega #${entrega.numero} (${entrega.clienteNome}).`,
       cor: "primary",
       timestamp: entrega.criadoEm,
     });
