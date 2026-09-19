@@ -1,66 +1,172 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
+import { getDb } from "@/lib/db";
+import { codigoErroPostgres, mensagemErroBanco } from "@/lib/db/errors";
+import { motoboys } from "@/lib/db/schema";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 import { gerarPin, hashPin, normalizarTelefone } from "@/lib/motorista-auth";
-import { descreverErroSupabase } from "@/lib/erros-supabase";
 
 export interface MotoboyActionResult {
   ok: boolean;
   error?: string;
 }
 
-function mensagemErroTelefoneDuplicado(mensagem: string): string | null {
-  if (mensagem.toLowerCase().includes("duplicate key")) {
-    return "Esse telefone já está cadastrado para outro motorista.";
-  }
-  return null;
-}
+const ERRO_BANCO =
+  "Banco de dados indisponível neste ambiente — confirme a DATABASE_URL.";
 
-export async function criarMotoboy(nome: string, telefone: string): Promise<MotoboyActionResult> {
-  if (!(await exigirAdminAutenticado())) return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+export async function criarMotoboy(
+  nome: string,
+  telefone: string
+): Promise<MotoboyActionResult> {
+  if (!(await exigirAdminAutenticado())) {
+    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  }
+
   const limite = await checarRateLimit("criarMotoboy");
-  if (!limite.permitido) return { ok: false, error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo." };
-  const supabase = createAdminClient();
-  if (!supabase) return { ok: false, error: "O Supabase ainda não está configurado neste ambiente — confirme o .env.local." };
+  if (!limite.permitido) {
+    return {
+      ok: false,
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
+  }
+
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
+
   const nomeLimpo = nome.trim();
-  if (!nomeLimpo) return { ok: false, error: "Informe o nome do motoboy." };
+  if (!nomeLimpo) {
+    return { ok: false, error: "Informe o nome do motoboy." };
+  }
+
   const telefoneLimpo = normalizarTelefone(telefone);
-  const { error } = await supabase.from("motoboys").insert({ nome: nomeLimpo, telefone: telefoneLimpo || null });
-  if (error) return { ok: false, error: mensagemErroTelefoneDuplicado(error.message) ?? `Erro ao cadastrar: ${descreverErroSupabase(error.message)}.` };
+
+  try {
+    await db.insert(motoboys).values({
+      nome: nomeLimpo,
+      telefone: telefoneLimpo || null,
+    });
+  } catch (error) {
+    if (codigoErroPostgres(error) === "23505") {
+      return {
+        ok: false,
+        error: "Esse telefone já está cadastrado para outro motorista.",
+      };
+    }
+    return {
+      ok: false,
+      error: mensagemErroBanco("criarMotoboy", error),
+    };
+  }
+
   revalidatePath("/motoboys");
   return { ok: true };
 }
 
-export async function atualizarMotoboy(id: string, dados: { nome: string; telefone: string; ativo: boolean }): Promise<MotoboyActionResult> {
-  if (!(await exigirAdminAutenticado())) return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+export async function atualizarMotoboy(
+  id: string,
+  dados: { nome: string; telefone: string; ativo: boolean }
+): Promise<MotoboyActionResult> {
+  if (!(await exigirAdminAutenticado())) {
+    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  }
+
   const limite = await checarRateLimit("atualizarMotoboy");
-  if (!limite.permitido) return { ok: false, error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo." };
-  const supabase = createAdminClient();
-  if (!supabase) return { ok: false, error: "O Supabase ainda não está configurado neste ambiente — confirme o .env.local." };
+  if (!limite.permitido) {
+    return {
+      ok: false,
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
+  }
+
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
+
   const nomeLimpo = dados.nome.trim();
-  if (!nomeLimpo) return { ok: false, error: "Informe o nome do motoboy." };
+  if (!nomeLimpo) {
+    return { ok: false, error: "Informe o nome do motoboy." };
+  }
+
   const telefoneLimpo = normalizarTelefone(dados.telefone);
-  const { error } = await supabase.from("motoboys").update({ nome: nomeLimpo, telefone: telefoneLimpo || null, ativo: dados.ativo }).eq("id", id);
-  if (error) return { ok: false, error: mensagemErroTelefoneDuplicado(error.message) ?? `Erro ao salvar: ${descreverErroSupabase(error.message)}.` };
+
+  try {
+    const [atualizado] = await db
+      .update(motoboys)
+      .set({
+        nome: nomeLimpo,
+        telefone: telefoneLimpo || null,
+        ativo: dados.ativo,
+      })
+      .where(eq(motoboys.id, id))
+      .returning({ id: motoboys.id });
+
+    if (!atualizado) {
+      return { ok: false, error: "Motorista não encontrado." };
+    }
+  } catch (error) {
+    if (codigoErroPostgres(error) === "23505") {
+      return {
+        ok: false,
+        error: "Esse telefone já está cadastrado para outro motorista.",
+      };
+    }
+    return {
+      ok: false,
+      error: mensagemErroBanco("atualizarMotoboy", error),
+    };
+  }
+
   revalidatePath("/motoboys");
   revalidatePath("/canhotos");
   return { ok: true };
 }
 
-export async function excluirMotoboy(id: string): Promise<MotoboyActionResult> {
-  if (!(await exigirAdminAutenticado())) return { ok: false, error: "Sessão administrativa inválida ou expirada." };
-  const limite = await checarRateLimit("excluirMotoboy", RATE_LIMIT_ESTRITO);
-  if (!limite.permitido) return { ok: false, error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo." };
-  const supabase = createAdminClient();
-  if (!supabase) return { ok: false, error: "O Supabase ainda não está configurado neste ambiente — confirme o .env.local." };
-  const { error } = await supabase.from("motoboys").delete().eq("id", id);
-  if (error) {
-    const referenciado = error.message.toLowerCase().includes("foreign key");
-    return { ok: false, error: referenciado ? "Esse motoboy já tem entregas registradas — desative em vez de excluir." : `Erro ao excluir: ${descreverErroSupabase(error.message)}.` };
+export async function excluirMotoboy(
+  id: string
+): Promise<MotoboyActionResult> {
+  if (!(await exigirAdminAutenticado())) {
+    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
   }
+
+  const limite = await checarRateLimit("excluirMotoboy", RATE_LIMIT_ESTRITO);
+  if (!limite.permitido) {
+    return {
+      ok: false,
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
+  }
+
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
+
+  try {
+    const [excluido] = await db
+      .delete(motoboys)
+      .where(eq(motoboys.id, id))
+      .returning({ id: motoboys.id });
+
+    if (!excluido) {
+      return { ok: false, error: "Motorista não encontrado." };
+    }
+  } catch (error) {
+    if (codigoErroPostgres(error) === "23503") {
+      return {
+        ok: false,
+        error:
+          "Esse motoboy já tem entregas registradas — desative em vez de excluir.",
+      };
+    }
+    return {
+      ok: false,
+      error: mensagemErroBanco("excluirMotoboy", error),
+    };
+  }
+
   revalidatePath("/motoboys");
   return { ok: true };
 }
@@ -69,18 +175,58 @@ export interface GerarPinResult extends MotoboyActionResult {
   pin?: string;
 }
 
-export async function gerarPinMotoboy(id: string): Promise<GerarPinResult> {
-  if (!(await exigirAdminAutenticado())) return { ok: false, error: "Sessão administrativa inválida ou expirada." };
-  const limite = await checarRateLimit("gerarPinMotoboy", RATE_LIMIT_ESTRITO);
-  if (!limite.permitido) return { ok: false, error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo." };
-  const supabase = createAdminClient();
-  if (!supabase) return { ok: false, error: "O Supabase ainda não está configurado neste ambiente — confirme o .env.local." };
-  const { data: motoboy, error: erroConsulta } = await supabase.from("motoboys").select("telefone").eq("id", id).maybeSingle();
-  if (erroConsulta || !motoboy) return { ok: false, error: "Motorista não encontrado." };
-  if (!motoboy.telefone) return { ok: false, error: "Cadastre o telefone do motorista antes de gerar o PIN." };
+export async function gerarPinMotoboy(
+  id: string
+): Promise<GerarPinResult> {
+  if (!(await exigirAdminAutenticado())) {
+    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  }
+
+  const limite = await checarRateLimit(
+    "gerarPinMotoboy",
+    RATE_LIMIT_ESTRITO
+  );
+  if (!limite.permitido) {
+    return {
+      ok: false,
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
+  }
+
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
+
+  const [motoboy] = await db
+    .select({ telefone: motoboys.telefone })
+    .from(motoboys)
+    .where(eq(motoboys.id, id))
+    .limit(1);
+
+  if (!motoboy) {
+    return { ok: false, error: "Motorista não encontrado." };
+  }
+  if (!motoboy.telefone) {
+    return {
+      ok: false,
+      error: "Cadastre o telefone do motorista antes de gerar o PIN.",
+    };
+  }
+
   const pin = gerarPin();
-  const { error } = await supabase.from("motoboys").update({ pin_hash: hashPin(pin) }).eq("id", id);
-  if (error) return { ok: false, error: `Erro ao gerar o PIN: ${descreverErroSupabase(error.message)}.` };
+
+  try {
+    await db
+      .update(motoboys)
+      .set({ pinHash: hashPin(pin) })
+      .where(eq(motoboys.id, id));
+  } catch (error) {
+    return {
+      ok: false,
+      error: mensagemErroBanco("gerarPinMotoboy", error),
+    };
+  }
+
   revalidatePath("/motoboys");
   return { ok: true, pin };
 }
