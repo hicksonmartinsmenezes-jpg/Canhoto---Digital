@@ -85,15 +85,11 @@ export async function confirmarEntrega(
   const supabase = createAdminClient();
   if (!supabase) return { ok: false, error: ERRO_SUPABASE };
 
-  const { data, error } = await supabase
-    .from("entregas")
-    .update({ cliente_assinou_em: new Date().toISOString(), status: "entregue" })
-    .eq("id", entregaId)
-    .eq("motoboy_id", acesso.motoboyId)
-    .eq("status", "pendente")
-    .not("hora_saida", "is", null)
-    .select("id")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("confirmar_entrega_motorista", {
+    p_entrega_id: entregaId,
+    p_motoboy_id: acesso.motoboyId,
+    p_confirmado_em: new Date().toISOString(),
+  });
 
   if (error) {
     return { ok: false, error: `Erro ao confirmar a entrega: ${descreverErroSupabase(error.message)}.` };
