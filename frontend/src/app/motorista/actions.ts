@@ -42,6 +42,26 @@ export async function iniciarEntrega(
     };
   }
 
+  const bytes = new Uint8Array(await arquivo.arrayBuffer());
+  const ehJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const ehPng =
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+  const ehWebp =
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
+
+  const assinaturaValida =
+    (arquivo.type === "image/jpeg" && ehJpeg) ||
+    (arquivo.type === "image/png" && ehPng) ||
+    (arquivo.type === "image/webp" && ehWebp);
+
+  if (!assinaturaValida) {
+    return { ok: false, error: "O conteúdo do arquivo não corresponde ao formato informado." };
+  }
+
   const acesso = await motoristaPodeAcessarEntrega(entregaId);
   if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
@@ -64,6 +84,12 @@ export async function iniciarEntrega(
   if (!data) {
     return { ok: false, error: "Entrega não encontrada ou já iniciada." };
   }
+
+  await supabase.from("entrega_eventos_motorista").insert({
+    entrega_id: entregaId,
+    motoboy_id: acesso.motoboyId,
+    tipo: "saida_iniciada",
+  });
 
   revalidatePath("/motorista");
   return { ok: true };
@@ -124,6 +150,12 @@ export async function confirmarEntrega(
       error: "Entrega não encontrada ou ainda não iniciada.",
     };
   }
+
+  await supabase.from("entrega_eventos_motorista").insert({
+    entrega_id: entregaId,
+    motoboy_id: acesso.motoboyId,
+    tipo: "entrega_confirmada",
+  });
 
   revalidatePath("/motorista");
   return { ok: true };
@@ -262,6 +294,12 @@ export async function salvarObservacaoMotorista(
     return { ok: false, error: `Erro ao salvar observação: ${descreverErroSupabase(error.message)}.` };
   }
   if (!data) return { ok: false, error: "Entrega não encontrada ou já concluída." };
+
+  await supabase.from("entrega_eventos_motorista").insert({
+    entrega_id: entregaId,
+    motoboy_id: acesso.motoboyId,
+    tipo: "observacao_atualizada",
+  });
 
   revalidatePath("/motorista");
   revalidatePath(`/motorista/entregas/${entregaId}`);
