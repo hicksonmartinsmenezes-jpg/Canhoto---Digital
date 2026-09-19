@@ -25,6 +25,45 @@ env:
   NODE_VERSION: 22
 
 jobs:
+  postgres-schema:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    env:
+      CANHOTO_POSTGRES_DB: canhoto_ci
+      CANHOTO_POSTGRES_USER: canhoto_ci
+      CANHOTO_POSTGRES_PASSWORD: senha_apenas_para_ci
+      CANHOTO_POSTGRES_PORT: 5433
+    steps:
+      - uses: actions/checkout@v4
+      - name: Valida o Docker Compose
+        run: docker compose config --quiet
+      - name: Sobe o PostgreSQL descartável
+        run: docker compose up -d postgres
+      - name: Aguarda o banco ficar saudável
+        run: |
+          for tentativa in {1..30}; do
+            status="$(docker inspect --format='{{.State.Health.Status}}' canhoto_digital_postgres)"
+            if [ "$status" = "healthy" ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs postgres
+          exit 1
+      - name: Aplica a baseline PostgreSQL
+        run: |
+          cat backend/postgres/migrations/0001_baseline.sql |
+            docker exec -i canhoto_digital_postgres               psql -v ON_ERROR_STOP=1 -U canhoto_ci -d canhoto_ci
+      - name: Verifica tabelas essenciais
+        run: |
+          tabelas="$(docker exec canhoto_digital_postgres             psql -At -U canhoto_ci -d canhoto_ci             -c "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('setores','colaboradores','usuarios_admin','motoboys','entregas','entrega_anexos','entrega_historico');")"
+          test "$tabelas" = "7"
+      - name: Derruba o banco descartável
+        if: always()
+        run: docker compose down -v
+
   lint:
     runs-on: ubuntu-latest
     steps:
