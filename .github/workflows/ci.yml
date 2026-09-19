@@ -52,10 +52,14 @@ jobs:
           done
           docker compose logs postgres
           exit 1
-      - name: Aplica a baseline PostgreSQL
+      - name: Aplica as migrations PostgreSQL
         run: |
-          cat backend/postgres/migrations/0001_baseline.sql |
-            docker exec -i canhoto_digital_postgres               psql -v ON_ERROR_STOP=1 -U canhoto_ci -d canhoto_ci
+          for migration in backend/postgres/migrations/*.sql; do
+            echo "Aplicando $migration"
+            cat "$migration" |
+              docker exec -i canhoto_digital_postgres \
+                psql -v ON_ERROR_STOP=1 -U canhoto_ci -d canhoto_ci
+          done
       - name: Verifica tabelas essenciais
         run: |
           tabelas="$(docker exec canhoto_digital_postgres             psql -At -U canhoto_ci -d canhoto_ci             -c "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('setores','colaboradores','usuarios_admin','motoboys','entregas','entrega_anexos','entrega_historico');")"
