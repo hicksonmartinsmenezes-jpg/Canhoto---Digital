@@ -1,10 +1,12 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { exigirAdminAutenticado } from "@/lib/admin-auth";
+import { obterAdminAutenticado } from "@/lib/admin-auth";
+import { getDb } from "@/lib/db";
+import { mensagemErroBanco } from "@/lib/db/errors";
+import { entregaHistorico, entregas } from "@/lib/db/schema";
 import { checarRateLimit } from "@/lib/rate-limit";
-import { descreverErroSupabase } from "@/lib/erros-supabase";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 export interface AtualizarEntregaInput {
@@ -30,7 +32,8 @@ export async function atualizarEntrega(
   id: string,
   input: AtualizarEntregaInput
 ): Promise<AtualizarEntregaResult> {
-  if (!(await exigirAdminAutenticado())) {
+  const admin = await obterAdminAutenticado();
+  if (!admin) {
     return { ok: false, error: "Sessão administrativa inválida ou expirada." };
   }
 
@@ -38,16 +41,17 @@ export async function atualizarEntrega(
   if (!limite.permitido) {
     return {
       ok: false,
-      error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
     };
   }
 
-  const supabase = createAdminClient();
-  if (!supabase) {
+  const db = getDb();
+  if (!db) {
     return {
       ok: false,
       error:
-        "O Supabase ainda não está configurado neste ambiente — confirme o .env.local.",
+        "Banco de dados indisponível neste ambiente — confirme a DATABASE_URL.",
     };
   }
 
@@ -62,25 +66,59 @@ export async function atualizarEntrega(
     return { ok: false, error: "Selecione a forma de pagamento." };
   }
 
-  const { error } = await supabase
-    .from("entregas")
-    .update({
-      data: input.data,
-      cliente_nome: clienteNome,
-      cliente_telefone: input.clienteTelefone.trim() || null,
-      endereco: input.endereco.trim() || null,
-      numero_pedido: input.numeroPedido.trim() || null,
-      numero_nfe: input.numeroNfe.trim() || null,
-      valor_pagamento: input.valorPagamento,
-      forma_pagamento: input.formaPagamento,
-      motoboy_id: input.motoboyId || null,
-      observacoes: input.observacoes.trim() || null,
-      status: input.status,
-    })
-    .eq("id", id);
+  try {
+    const atualizada = await db.transaction(async (tx) => {
+      const [atual] = await tx
+        .select({ status: entregas.status })
+        .from(entregas)
+        .where(eq(entregas.id, id))
+        .limit(1);
 
-  if (error) {
-    return { ok: false, error: `Erro ao salvar as alterações: ${descreverErroSupabase(error.message)}.` };
+      if (!atual) return false;
+
+      const [resultado] = await tx
+        .update(entregas)
+        .set({
+          data: input.data,
+          clienteNome,
+          clienteTelefone: input.clienteTelefone.trim() || null,
+          endereco: input.endereco.trim() || null,
+          numeroPedido: input.numeroPedido.trim() || null,
+          numeroNfe: input.numeroNfe.trim() || null,
+          valorPagamento: input.valorPagamento.toFixed(2),
+          formaPagamento: input.formaPagamento,
+          motoboyId: input.motoboyId || null,
+          observacoes: input.observacoes.trim() || null,
+          status: input.status,
+        })
+        .where(eq(entregas.id, id))
+        .returning({ id: entregas.id });
+
+      if (!resultado) return false;
+
+      if (atual.status !== input.status) {
+        await tx.insert(entregaHistorico).values({
+          entregaId: id,
+          statusAnterior: atual.status,
+          statusNovo: input.status,
+          alteradoPor: admin.colaboradorId,
+          alteradoPorAdmin: admin.colaboradorId
+            ? null
+            : admin.usuarioAdminId,
+        });
+      }
+
+      return true;
+    });
+
+    if (!atualizada) {
+      return { ok: false, error: "Entrega não encontrada." };
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: mensagemErroBanco("atualizarEntrega", error),
+    };
   }
 
   revalidatePath("/canhotos");
