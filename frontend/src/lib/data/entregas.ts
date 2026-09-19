@@ -1,18 +1,30 @@
-// Camada de acesso a dados reais de Entregas (Supabase) — substitui os
-// mocks de `@/lib/dashboard-mock` e `@/lib/canhotos-mock` no Dashboard e na
-// tela de Entregas. Ver claude/modelo-de-dados-site.md para o schema.
+// Camada de acesso a dados de Entregas no PostgreSQL local via Drizzle.
 //
-// Enquanto o projeto Supabase não estiver criado/configurado (variáveis de
-// ambiente ausentes), `createAdminClient()` devolve `null` e todas as
-// funções aqui devolvem o mesmo resultado "vazio" que um banco real ainda
-// sem dados devolveria — a UI já foi construída para lidar com isso.
+// Sem DATABASE_URL configurada, getDb() devolve null e as funções retornam
+// o mesmo estado vazio que a UI já sabe exibir. Em produção, DATABASE_URL
+// será obrigatória.
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  isNull,
+  lte,
+  ne,
+} from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import {
+  colaboradores,
+  entregaHistorico,
+  entregas,
+  motoboys,
+} from "@/lib/db/schema";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
-// pt-BR: garante o formato "AAAA-MM-DD" que os inputs <input type="date">
-// esperam, independente de fuso.
 function paraDataInput(dataIso: string): string {
   return dataIso.slice(0, 10);
 }
@@ -25,32 +37,37 @@ export interface DashboardStats {
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const supabase = createAdminClient();
-  if (!supabase) {
-    return { totalEntregas: 0, entregues: 0, pendentes: 0, motoristasAtivos: 0 };
+  const db = getDb();
+  if (!db) {
+    return {
+      totalEntregas: 0,
+      entregues: 0,
+      pendentes: 0,
+      motoristasAtivos: 0,
+    };
   }
 
   const [total, entregues, pendentes, motoristasAtivos] = await Promise.all([
-    supabase.from("entregas").select("*", { count: "exact", head: true }),
-    supabase
-      .from("entregas")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "entregue"),
-    supabase
-      .from("entregas")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pendente"),
-    supabase
-      .from("motoboys")
-      .select("*", { count: "exact", head: true })
-      .eq("ativo", true),
+    db.select({ total: count() }).from(entregas),
+    db
+      .select({ total: count() })
+      .from(entregas)
+      .where(eq(entregas.status, "entregue")),
+    db
+      .select({ total: count() })
+      .from(entregas)
+      .where(eq(entregas.status, "pendente")),
+    db
+      .select({ total: count() })
+      .from(motoboys)
+      .where(eq(motoboys.ativo, true)),
   ]);
 
   return {
-    totalEntregas: total.count ?? 0,
-    entregues: entregues.count ?? 0,
-    pendentes: pendentes.count ?? 0,
-    motoristasAtivos: motoristasAtivos.count ?? 0,
+    totalEntregas: total[0]?.total ?? 0,
+    entregues: entregues[0]?.total ?? 0,
+    pendentes: pendentes[0]?.total ?? 0,
+    motoristasAtivos: motoristasAtivos[0]?.total ?? 0,
   };
 }
 
@@ -60,9 +77,6 @@ export interface EntregaPorDia {
   total: number;
 }
 
-// Chave "AAAA-MM-DD" em horário local — não usa `toISOString()` (que
-// converte pra UTC e pode empurrar a data pro dia errado perto da meia-noite,
-// dependendo do fuso do servidor).
 function paraChaveDiaLocal(d: Date): string {
   const ano = d.getFullYear();
   const mes = String(d.getMonth() + 1).padStart(2, "0");
@@ -70,13 +84,6 @@ function paraChaveDiaLocal(d: Date): string {
   return `${ano}-${mes}-${dia}`;
 }
 
-// Gráfico "Entregas por dia" do Dashboard (Issue #25) — série dos últimos
-// `dias` dias, com todo dia presente mesmo sem nenhuma entrega (aparece como
-// 0 em vez de sumir, senão a leitura visual da tendência fica distorcida).
-// Sem GROUP BY no Postgres/PostgREST: busca as datas do período e agrega em
-// JS — mais simples que criar uma view só pra isso, e o volume de linhas do
-// admin interno não justifica a otimização (ver princípio "evitar
-// overengineering" em AGENTS.md).
 export async function getEntregasPorDia(dias = 14): Promise<EntregaPorDia[]> {
   const hoje = new Date();
   const inicio = new Date(hoje);
@@ -89,20 +96,22 @@ export async function getEntregasPorDia(dias = 14): Promise<EntregaPorDia[]> {
     porDia.set(paraChaveDiaLocal(d), 0);
   }
 
-  const supabase = createAdminClient();
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("entregas")
-      .select("data")
-      .gte("data", paraChaveDiaLocal(inicio))
-      .lte("data", paraChaveDiaLocal(hoje));
+  const db = getDb();
+  if (db) {
+    const rows = await db
+      .select({ data: entregas.data })
+      .from(entregas)
+      .where(
+        and(
+          gte(entregas.data, paraChaveDiaLocal(inicio)),
+          lte(entregas.data, paraChaveDiaLocal(hoje))
+        )
+      );
 
-    if (!error && data) {
-      for (const e of data) {
-        const chave = e.data.slice(0, 10);
-        if (porDia.has(chave)) {
-          porDia.set(chave, (porDia.get(chave) ?? 0) + 1);
-        }
+    for (const entrega of rows) {
+      const chave = entrega.data.slice(0, 10);
+      if (porDia.has(chave)) {
+        porDia.set(chave, (porDia.get(chave) ?? 0) + 1);
       }
     }
   }
@@ -122,25 +131,32 @@ export interface EntregaRecente {
   status: StatusEntrega;
 }
 
-export async function getEntregasRecentes(limit = 5): Promise<EntregaRecente[]> {
-  const supabase = createAdminClient();
-  if (!supabase) return [];
+export async function getEntregasRecentes(
+  limit = 5
+): Promise<EntregaRecente[]> {
+  const db = getDb();
+  if (!db) return [];
 
-  const { data, error } = await supabase
-    .from("entregas")
-    .select("numero, cliente_nome, valor_pagamento, forma_pagamento, data, status")
-    .order("criado_em", { ascending: false })
+  const rows = await db
+    .select({
+      numero: entregas.numero,
+      clienteNome: entregas.clienteNome,
+      valorPagamento: entregas.valorPagamento,
+      formaPagamento: entregas.formaPagamento,
+      data: entregas.data,
+      status: entregas.status,
+    })
+    .from(entregas)
+    .orderBy(desc(entregas.criadoEm))
     .limit(limit);
 
-  if (error || !data) return [];
-
-  return data.map((e) => ({
-    numero: `#${e.numero}`,
-    cliente: e.cliente_nome,
-    valor: formatBRL(Number(e.valor_pagamento)),
-    formaPagamento: e.forma_pagamento,
-    data: formatDateBR(e.data),
-    status: e.status,
+  return rows.map((entrega) => ({
+    numero: `#${entrega.numero}`,
+    cliente: entrega.clienteNome,
+    valor: formatBRL(Number(entrega.valorPagamento)),
+    formaPagamento: entrega.formaPagamento,
+    data: formatDateBR(entrega.data),
+    status: entrega.status,
   }));
 }
 
@@ -150,9 +166,6 @@ export interface Alerta {
   titulo: string;
   descricao: string;
   tom: "critico" | "atencao" | "info";
-  /** Quando presente, o card do alerta vira um link — usado pelo alerta de
-   * conferência de caixa (Issue #9) pra levar direto pra lista de Entregas,
-   * onde a ação "Conferir" fica disponível em cada linha pendente. */
   href?: string;
 }
 
@@ -161,45 +174,42 @@ function pluralEntregas(n: number): string {
 }
 
 export async function getAlertas(): Promise<Alerta[]> {
-  const supabase = createAdminClient();
-  if (!supabase) return [];
+  const db = getDb();
+  if (!db) return [];
 
-  // Nota: o alerta de "conferência de caixa" (Issue #9) foi pausado aqui de
-  // propósito — a logística de comprovação de pagamento ficou fora de
-  // escopo por enquanto (decisão de 21/08/2026). A view
-  // `entregas_pendentes_conferencia` e a Server Action `conferirCaixa`
-  // continuam intactas no banco/backend, só não são mais consultadas/
-  // mostradas nesta função. O foco passa a ser só o status da entrega
-  // (pendente → entregue/cancelado).
   const [aguardandoSaida, semNfe] = await Promise.all([
-    supabase
-      .from("entregas")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pendente")
-      .is("hora_saida", null),
-    supabase
-      .from("entregas")
-      .select("*", { count: "exact", head: true })
-      .is("numero_nfe", null),
+    db
+      .select({ total: count() })
+      .from(entregas)
+      .where(
+        and(eq(entregas.status, "pendente"), isNull(entregas.horaSaida))
+      ),
+    db
+      .select({ total: count() })
+      .from(entregas)
+      .where(isNull(entregas.numeroNfe)),
   ]);
 
+  const aguardandoSaidaTotal = aguardandoSaida[0]?.total ?? 0;
+  const semNfeTotal = semNfe[0]?.total ?? 0;
   const alertas: Alerta[] = [];
 
-  if ((aguardandoSaida.count ?? 0) > 0) {
+  if (aguardandoSaidaTotal > 0) {
     alertas.push({
       id: "aguardando-saida",
       tag: "SAÍDA",
-      titulo: `${pluralEntregas(aguardandoSaida.count!)} aguardando saída`,
-      descricao: "Cadastradas no sistema, mas o motorista ainda não saiu para entrega.",
+      titulo: `${pluralEntregas(aguardandoSaidaTotal)} aguardando saída`,
+      descricao:
+        "Cadastradas no sistema, mas o motorista ainda não saiu para entrega.",
       tom: "atencao",
     });
   }
 
-  if ((semNfe.count ?? 0) > 0) {
+  if (semNfeTotal > 0) {
     alertas.push({
       id: "sem-nfe",
       tag: "CADASTRO",
-      titulo: `${pluralEntregas(semNfe.count!)} sem número de NF-e`,
+      titulo: `${pluralEntregas(semNfeTotal)} sem número de NF-e`,
       descricao: "Cadastro incompleto — dificulta a consulta depois.",
       tom: "info",
     });
@@ -217,70 +227,75 @@ export interface AtividadeItem {
   timestamp: string;
 }
 
-// Feed de atividade real, montado a partir de duas fontes:
-// 1. Cadastro de novas entregas (`entregas.criado_em`).
-// 2. Mudanças de status (`entrega_historico`, gravado automaticamente por
-//    trigger quando `entregas.status` muda).
-// Nota: hoje não existe uma trilha própria para "motorista saiu" (grava só
-// `hora_saida`, sem mudar status) nem "pagamento conferido no caixa" (grava
-// `caixa_confirmou_em`, também sem mudar status) — esses dois eventos não
-// aparecem aqui ainda. Se fizer sentido mostrá-los, precisamos de um
-// trigger adicional gravando em `entrega_historico` nesses updates também.
-export async function getAtividadeRecente(limit = 4): Promise<AtividadeItem[]> {
-  const supabase = createAdminClient();
-  if (!supabase) return [];
+// O histórico de status no PostgreSQL local é gravado explicitamente pela
+// camada de escrita na mesma transação da mudança. Isso permite registrar o
+// ator real (colaborador ou motoboy) em vez de inferi-lo por um trigger.
+export async function getAtividadeRecente(
+  limit = 4
+): Promise<AtividadeItem[]> {
+  const db = getDb();
+  if (!db) return [];
 
   const [cadastros, mudancasStatus] = await Promise.all([
-    supabase
-      .from("entregas")
-      .select(
-        "id, numero, cliente_nome, criado_em, cadastrado_por:colaboradores!cadastrado_por(nome)"
+    db
+      .select({
+        id: entregas.id,
+        numero: entregas.numero,
+        clienteNome: entregas.clienteNome,
+        criadoEm: entregas.criadoEm,
+        cadastradoPorNome: colaboradores.nome,
+      })
+      .from(entregas)
+      .leftJoin(
+        colaboradores,
+        eq(entregas.cadastradoPor, colaboradores.id)
       )
-      .order("criado_em", { ascending: false })
+      .orderBy(desc(entregas.criadoEm))
       .limit(limit),
-    supabase
-      .from("entrega_historico")
-      .select("id, status_novo, alterado_em, entregas(numero)")
-      .order("alterado_em", { ascending: false })
+    db
+      .select({
+        id: entregaHistorico.id,
+        statusNovo: entregaHistorico.statusNovo,
+        alteradoEm: entregaHistorico.alteradoEm,
+        numero: entregas.numero,
+      })
+      .from(entregaHistorico)
+      .innerJoin(entregas, eq(entregaHistorico.entregaId, entregas.id))
+      .orderBy(desc(entregaHistorico.alteradoEm))
       .limit(limit),
   ]);
 
   const itens: AtividadeItem[] = [];
 
-  for (const e of cadastros.data ?? []) {
-    const cadastradoPor = Array.isArray(e.cadastrado_por)
-      ? e.cadastrado_por[0]
-      : e.cadastrado_por;
+  for (const entrega of cadastros) {
     itens.push({
-      id: `cadastro-${e.id}`,
-      hora: formatHora(e.criado_em),
+      id: `cadastro-${entrega.id}`,
+      hora: formatHora(entrega.criadoEm),
       titulo: "Entrega registrada",
-      descricao: `${cadastradoPor?.nome ?? "Alguém"} cadastrou a entrega #${e.numero} (${e.cliente_nome}).`,
+      descricao: `${entrega.cadastradoPorNome ?? "Alguém"} cadastrou a entrega #${entrega.numero} (${entrega.clienteNome}).`,
       cor: "primary",
-      timestamp: e.criado_em,
+      timestamp: entrega.criadoEm,
     });
   }
 
-  for (const h of mudancasStatus.data ?? []) {
-    const entrega = Array.isArray(h.entregas) ? h.entregas[0] : h.entregas;
-    const numero = entrega?.numero ?? "?";
-    if (h.status_novo === "entregue") {
+  for (const historico of mudancasStatus) {
+    if (historico.statusNovo === "entregue") {
       itens.push({
-        id: `historico-${h.id}`,
-        hora: formatHora(h.alterado_em),
+        id: `historico-${historico.id}`,
+        hora: formatHora(historico.alteradoEm),
         titulo: "Entrega confirmada pelo cliente",
-        descricao: `Cliente confirmou o recebimento da entrega #${numero}.`,
+        descricao: `Cliente confirmou o recebimento da entrega #${historico.numero}.`,
         cor: "info",
-        timestamp: h.alterado_em,
+        timestamp: historico.alteradoEm,
       });
-    } else if (h.status_novo === "cancelado") {
+    } else if (historico.statusNovo === "cancelado") {
       itens.push({
-        id: `historico-${h.id}`,
-        hora: formatHora(h.alterado_em),
+        id: `historico-${historico.id}`,
+        hora: formatHora(historico.alteradoEm),
         titulo: "Entrega cancelada",
-        descricao: `A entrega #${numero} foi marcada como cancelada.`,
+        descricao: `A entrega #${historico.numero} foi marcada como cancelada.`,
         cor: "muted",
-        timestamp: h.alterado_em,
+        timestamp: historico.alteradoEm,
       });
     }
   }
@@ -309,60 +324,52 @@ export interface EntregaListItem {
   motoboy: string | null;
   caixa: string | null;
   status: StatusEntrega;
-  /** Espelha a condição da view `entregas_pendentes_conferencia` (ver
-   * claude/modelo-de-dados-site.md): entrega já entregue, com pagamento
-   * recebido na hora (não "prazo") e que ainda não tem `caixa_id` — mostra
-   * a ação "Conferir" na tabela (Issue #9). */
   pendenteConferencia: boolean;
 }
 
-// `status`: filtro opcional do select "Filtrar situação" da tela de
-// Entregas (Issue #7) — quando ausente, devolve todas as entregas como
-// antes.
 export async function getEntregas(
   status?: StatusEntrega
 ): Promise<EntregaListItem[]> {
-  const supabase = createAdminClient();
-  if (!supabase) return [];
+  const db = getDb();
+  if (!db) return [];
 
-  let query = supabase
-    .from("entregas")
-    .select(
-      `id, numero, data, cliente_nome, numero_pedido, numero_nfe, valor_pagamento,
-       forma_pagamento, status,
-       motoboy:motoboys!motoboy_id ( nome ),
-       caixa:colaboradores!caixa_id ( nome )`
-    );
+  const rows = await db
+    .select({
+      id: entregas.id,
+      numero: entregas.numero,
+      data: entregas.data,
+      clienteNome: entregas.clienteNome,
+      numeroPedido: entregas.numeroPedido,
+      numeroNfe: entregas.numeroNfe,
+      valorPagamento: entregas.valorPagamento,
+      formaPagamento: entregas.formaPagamento,
+      status: entregas.status,
+      motoboyNome: motoboys.nome,
+      caixaNome: colaboradores.nome,
+    })
+    .from(entregas)
+    .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
+    .leftJoin(colaboradores, eq(entregas.caixaId, colaboradores.id))
+    .where(status ? eq(entregas.status, status) : undefined)
+    .orderBy(desc(entregas.numero));
 
-  if (status) {
-    query = query.eq("status", status);
-  }
-
-  const { data, error } = await query.order("numero", { ascending: false });
-
-  if (error || !data) return [];
-
-  return data.map((e) => {
-    const motoboy = Array.isArray(e.motoboy) ? e.motoboy[0] : e.motoboy;
-    const caixa = Array.isArray(e.caixa) ? e.caixa[0] : e.caixa;
-    return {
-      id: e.id,
-      numero: `#${e.numero}`,
-      data: formatDateBR(e.data),
-      cliente: e.cliente_nome,
-      numeroPedido: e.numero_pedido,
-      numeroNfe: e.numero_nfe,
-      valor: formatBRL(Number(e.valor_pagamento)),
-      formaPagamento: e.forma_pagamento,
-      motoboy: motoboy?.nome ?? null,
-      caixa: caixa?.nome ?? null,
-      status: e.status,
-      pendenteConferencia:
-        e.status === "entregue" &&
-        e.forma_pagamento !== "prazo" &&
-        caixa === null,
-    };
-  });
+  return rows.map((entrega) => ({
+    id: entrega.id,
+    numero: `#${entrega.numero}`,
+    data: formatDateBR(entrega.data),
+    cliente: entrega.clienteNome,
+    numeroPedido: entrega.numeroPedido,
+    numeroNfe: entrega.numeroNfe,
+    valor: formatBRL(Number(entrega.valorPagamento)),
+    formaPagamento: entrega.formaPagamento,
+    motoboy: entrega.motoboyNome,
+    caixa: entrega.caixaNome,
+    status: entrega.status,
+    pendenteConferencia:
+      entrega.status === "entregue" &&
+      entrega.formaPagamento !== "prazo" &&
+      entrega.caixaNome === null,
+  }));
 }
 
 export interface RelatorioFiltros {
@@ -414,59 +421,68 @@ function relatorioVazio(): RelatorioEntregas {
   };
 }
 
-// Relatório de entregas (Issue #8) — consulta com filtros de período,
-// situação e forma de pagamento sobre as entregas já registradas, com
-// totais agregados (quantidade, valor total, ticket médio, quebra por
-// forma de pagamento). Reaproveita a mesma tabela `entregas` das telas de
-// Dashboard e Entregas; sem paginação, no mesmo espírito de `getEntregas`
-// (volume do admin interno não justifica a complexidade — ver AGENTS.md).
-// A agregação é feita aqui em JS a partir das linhas já buscadas, em vez de
-// uma segunda query de agregação no Postgres — mesmo raciocínio de
-// `getEntregasPorDia`.
 export async function getRelatorioEntregas(
   filtros: RelatorioFiltros
 ): Promise<RelatorioEntregas> {
-  const supabase = createAdminClient();
-  if (!supabase) return relatorioVazio();
+  const db = getDb();
+  if (!db) return relatorioVazio();
 
-  let query = supabase
-    .from("entregas")
-    .select(
-      `id, numero, data, cliente_nome, valor_pagamento, forma_pagamento, status,
-       motoboy:motoboys!motoboy_id ( nome )`
-    );
+  const rows = await db
+    .select({
+      id: entregas.id,
+      numero: entregas.numero,
+      data: entregas.data,
+      clienteNome: entregas.clienteNome,
+      valorPagamento: entregas.valorPagamento,
+      formaPagamento: entregas.formaPagamento,
+      status: entregas.status,
+      motoboyNome: motoboys.nome,
+    })
+    .from(entregas)
+    .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
+    .where(
+      and(
+        filtros.dataInicio
+          ? gte(entregas.data, filtros.dataInicio)
+          : undefined,
+        filtros.dataFim ? lte(entregas.data, filtros.dataFim) : undefined,
+        filtros.status
+          ? eq(entregas.status, filtros.status)
+          : undefined,
+        filtros.formaPagamento
+          ? eq(entregas.formaPagamento, filtros.formaPagamento)
+          : undefined
+      )
+    )
+    .orderBy(desc(entregas.data), desc(entregas.numero));
 
-  if (filtros.dataInicio) query = query.gte("data", filtros.dataInicio);
-  if (filtros.dataFim) query = query.lte("data", filtros.dataFim);
-  if (filtros.status) query = query.eq("status", filtros.status);
-  if (filtros.formaPagamento) query = query.eq("forma_pagamento", filtros.formaPagamento);
+  const itens: RelatorioEntregaItem[] = rows.map((entrega) => ({
+    id: entrega.id,
+    numero: `#${entrega.numero}`,
+    data: formatDateBR(entrega.data),
+    cliente: entrega.clienteNome,
+    valor: formatBRL(Number(entrega.valorPagamento)),
+    valorNumerico: Number(entrega.valorPagamento),
+    formaPagamento: entrega.formaPagamento,
+    motoboy: entrega.motoboyNome,
+    status: entrega.status,
+  }));
 
-  const { data, error } = await query
-    .order("data", { ascending: false })
-    .order("numero", { ascending: false });
+  const valorTotalNumerico = itens.reduce(
+    (soma, item) => soma + item.valorNumerico,
+    0
+  );
 
-  if (error || !data) return relatorioVazio();
+  const porFormaMapa = new Map<
+    FormaPagamento,
+    { quantidade: number; valor: number }
+  >();
 
-  const itens: RelatorioEntregaItem[] = data.map((e) => {
-    const motoboy = Array.isArray(e.motoboy) ? e.motoboy[0] : e.motoboy;
-    return {
-      id: e.id,
-      numero: `#${e.numero}`,
-      data: formatDateBR(e.data),
-      cliente: e.cliente_nome,
-      valor: formatBRL(Number(e.valor_pagamento)),
-      valorNumerico: Number(e.valor_pagamento),
-      formaPagamento: e.forma_pagamento,
-      motoboy: motoboy?.nome ?? null,
-      status: e.status,
-    };
-  });
-
-  const valorTotalNumerico = itens.reduce((soma, i) => soma + i.valorNumerico, 0);
-
-  const porFormaMapa = new Map<FormaPagamento, { quantidade: number; valor: number }>();
   for (const item of itens) {
-    const atual = porFormaMapa.get(item.formaPagamento) ?? { quantidade: 0, valor: 0 };
+    const atual = porFormaMapa.get(item.formaPagamento) ?? {
+      quantidade: 0,
+      valor: 0,
+    };
     atual.quantidade += 1;
     atual.valor += item.valorNumerico;
     porFormaMapa.set(item.formaPagamento, atual);
@@ -477,12 +493,14 @@ export async function getRelatorioEntregas(
     totais: {
       quantidade: itens.length,
       valorTotal: formatBRL(valorTotalNumerico),
-      ticketMedio: formatBRL(itens.length > 0 ? valorTotalNumerico / itens.length : 0),
+      ticketMedio: formatBRL(
+        itens.length > 0 ? valorTotalNumerico / itens.length : 0
+      ),
       porFormaPagamento: Array.from(porFormaMapa.entries())
-        .map(([formaPagamento, v]) => ({
+        .map(([formaPagamento, valor]) => ({
           formaPagamento,
-          quantidade: v.quantidade,
-          valor: formatBRL(v.valor),
+          quantidade: valor.quantidade,
+          valor: formatBRL(valor.valor),
         }))
         .sort((a, b) => b.quantidade - a.quantidade),
     },
@@ -509,38 +527,48 @@ export interface EntregaDetalhe {
 export async function getEntregaById(
   id: string
 ): Promise<EntregaDetalhe | null> {
-  const supabase = createAdminClient();
-  if (!supabase) return null;
+  const db = getDb();
+  if (!db) return null;
 
-  const { data, error } = await supabase
-    .from("entregas")
-    .select(
-      `id, numero, data, cliente_nome, cliente_telefone, endereco, numero_pedido, numero_nfe,
-       valor_pagamento, forma_pagamento, observacoes, status, motoboy_id,
-       motoboy:motoboys!motoboy_id ( nome )`
-    )
-    .eq("id", id)
-    .maybeSingle();
+  const [entrega] = await db
+    .select({
+      id: entregas.id,
+      numero: entregas.numero,
+      data: entregas.data,
+      clienteNome: entregas.clienteNome,
+      clienteTelefone: entregas.clienteTelefone,
+      endereco: entregas.endereco,
+      numeroPedido: entregas.numeroPedido,
+      numeroNfe: entregas.numeroNfe,
+      valorPagamento: entregas.valorPagamento,
+      formaPagamento: entregas.formaPagamento,
+      observacoes: entregas.observacoes,
+      status: entregas.status,
+      motoboyId: entregas.motoboyId,
+      motoboyNome: motoboys.nome,
+    })
+    .from(entregas)
+    .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
+    .where(eq(entregas.id, id))
+    .limit(1);
 
-  if (error || !data) return null;
-
-  const motoboy = Array.isArray(data.motoboy) ? data.motoboy[0] : data.motoboy;
+  if (!entrega) return null;
 
   return {
-    id: data.id,
-    numero: data.numero,
-    data: paraDataInput(data.data),
-    clienteNome: data.cliente_nome,
-    clienteTelefone: data.cliente_telefone ?? "",
-    endereco: data.endereco ?? "",
-    numeroPedido: data.numero_pedido ?? "",
-    numeroNfe: data.numero_nfe ?? "",
-    valorPagamento: String(data.valor_pagamento),
-    formaPagamento: data.forma_pagamento,
-    motoboyId: data.motoboy_id ?? "",
-    motoboyNome: motoboy?.nome ?? "",
-    observacoes: data.observacoes ?? "",
-    status: data.status,
+    id: entrega.id,
+    numero: entrega.numero,
+    data: paraDataInput(entrega.data),
+    clienteNome: entrega.clienteNome,
+    clienteTelefone: entrega.clienteTelefone ?? "",
+    endereco: entrega.endereco ?? "",
+    numeroPedido: entrega.numeroPedido ?? "",
+    numeroNfe: entrega.numeroNfe ?? "",
+    valorPagamento: String(entrega.valorPagamento),
+    formaPagamento: entrega.formaPagamento,
+    motoboyId: entrega.motoboyId ?? "",
+    motoboyNome: entrega.motoboyNome ?? "",
+    observacoes: entrega.observacoes ?? "",
+    status: entrega.status,
   };
 }
 
@@ -556,43 +584,45 @@ export interface EntregaMotorista {
   clienteAssinouEm: string | null;
 }
 
-// Lista de entregas do dia pro motorista logado (app do motorista, Issue
-// #5, sub-issue #30) — só as de hoje e nunca as canceladas (não fazem
-// parte do que ele precisa agir). "Em rota" não é um status próprio:
-// continua sendo `status === "pendente" && hora_saida !== null`, calculado
-// aqui do mesmo jeito que em getAlertas — ver claude/ideias-decisoes-projeto.md.
-// `motoboyId` sempre vem do cookie de sessão (@/lib/motorista-session),
-// nunca de um param vindo do client — é o que garante que um motorista só
-// vê as próprias entregas.
 export async function getEntregasDoMotorista(
   motoboyId: string
 ): Promise<EntregaMotorista[]> {
-  const supabase = createAdminClient();
-  if (!supabase) return [];
+  const db = getDb();
+  if (!db) return [];
 
   const hoje = paraChaveDiaLocal(new Date());
 
-  const { data, error } = await supabase
-    .from("entregas")
-    .select(
-      "id, numero, cliente_nome, endereco, valor_pagamento, forma_pagamento, status, hora_saida, cliente_assinou_em"
+  const rows = await db
+    .select({
+      id: entregas.id,
+      numero: entregas.numero,
+      clienteNome: entregas.clienteNome,
+      endereco: entregas.endereco,
+      valorPagamento: entregas.valorPagamento,
+      formaPagamento: entregas.formaPagamento,
+      status: entregas.status,
+      horaSaida: entregas.horaSaida,
+      clienteAssinouEm: entregas.clienteAssinouEm,
+    })
+    .from(entregas)
+    .where(
+      and(
+        eq(entregas.motoboyId, motoboyId),
+        eq(entregas.data, hoje),
+        ne(entregas.status, "cancelado")
+      )
     )
-    .eq("motoboy_id", motoboyId)
-    .eq("data", hoje)
-    .neq("status", "cancelado")
-    .order("numero", { ascending: true });
+    .orderBy(asc(entregas.numero));
 
-  if (error || !data) return [];
-
-  return data.map((e) => ({
-    id: e.id,
-    numero: `#${e.numero}`,
-    clienteNome: e.cliente_nome,
-    endereco: e.endereco ?? "",
-    valor: formatBRL(Number(e.valor_pagamento)),
-    formaPagamento: e.forma_pagamento,
-    status: e.status,
-    horaSaida: e.hora_saida,
-    clienteAssinouEm: e.cliente_assinou_em,
+  return rows.map((entrega) => ({
+    id: entrega.id,
+    numero: `#${entrega.numero}`,
+    clienteNome: entrega.clienteNome,
+    endereco: entrega.endereco ?? "",
+    valor: formatBRL(Number(entrega.valorPagamento)),
+    formaPagamento: entrega.formaPagamento,
+    status: entrega.status,
+    horaSaida: entrega.horaSaida,
+    clienteAssinouEm: entrega.clienteAssinouEm,
   }));
 }
