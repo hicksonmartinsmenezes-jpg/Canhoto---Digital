@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { exigirAdminAutenticado } from "@/lib/admin-auth";
+import { obterAdminAutenticado } from "@/lib/admin-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { descreverErroSupabase } from "@/lib/erros-supabase";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
@@ -30,7 +30,8 @@ export async function atualizarEntrega(
   id: string,
   input: AtualizarEntregaInput
 ): Promise<AtualizarEntregaResult> {
-  if (!(await exigirAdminAutenticado())) {
+  const admin = await obterAdminAutenticado();
+  if (!admin) {
     return { ok: false, error: "Sessão administrativa inválida ou expirada." };
   }
 
@@ -62,25 +63,28 @@ export async function atualizarEntrega(
     return { ok: false, error: "Selecione a forma de pagamento." };
   }
 
-  const { error } = await supabase
-    .from("entregas")
-    .update({
-      data: input.data,
-      cliente_nome: clienteNome,
-      cliente_telefone: input.clienteTelefone.trim() || null,
-      endereco: input.endereco.trim() || null,
-      numero_pedido: input.numeroPedido.trim() || null,
-      numero_nfe: input.numeroNfe.trim() || null,
-      valor_pagamento: input.valorPagamento,
-      forma_pagamento: input.formaPagamento,
-      motoboy_id: input.motoboyId || null,
-      observacoes: input.observacoes.trim() || null,
-      status: input.status,
-    })
-    .eq("id", id);
+  const { data, error } = await supabase.rpc("atualizar_entrega_admin", {
+    p_entrega_id: id,
+    p_data: input.data,
+    p_cliente_nome: clienteNome,
+    p_cliente_telefone: input.clienteTelefone.trim() || null,
+    p_endereco: input.endereco.trim() || null,
+    p_numero_pedido: input.numeroPedido.trim() || null,
+    p_numero_nfe: input.numeroNfe.trim() || null,
+    p_valor_pagamento: input.valorPagamento,
+    p_forma_pagamento: input.formaPagamento,
+    p_motoboy_id: input.motoboyId || null,
+    p_observacoes: input.observacoes.trim() || null,
+    p_status: input.status,
+    p_auth_user_id: admin.authUserId,
+    p_colaborador_id: admin.colaboradorId,
+  });
 
   if (error) {
     return { ok: false, error: `Erro ao salvar as alterações: ${descreverErroSupabase(error.message)}.` };
+  }
+  if (!data) {
+    return { ok: false, error: "Entrega não encontrada." };
   }
 
   revalidatePath("/canhotos");

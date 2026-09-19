@@ -91,6 +91,8 @@ export interface EntregaHistorico {
   status_anterior: StatusEntrega | null;
   status_novo: StatusEntrega;
   alterado_por: string | null;
+  alterado_por_motoboy: string | null;
+  alterado_por_auth_user: string | null;
   alterado_em: string;
   observacao: string | null;
 }
