@@ -141,6 +141,9 @@ export const entregas = pgTable(
     status: statusEntregaEnum("status").notNull().default("pendente"),
     observacoes: text("observacoes"),
     cadastradoPor: uuid("cadastrado_por").references(() => colaboradores.id),
+    cadastradoPorAdmin: uuid("cadastrado_por_admin").references(
+      () => usuariosAdmin.id
+    ),
     criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
@@ -157,6 +160,7 @@ export const entregas = pgTable(
     index("idx_entregas_caixa").on(table.caixaId),
     index("idx_entregas_status").on(table.status),
     index("idx_entregas_forma_pagamento").on(table.formaPagamento),
+    index("idx_entregas_cadastrado_por_admin").on(table.cadastradoPorAdmin),
   ]
 );
 
@@ -193,6 +197,9 @@ export const entregaHistorico = pgTable(
     alteradoPorMotoboy: uuid("alterado_por_motoboy").references(
       () => motoboys.id
     ),
+    alteradoPorAdmin: uuid("alterado_por_admin").references(
+      () => usuariosAdmin.id
+    ),
     alteradoEm: timestamp("alterado_em", {
       withTimezone: true,
       mode: "string",
@@ -205,9 +212,10 @@ export const entregaHistorico = pgTable(
     index("idx_entrega_historico_entrega").on(table.entregaId),
     index("idx_entrega_historico_colaborador").on(table.alteradoPor),
     index("idx_entrega_historico_motoboy").on(table.alteradoPorMotoboy),
+    index("idx_entrega_historico_admin").on(table.alteradoPorAdmin),
     check(
       "ck_historico_um_ator",
-      sql`not (${table.alteradoPor} is not null and ${table.alteradoPorMotoboy} is not null)`
+      sql`num_nonnulls(${table.alteradoPor}, ${table.alteradoPorMotoboy}, ${table.alteradoPorAdmin}) <= 1`
     ),
   ]
 );
