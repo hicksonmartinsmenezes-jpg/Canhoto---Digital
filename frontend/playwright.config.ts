@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 // Testes end-to-end de fumaça (smoke) — cobrem só "a tela carrega e as
 // interações básicas de UI funcionam", NÃO fluxos completos de gravação no
-// Supabase. O servidor é iniciado em modo de produção pelo Playwright.
+// banco de produção. O servidor é iniciado em modo de produção pelo Playwright.
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -11,12 +11,12 @@ export default defineConfig({
   workers: process.env.CI ? 2 : undefined,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:3002",
+    baseURL: "http://localhost:3003",
     trace: "on-first-retry",
   },
   webServer: {
     command: "npm run build && npm run start",
-    url: "http://localhost:3002",
+    url: "http://localhost:3003",
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
   },
