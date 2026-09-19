@@ -1,56 +1,49 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { and, eq } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { entregas, motoboys } from "@/lib/db/schema";
 import { obterMotoboyIdDaSessao } from "@/lib/motorista-session";
 
-export const ERRO_MOTORISTA_SESSAO = "Sessão expirada — faça login novamente.";
+export const ERRO_MOTORISTA_SESSAO =
+  "Sessão expirada — faça login novamente.";
 
-/**
- * Retorna a identidade do motorista a partir exclusivamente da sessão assinada
- * e confirma no banco que o cadastro ainda existe e continua ativo.
- *
- * A função é a fronteira de autorização da área do motorista: callers não
- * devem aceitar `motoboyId` vindo do client para definir quem está autenticado.
- */
 export async function obterMotoristaAutorizado(): Promise<string | null> {
   const motoboyId = await obterMotoboyIdDaSessao();
   if (!motoboyId) return null;
 
-  const supabase = createAdminClient();
-  if (!supabase) return null;
+  const db = getDb();
+  if (!db) return null;
 
-  const { data, error } = await supabase
-    .from("motoboys")
-    .select("id")
-    .eq("id", motoboyId)
-    .eq("ativo", true)
-    .maybeSingle();
+  const [motoboy] = await db
+    .select({ id: motoboys.id })
+    .from(motoboys)
+    .where(and(eq(motoboys.id, motoboyId), eq(motoboys.ativo, true)))
+    .limit(1);
 
-  if (error || !data) return null;
-  return data.id;
+  return motoboy?.id ?? null;
 }
 
-/**
- * Garante que um registro pertence ao motorista autenticado.
- * A comparação é feita no servidor e deve acompanhar toda operação futura
- * que altere uma entrega em nome do motorista.
- */
 export async function motoristaPodeAcessarEntrega(
   entregaId: string
 ): Promise<{ motoboyId: string } | null> {
   const motoboyId = await obterMotoristaAutorizado();
   if (!motoboyId) return null;
 
-  const supabase = createAdminClient();
-  if (!supabase) return null;
+  const db = getDb();
+  if (!db) return null;
 
-  const { data, error } = await supabase
-    .from("entregas")
-    .select("id")
-    .eq("id", entregaId)
-    .eq("motoboy_id", motoboyId)
-    .maybeSingle();
+  const [entrega] = await db
+    .select({ id: entregas.id })
+    .from(entregas)
+    .where(
+      and(
+        eq(entregas.id, entregaId),
+        eq(entregas.motoboyId, motoboyId)
+      )
+    )
+    .limit(1);
 
-  if (error || !data) return null;
+  if (!entrega) return null;
   return { motoboyId };
 }
