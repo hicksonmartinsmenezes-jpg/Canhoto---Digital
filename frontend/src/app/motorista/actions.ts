@@ -227,3 +227,43 @@ export async function anexarComprovante(
   revalidatePath("/motorista");
   return { ok: true };
 }
+
+
+export async function salvarObservacaoMotorista(
+  entregaId: string,
+  observacao: string
+): Promise<AcaoEntregaResult> {
+  const limite = await checarRateLimit("salvarObservacaoMotorista");
+  if (!limite.permitido) {
+    return { ok: false, error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo." };
+  }
+
+  const acesso = await motoristaPodeAcessarEntrega(entregaId);
+  if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
+
+  const valor = observacao.trim();
+  if (valor.length > 1000) {
+    return { ok: false, error: "A observação deve ter no máximo 1.000 caracteres." };
+  }
+
+  const supabase = createAdminClient();
+  if (!supabase) return { ok: false, error: ERRO_SUPABASE };
+
+  const { data, error } = await supabase
+    .from("entregas")
+    .update({ observacoes: valor || null })
+    .eq("id", entregaId)
+    .eq("motoboy_id", acesso.motoboyId)
+    .eq("status", "pendente")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: `Erro ao salvar observação: ${descreverErroSupabase(error.message)}.` };
+  }
+  if (!data) return { ok: false, error: "Entrega não encontrada ou já concluída." };
+
+  revalidatePath("/motorista");
+  revalidatePath(`/motorista/entregas/${entregaId}`);
+  return { ok: true };
+}
