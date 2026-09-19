@@ -1,19 +1,47 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { and, eq } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { usuariosAdmin } from "@/lib/db/schema";
+import { obterUsuarioAdminIdDaSessao } from "@/lib/admin-session";
 
-/**
- * Valida a sessão do Portal Admin no servidor.
- * Middleware protege a navegação, mas Server Actions podem ser chamadas
- * diretamente; operações administrativas sensíveis também devem validar
- * a sessão antes de usar o cliente service-role.
- */
+export interface AdminAutenticado {
+  usuarioAdminId: string;
+  colaboradorId: string | null;
+  email: string;
+}
+
+export async function obterAdminAutenticado(): Promise<AdminAutenticado | null> {
+  const usuarioAdminId = await obterUsuarioAdminIdDaSessao();
+  if (!usuarioAdminId) return null;
+
+  const db = getDb();
+  if (!db) return null;
+
+  const [usuario] = await db
+    .select({
+      id: usuariosAdmin.id,
+      colaboradorId: usuariosAdmin.colaboradorId,
+      email: usuariosAdmin.email,
+    })
+    .from(usuariosAdmin)
+    .where(
+      and(
+        eq(usuariosAdmin.id, usuarioAdminId),
+        eq(usuariosAdmin.ativo, true)
+      )
+    )
+    .limit(1);
+
+  if (!usuario) return null;
+
+  return {
+    usuarioAdminId: usuario.id,
+    colaboradorId: usuario.colaboradorId,
+    email: usuario.email,
+  };
+}
+
 export async function exigirAdminAutenticado(): Promise<boolean> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  return Boolean(user && !error);
+  return Boolean(await obterAdminAutenticado());
 }
