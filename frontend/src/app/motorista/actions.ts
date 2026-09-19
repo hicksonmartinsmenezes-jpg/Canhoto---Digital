@@ -42,26 +42,6 @@ export async function iniciarEntrega(
     };
   }
 
-  const bytes = new Uint8Array(await arquivo.arrayBuffer());
-  const ehJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-  const ehPng =
-    bytes.length >= 8 &&
-    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
-    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
-  const ehWebp =
-    bytes.length >= 12 &&
-    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
-    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
-
-  const assinaturaValida =
-    (arquivo.type === "image/jpeg" && ehJpeg) ||
-    (arquivo.type === "image/png" && ehPng) ||
-    (arquivo.type === "image/webp" && ehWebp);
-
-  if (!assinaturaValida) {
-    return { ok: false, error: "O conteúdo do arquivo não corresponde ao formato informado." };
-  }
-
   const acesso = await motoristaPodeAcessarEntrega(entregaId);
   if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
@@ -207,6 +187,26 @@ export async function anexarComprovante(
     return { ok: false, error: "A assinatura deve ser enviada em PNG." };
   }
 
+  const bytes = new Uint8Array(await arquivo.arrayBuffer());
+  const ehJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const ehPng =
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+  const ehWebp =
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
+
+  const assinaturaValida =
+    (arquivo.type === "image/jpeg" && ehJpeg) ||
+    (arquivo.type === "image/png" && ehPng) ||
+    (arquivo.type === "image/webp" && ehWebp);
+
+  if (!assinaturaValida) {
+    return { ok: false, error: "O conteúdo do arquivo não corresponde ao formato informado." };
+  }
+
   const acesso = await motoristaPodeAcessarEntrega(entregaId);
   if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
@@ -255,6 +255,12 @@ export async function anexarComprovante(
       error: "Não foi possível registrar o comprovante.",
     };
   }
+
+  await supabase.from("entrega_eventos_motorista").insert({
+    entrega_id: entregaId,
+    motoboy_id: acesso.motoboyId,
+    tipo: tipo === "foto" ? "comprovante_foto" : "comprovante_assinatura",
+  });
 
   revalidatePath("/motorista");
   return { ok: true };
