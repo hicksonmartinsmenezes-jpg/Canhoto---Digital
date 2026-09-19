@@ -1,78 +1,110 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { MOTORISTA_COOKIE_NAME, verificarTokenSessao } from "@/lib/motorista-session-core";
+import {
+  ADMIN_COOKIE_NAME,
+  verificarTokenSessaoAdmin,
+} from "@/lib/admin-session-core";
+import {
+  MOTORISTA_COOKIE_NAME,
+  verificarTokenSessao,
+} from "@/lib/motorista-session-core";
 
-let avisoBypassDevMostrado = false;
+function hostnameDaRequisicao(request: NextRequest): string {
+  const encaminhado = request.headers.get("x-forwarded-host");
+  const host = (encaminhado || request.headers.get("host") || "")
+    .split(",")[0]
+    .trim()
+    .split(":")[0]
+    .toLowerCase();
+  return host;
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Quando o Cloudflare Tunnel usar um hostname público específico para os
+  // motoristas, esse host não expõe o Portal Admin. A mesma instância Next.js
+  // continua acessível internamente pelo IP/nome da máquina da loja.
+  const hostPublicoMotorista = process.env.PUBLIC_MOTORISTA_HOST
+    ?.trim()
+    .toLowerCase();
+  if (
+    hostPublicoMotorista &&
+    hostnameDaRequisicao(request) === hostPublicoMotorista &&
+    !pathname.startsWith("/motorista")
+  ) {
+    return new NextResponse("Not Found", {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
 
   if (pathname.startsWith("/motorista")) {
     if (pathname === "/motorista/login") return NextResponse.next();
 
     const segredo = process.env.MOTORISTA_SESSION_SECRET;
     const token = request.cookies.get(MOTORISTA_COOKIE_NAME)?.value;
-    const motoboyId = segredo && token ? await verificarTokenSessao(token, segredo, Date.now()) : null;
+    const motoboyId =
+      segredo && token
+        ? await verificarTokenSessao(token, segredo, Date.now())
+        : null;
 
-    if (!motoboyId) return NextResponse.redirect(new URL("/motorista/login", request.url));
+    if (!motoboyId) {
+      return NextResponse.redirect(
+        new URL("/motorista/login", request.url)
+      );
+    }
+
     return NextResponse.next();
   }
 
-  let response = NextResponse.next({ request });
+  if (
+    process.env.CI === "true" &&
+    process.env.E2E_AUTH_BYPASS === "true"
+  ) {
+    return NextResponse.next();
+  }
 
-  if (process.env.NODE_ENV !== "production") {
-    if (!avisoBypassDevMostrado) {
-      avisoBypassDevMostrado = true;
-      console.warn("[middleware] Login do Portal Admin DESATIVADO em dev (NODE_ENV != production).");
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.DEV_AUTH_BYPASS === "true"
+  ) {
+    return NextResponse.next();
+  }
+
+  const segredoAdmin = process.env.ADMIN_SESSION_SECRET;
+  const tokenAdmin = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  const usuarioAdminId =
+    segredoAdmin && tokenAdmin
+      ? await verificarTokenSessaoAdmin(
+          tokenAdmin,
+          segredoAdmin,
+          Date.now()
+        )
+      : null;
+
+  if (pathname === "/login") {
+    if (usuarioAdminId) {
+      return NextResponse.redirect(new URL("/", request.url));
     }
-    return response;
+    return NextResponse.next();
   }
 
-  // O bypass abaixo só pode ser ativado pelo próprio workflow de testes.
-  // Exige CI=true + E2E_AUTH_BYPASS=true, evitando qualquer bypass acidental
-  // em uma execução normal de produção.
-  if (process.env.CI === "true" && process.env.E2E_AUTH_BYPASS === "true") {
-    return response;
-  }
-
-  // Rotas públicas não dependem do Supabase para renderizar a interface.
-  const rotaPublica = pathname === "/login" || pathname.startsWith("/auth/");
-  if (rotaPublica) return response;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  // Fail-closed: sem Supabase configurado, produção nunca libera o painel.
-  if (!url || !anonKey || url.includes("SEU_PROJETO") || anonKey.includes("coloque_a_")) {
+  if (!segredoAdmin) {
     return new NextResponse("Serviço temporariamente indisponível.", {
       status: 503,
       headers: { "Cache-Control": "no-store" },
     });
   }
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-      },
-    },
-  });
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user && pathname !== "/login" && !pathname.startsWith("/auth/")) {
+  if (!usuarioAdminId) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (user && pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };
