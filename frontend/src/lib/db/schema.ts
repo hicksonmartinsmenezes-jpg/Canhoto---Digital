@@ -128,25 +128,19 @@ export const entregas = pgTable(
     }).notNull(),
     formaPagamento: formaPagamentoEnum("forma_pagamento").notNull(),
     horaSaida: time("hora_saida"),
-    motoboyId: uuid("motoboy_id").references(() => motoboys.id, {
-      onDelete: "set null",
-    }),
+    motoboyId: uuid("motoboy_id").references(() => motoboys.id),
     clienteAssinouEm: timestamp("cliente_assinou_em", {
       withTimezone: true,
       mode: "string",
     }),
-    caixaId: uuid("caixa_id").references(() => colaboradores.id, {
-      onDelete: "set null",
-    }),
+    caixaId: uuid("caixa_id").references(() => colaboradores.id),
     caixaConfirmouEm: timestamp("caixa_confirmou_em", {
       withTimezone: true,
       mode: "string",
     }),
     status: statusEntregaEnum("status").notNull().default("pendente"),
     observacoes: text("observacoes"),
-    cadastradoPor: uuid("cadastrado_por").references(() => colaboradores.id, {
-      onDelete: "set null",
-    }),
+    cadastradoPor: uuid("cadastrado_por").references(() => colaboradores.id),
     criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
@@ -181,9 +175,7 @@ export const entregaAnexos = pgTable(
     })
       .notNull()
       .defaultNow(),
-    capturadoPor: uuid("capturado_por").references(() => colaboradores.id, {
-      onDelete: "set null",
-    }),
+    capturadoPor: uuid("capturado_por").references(() => colaboradores.id),
   },
   (table) => [index("idx_entrega_anexos_entrega").on(table.entregaId)]
 );
@@ -197,12 +189,9 @@ export const entregaHistorico = pgTable(
       .references(() => entregas.id, { onDelete: "cascade" }),
     statusAnterior: statusEntregaEnum("status_anterior"),
     statusNovo: statusEntregaEnum("status_novo").notNull(),
-    alteradoPor: uuid("alterado_por").references(() => colaboradores.id, {
-      onDelete: "set null",
-    }),
+    alteradoPor: uuid("alterado_por").references(() => colaboradores.id),
     alteradoPorMotoboy: uuid("alterado_por_motoboy").references(
-      () => motoboys.id,
-      { onDelete: "set null" }
+      () => motoboys.id
     ),
     alteradoEm: timestamp("alterado_em", {
       withTimezone: true,
