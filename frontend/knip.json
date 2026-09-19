@@ -1,10 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": [
-    "src/lib/supabase/client.ts",
-    "src/lib/supabase/server.ts"
+  "entry": [],
+  "ignoreDependencies": [
+    "wait-on"
   ],
-  "ignoreDependencies": ["wait-on"],
   "rules": {
     "files": "error",
     "dependencies": "error",
