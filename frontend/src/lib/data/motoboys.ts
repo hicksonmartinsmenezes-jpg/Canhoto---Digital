@@ -1,8 +1,8 @@
-// Camada de acesso a dados reais de Motoboys (Supabase) — hoje usada só para
-// alimentar a sugestão de motoboy no wizard "Adicionar Entrega" e a tela de
-// Motoristas. Ver claude/modelo-de-dados-site.md para o schema.
+// Camada de acesso a dados de Motoboys no PostgreSQL local via Drizzle.
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { and, asc, eq, gte, isNotNull, sql } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { entregas, motoboys } from "@/lib/db/schema";
 
 export interface MotoboyOption {
   id: string;
@@ -10,17 +10,17 @@ export interface MotoboyOption {
 }
 
 export async function getMotoboys(): Promise<MotoboyOption[]> {
-  const supabase = createAdminClient();
-  if (!supabase) return [];
+  const db = getDb();
+  if (!db) return [];
 
-  const { data, error } = await supabase
-    .from("motoboys")
-    .select("id, nome")
-    .eq("ativo", true)
-    .order("nome");
-
-  if (error || !data) return [];
-  return data;
+  return db
+    .select({
+      id: motoboys.id,
+      nome: motoboys.nome,
+    })
+    .from(motoboys)
+    .where(eq(motoboys.ativo, true))
+    .orderBy(asc(motoboys.nome));
 }
 
 export interface MotoboyListItem {
@@ -28,51 +28,56 @@ export interface MotoboyListItem {
   nome: string;
   ativo: boolean;
   entregasNoMes: number;
-  // Telefone é o "usuário" do login do app do motorista (Issue #5) —
-  // `temPin` só indica se um PIN já foi gerado, nunca expõe o hash pro
-  // client component.
   telefone: string | null;
   temPin: boolean;
 }
 
-// Lista completa (ativos e inativos) para a tela de Motoristas, com a
-// contagem de entregas no mês corrente — usada só como contexto na listagem,
-// não é uma métrica de performance oficial ainda.
 export async function getMotoboysList(): Promise<MotoboyListItem[]> {
-  const supabase = createAdminClient();
-  if (!supabase) return [];
+  const db = getDb();
+  if (!db) return [];
 
   const inicioMes = new Date();
   inicioMes.setDate(1);
   const inicioMesStr = inicioMes.toISOString().slice(0, 10);
 
-  const [motoboysRes, entregasRes] = await Promise.all([
-    supabase
-      .from("motoboys")
-      .select("id, nome, ativo, telefone, pin_hash")
-      .order("nome"),
-    supabase
-      .from("entregas")
-      .select("motoboy_id")
-      .gte("data", inicioMesStr)
-      .not("motoboy_id", "is", null),
+  const [lista, contagens] = await Promise.all([
+    db
+      .select({
+        id: motoboys.id,
+        nome: motoboys.nome,
+        ativo: motoboys.ativo,
+        telefone: motoboys.telefone,
+        pinHash: motoboys.pinHash,
+      })
+      .from(motoboys)
+      .orderBy(asc(motoboys.nome)),
+    db
+      .select({
+        motoboyId: entregas.motoboyId,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(entregas)
+      .where(
+        and(
+          gte(entregas.data, inicioMesStr),
+          isNotNull(entregas.motoboyId)
+        )
+      )
+      .groupBy(entregas.motoboyId),
   ]);
 
-  if (motoboysRes.error || !motoboysRes.data) return [];
-
   const contagem = new Map<string, number>();
-  for (const e of entregasRes.data ?? []) {
-    if (!e.motoboy_id) continue;
-    contagem.set(e.motoboy_id, (contagem.get(e.motoboy_id) ?? 0) + 1);
+  for (const item of contagens) {
+    if (item.motoboyId) contagem.set(item.motoboyId, item.total);
   }
 
-  return motoboysRes.data.map((m) => ({
+  return lista.map((m) => ({
     id: m.id,
     nome: m.nome,
     ativo: m.ativo,
     entregasNoMes: contagem.get(m.id) ?? 0,
     telefone: m.telefone,
-    temPin: m.pin_hash !== null,
+    temPin: m.pinHash !== null,
   }));
 }
 
@@ -82,39 +87,34 @@ export interface MotoboyAuth {
   ativo: boolean;
 }
 
-// Usado só pelo login do app do motorista (@/app/motorista/login/actions) —
-// devolve o hash do PIN, então nunca deve ser exposto a um Client Component.
-// `telefone` já deve chegar normalizado (só dígitos, ver
-// @/lib/motorista-auth normalizarTelefone) — a coluna não tem máscara.
 export async function getMotoboyPorTelefone(
   telefone: string
 ): Promise<MotoboyAuth | null> {
-  const supabase = createAdminClient();
-  if (!supabase) return null;
+  const db = getDb();
+  if (!db) return null;
 
-  const { data, error } = await supabase
-    .from("motoboys")
-    .select("id, pin_hash, ativo")
-    .eq("telefone", telefone)
-    .maybeSingle();
+  const [motoboy] = await db
+    .select({
+      id: motoboys.id,
+      pinHash: motoboys.pinHash,
+      ativo: motoboys.ativo,
+    })
+    .from(motoboys)
+    .where(eq(motoboys.telefone, telefone))
+    .limit(1);
 
-  if (error || !data) return null;
-  return { id: data.id, pinHash: data.pin_hash, ativo: data.ativo };
+  return motoboy ?? null;
 }
 
-// Usado pela tela logada do app do motorista (@/app/motorista) só pra
-// mostrar o nome de quem entrou — a identidade em si vem do cookie de
-// sessão (@/lib/motorista-session), isso aqui é só o "quem é" pra exibir.
 export async function getMotoboyNome(id: string): Promise<string | null> {
-  const supabase = createAdminClient();
-  if (!supabase) return null;
+  const db = getDb();
+  if (!db) return null;
 
-  const { data, error } = await supabase
-    .from("motoboys")
-    .select("nome")
-    .eq("id", id)
-    .maybeSingle();
+  const [motoboy] = await db
+    .select({ nome: motoboys.nome })
+    .from(motoboys)
+    .where(eq(motoboys.id, id))
+    .limit(1);
 
-  if (error || !data) return null;
-  return data.nome;
+  return motoboy?.nome ?? null;
 }
