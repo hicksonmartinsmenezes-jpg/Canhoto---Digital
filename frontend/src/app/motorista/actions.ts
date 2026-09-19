@@ -14,7 +14,6 @@ import { descreverErroSupabase } from "@/lib/erros-supabase";
 import {
   ERRO_MOTORISTA_SESSAO,
   motoristaPodeAcessarEntrega,
-  obterMotoristaAutorizado,
 } from "@/lib/motorista-authorization";
 import { encerrarSessaoMotorista } from "@/lib/motorista-session";
 
