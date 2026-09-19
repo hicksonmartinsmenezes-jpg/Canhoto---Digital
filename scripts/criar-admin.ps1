@@ -35,7 +35,7 @@ try {
 
     Push-Location $frontendDir
     try {
-        node scripts/create-admin.mjs
+        npm.cmd run admin:create
         if ($LASTEXITCODE -ne 0) {
             throw "Não foi possível criar o usuário Admin."
         }
