@@ -1,19 +1,24 @@
 "use server";
 
-// Server Actions: operações administrativas de Entregas.
-
+import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
+import { getDb } from "@/lib/db";
+import { mensagemErroBanco } from "@/lib/db/errors";
+import { colaboradores, entregas } from "@/lib/db/schema";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
-import { descreverErroSupabase } from "@/lib/erros-supabase";
 
 export interface ExcluirEntregaResult {
   ok: boolean;
   error?: string;
 }
 
-export async function excluirEntrega(id: string): Promise<ExcluirEntregaResult> {
+const ERRO_BANCO =
+  "Banco de dados indisponível neste ambiente — confirme a DATABASE_URL.";
+
+export async function excluirEntrega(
+  id: string
+): Promise<ExcluirEntregaResult> {
   if (!(await exigirAdminAutenticado())) {
     return { ok: false, error: "Sessão administrativa inválida ou expirada." };
   }
@@ -22,23 +27,28 @@ export async function excluirEntrega(id: string): Promise<ExcluirEntregaResult> 
   if (!limite.permitido) {
     return {
       ok: false,
-      error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
     };
   }
 
-  const supabase = createAdminClient();
-  if (!supabase) {
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
+
+  try {
+    const [excluida] = await db
+      .delete(entregas)
+      .where(eq(entregas.id, id))
+      .returning({ id: entregas.id });
+
+    if (!excluida) {
+      return { ok: false, error: "Entrega não encontrada." };
+    }
+  } catch (error) {
     return {
       ok: false,
-      error:
-        "O Supabase ainda não está configurado neste ambiente — confirme o .env.local.",
+      error: mensagemErroBanco("excluirEntrega", error),
     };
-  }
-
-  const { error } = await supabase.from("entregas").delete().eq("id", id);
-
-  if (error) {
-    return { ok: false, error: `Erro ao excluir a entrega: ${descreverErroSupabase(error.message)}.` };
   }
 
   revalidatePath("/canhotos");
@@ -63,38 +73,59 @@ export async function conferirCaixa(
   if (!limite.permitido) {
     return {
       ok: false,
-      error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
     };
   }
 
-  const supabase = createAdminClient();
-  if (!supabase) {
-    return {
-      ok: false,
-      error:
-        "O Supabase ainda não está configurado neste ambiente — confirme o .env.local.",
-    };
-  }
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
 
   if (!colaboradorId) {
     return { ok: false, error: "Selecione quem conferiu o caixa." };
   }
 
-  const { data, error } = await supabase
-    .from("entregas")
-    .update({
-      caixa_id: colaboradorId,
-      caixa_confirmou_em: new Date().toISOString(),
-    })
-    .eq("id", entregaId)
-    .is("caixa_confirmou_em", null)
-    .select("id");
+  const [colaborador] = await db
+    .select({ id: colaboradores.id })
+    .from(colaboradores)
+    .where(
+      and(
+        eq(colaboradores.id, colaboradorId),
+        eq(colaboradores.ativo, true)
+      )
+    )
+    .limit(1);
 
-  if (error) {
-    return { ok: false, error: `Erro ao confirmar a conferência: ${descreverErroSupabase(error.message)}.` };
+  if (!colaborador) {
+    return { ok: false, error: "Colaborador inválido ou inativo." };
   }
-  if (!data || data.length === 0) {
-    return { ok: false, error: "Essa entrega já foi conferida por outra pessoa." };
+
+  try {
+    const [atualizada] = await db
+      .update(entregas)
+      .set({
+        caixaId: colaboradorId,
+        caixaConfirmouEm: new Date().toISOString(),
+      })
+      .where(
+        and(
+          eq(entregas.id, entregaId),
+          isNull(entregas.caixaConfirmouEm)
+        )
+      )
+      .returning({ id: entregas.id });
+
+    if (!atualizada) {
+      return {
+        ok: false,
+        error: "Essa entrega já foi conferida por outra pessoa.",
+      };
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: mensagemErroBanco("conferirCaixa", error),
+    };
   }
 
   revalidatePath("/canhotos");
