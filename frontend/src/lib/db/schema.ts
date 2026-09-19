@@ -1,0 +1,224 @@
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  check,
+  date,
+  index,
+  integer,
+  numeric,
+  pgEnum,
+  pgTable,
+  text,
+  time,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+export const papelColaboradorEnum = pgEnum("papel_colaborador", [
+  "admin",
+  "gestor_setor",
+  "colaborador",
+]);
+
+export const statusEntregaEnum = pgEnum("status_entrega", [
+  "pendente",
+  "entregue",
+  "cancelado",
+]);
+
+export const formaPagamentoEnum = pgEnum("forma_pagamento", [
+  "dinheiro",
+  "pix",
+  "debito",
+  "cartao_1x",
+  "prazo",
+]);
+
+export const tipoAnexoEntregaEnum = pgEnum("tipo_anexo_entrega", [
+  "xml_nfe",
+  "xml_cte",
+  "assinatura_cliente",
+  "foto",
+]);
+
+export const setores = pgTable("setores", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  nome: text("nome").notNull().unique(),
+  ativo: boolean("ativo").notNull().default(true),
+  criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+export const colaboradores = pgTable(
+  "colaboradores",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    nome: text("nome").notNull(),
+    email: text("email").unique(),
+    celular: text("celular"),
+    setorId: uuid("setor_id").references(() => setores.id, {
+      onDelete: "set null",
+    }),
+    cargo: text("cargo"),
+    papel: papelColaboradorEnum("papel").notNull().default("colaborador"),
+    ativo: boolean("ativo").notNull().default(true),
+    criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("idx_colaboradores_setor").on(table.setorId)]
+);
+
+export const usuariosAdmin = pgTable(
+  "usuarios_admin",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    colaboradorId: uuid("colaborador_id").references(() => colaboradores.id, {
+      onDelete: "set null",
+    }),
+    email: text("email").notNull().unique(),
+    senhaHash: text("senha_hash").notNull(),
+    ativo: boolean("ativo").notNull().default(true),
+    criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    atualizadoEm: timestamp("atualizado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("usuarios_admin_colaborador_id_key").on(table.colaboradorId),
+    index("idx_usuarios_admin_ativo").on(table.ativo),
+  ]
+);
+
+export const motoboys = pgTable("motoboys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  nome: text("nome").notNull(),
+  telefone: text("telefone").unique(),
+  pinHash: text("pin_hash"),
+  ativo: boolean("ativo").notNull().default(true),
+  criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+export const entregas = pgTable(
+  "entregas",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    numero: integer("numero")
+      .notNull()
+      .default(sql`nextval('entregas_numero_seq')`)
+      .unique(),
+    data: date("data", { mode: "string" }).notNull().defaultNow(),
+    clienteNome: text("cliente_nome").notNull(),
+    clienteTelefone: text("cliente_telefone"),
+    endereco: text("endereco"),
+    numeroPedido: text("numero_pedido"),
+    numeroNfe: text("numero_nfe"),
+    valorPagamento: numeric("valor_pagamento", {
+      precision: 12,
+      scale: 2,
+    }).notNull(),
+    formaPagamento: formaPagamentoEnum("forma_pagamento").notNull(),
+    horaSaida: time("hora_saida"),
+    motoboyId: uuid("motoboy_id").references(() => motoboys.id, {
+      onDelete: "set null",
+    }),
+    clienteAssinouEm: timestamp("cliente_assinou_em", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    caixaId: uuid("caixa_id").references(() => colaboradores.id, {
+      onDelete: "set null",
+    }),
+    caixaConfirmouEm: timestamp("caixa_confirmou_em", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    status: statusEntregaEnum("status").notNull().default("pendente"),
+    observacoes: text("observacoes"),
+    cadastradoPor: uuid("cadastrado_por").references(() => colaboradores.id, {
+      onDelete: "set null",
+    }),
+    criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    atualizadoEm: timestamp("atualizado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_entregas_data").on(table.data),
+    index("idx_entregas_motoboy").on(table.motoboyId),
+    index("idx_entregas_caixa").on(table.caixaId),
+    index("idx_entregas_status").on(table.status),
+    index("idx_entregas_forma_pagamento").on(table.formaPagamento),
+  ]
+);
+
+export const entregaAnexos = pgTable(
+  "entrega_anexos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entregaId: uuid("entrega_id")
+      .notNull()
+      .references(() => entregas.id, { onDelete: "cascade" }),
+    tipo: tipoAnexoEntregaEnum("tipo").notNull(),
+    arquivoUrl: text("arquivo_url").notNull(),
+    capturadoEm: timestamp("capturado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+    capturadoPor: uuid("capturado_por").references(() => colaboradores.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => [index("idx_entrega_anexos_entrega").on(table.entregaId)]
+);
+
+export const entregaHistorico = pgTable(
+  "entrega_historico",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entregaId: uuid("entrega_id")
+      .notNull()
+      .references(() => entregas.id, { onDelete: "cascade" }),
+    statusAnterior: statusEntregaEnum("status_anterior"),
+    statusNovo: statusEntregaEnum("status_novo").notNull(),
+    alteradoPor: uuid("alterado_por").references(() => colaboradores.id, {
+      onDelete: "set null",
+    }),
+    alteradoPorMotoboy: uuid("alterado_por_motoboy").references(
+      () => motoboys.id,
+      { onDelete: "set null" }
+    ),
+    alteradoEm: timestamp("alterado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+    observacao: text("observacao"),
+  },
+  (table) => [
+    index("idx_entrega_historico_entrega").on(table.entregaId),
+    index("idx_entrega_historico_colaborador").on(table.alteradoPor),
+    index("idx_entrega_historico_motoboy").on(table.alteradoPorMotoboy),
+    check(
+      "ck_historico_um_ator",
+      sql`not (${table.alteradoPor} is not null and ${table.alteradoPorMotoboy} is not null)`
+    ),
+  ]
+);
