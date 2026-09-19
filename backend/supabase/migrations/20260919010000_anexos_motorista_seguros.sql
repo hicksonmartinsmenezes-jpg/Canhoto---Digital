@@ -2,14 +2,6 @@
 -- O bucket permanece privado e os arquivos só são manipulados pelo servidor.
 -- O motorista autenticado é registrado separadamente de colaboradores.
 
-create or replace function public.set_entregas_atualizado_em()
-returns trigger as $$
-begin
-  new.atualizado_em := now();
-  return new;
-end;
-$$ language plpgsql;
-
 alter table entrega_anexos
   add column if not exists capturado_por_motoboy_id uuid
     references motoboys(id) on delete set null,
