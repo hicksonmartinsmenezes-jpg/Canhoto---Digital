@@ -5,3 +5,8 @@
 # pastas temporárias criadas durante transferências Claude <-> dispositivo
 _to_delete/
 **/_to_delete/
+
+# Segredos e configuração local
+.env
+.env.*
+!.env.example
