@@ -48,25 +48,6 @@ export async function iniciarEntrega(
   const supabase = createAdminClient();
   if (!supabase) return { ok: false, error: ERRO_SUPABASE };
 
-  const { data: comprovantes, error: comprovantesError } = await supabase
-    .from("entrega_anexos")
-    .select("tipo")
-    .eq("entrega_id", entregaId)
-    .eq("capturado_por_motoboy_id", acesso.motoboyId)
-    .in("tipo", ["foto", "assinatura_cliente"]);
-
-  if (comprovantesError) {
-    return { ok: false, error: "Não foi possível validar os comprovantes da entrega." };
-  }
-
-  const tipos = new Set((comprovantes ?? []).map((item) => item.tipo));
-  if (!tipos.has("foto") || !tipos.has("assinatura_cliente")) {
-    return {
-      ok: false,
-      error: "Antes de confirmar, registre a foto e a assinatura do cliente.",
-    };
-  }
-
   const { data, error } = await supabase
     .from("entregas")
     .update({ hora_saida: new Date().toISOString() })
@@ -104,6 +85,25 @@ export async function confirmarEntrega(
 
   const supabase = createAdminClient();
   if (!supabase) return { ok: false, error: ERRO_SUPABASE };
+
+  const { data: comprovantes, error: comprovantesError } = await supabase
+    .from("entrega_anexos")
+    .select("tipo")
+    .eq("entrega_id", entregaId)
+    .eq("capturado_por_motoboy_id", acesso.motoboyId)
+    .in("tipo", ["foto", "assinatura_cliente"]);
+
+  if (comprovantesError) {
+    return { ok: false, error: "Não foi possível validar os comprovantes da entrega." };
+  }
+
+  const tipos = new Set((comprovantes ?? []).map((item) => item.tipo));
+  if (!tipos.has("foto") || !tipos.has("assinatura_cliente")) {
+    return {
+      ok: false,
+      error: "Antes de confirmar, registre a foto e a assinatura do cliente.",
+    };
+  }
 
   const { data, error } = await supabase
     .from("entregas")
