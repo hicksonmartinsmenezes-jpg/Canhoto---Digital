@@ -8,9 +8,10 @@
 // @/lib/data/entregas (getAlertas/getEntregasDoMotorista).
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, Loader2, MapPin, Truck } from "lucide-react";
+import { CheckCircle2, Loader2, MapPin, Truck, ArrowRight } from "lucide-react";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
-import { confirmarEntrega, iniciarEntrega } from "@/app/motorista/actions";
+import { iniciarEntrega } from "@/app/motorista/actions";
+import Link from "next/link";
 import type { EntregaMotorista } from "@/lib/data/entregas-motorista";
 
 export function EntregaMotoristaCard({
@@ -26,9 +27,8 @@ export function EntregaMotoristaCard({
 
   function executar() {
     setErro(null);
-    const acao = emRota ? confirmarEntrega : iniciarEntrega;
     startTransition(async () => {
-      const resultado = await acao(entrega.id);
+      const resultado = await iniciarEntrega(entrega.id);
       if (!resultado.ok) {
         setErro(resultado.error ?? "Não foi possível concluir a ação.");
       }
@@ -83,6 +83,14 @@ export function EntregaMotoristaCard({
           <CheckCircle2 className="size-4" />
           Entrega concluída
         </div>
+      ) : emRota ? (
+        <Link
+          href={`/motorista/entregas/${entrega.id}`}
+          className="mt-4 inline-flex w-full items-center justify-center gap-1.5 bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97]"
+        >
+          Receber entrega
+          <ArrowRight className="size-4" />
+        </Link>
       ) : (
         <button
           type="button"
@@ -93,12 +101,7 @@ export function EntregaMotoristaCard({
           {pending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              {emRota ? "Confirmando..." : "Iniciando..."}
-            </>
-          ) : emRota ? (
-            <>
-              <CheckCircle2 className="size-4" />
-              Confirmar entrega
+              Iniciando...
             </>
           ) : (
             <>
