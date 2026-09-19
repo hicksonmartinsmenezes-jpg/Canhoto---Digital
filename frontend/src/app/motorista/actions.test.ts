@@ -45,7 +45,6 @@ function criarQuery(
     update: vi.fn(),
     eq: vi.fn(),
     is: vi.fn(),
-    not: vi.fn(),
     select: vi.fn(),
     maybeSingle: vi.fn(),
   };
@@ -53,7 +52,6 @@ function criarQuery(
   query.update.mockReturnValue(query);
   query.eq.mockReturnValue(query);
   query.is.mockReturnValue(query);
-  query.not.mockReturnValue(query);
   query.select.mockReturnValue(query);
 
   for (const resultado of resultados) {
@@ -63,9 +61,13 @@ function criarQuery(
   return query;
 }
 
-function configurarAcao(
-  resultados?: Array<{ data: { id: string } | null; error: null }>
-) {
+function configurarAcao({
+  resultadosQuery,
+  resultadosRpc = [{ data: "entrega-1", error: null }],
+}: {
+  resultadosQuery?: Array<{ data: { id: string } | null; error: null }>;
+  resultadosRpc?: Array<{ data: string | null; error: null }>;
+} = {}) {
   checarRateLimitMock.mockResolvedValue({
     permitido: true,
     restante: 9,
@@ -74,14 +76,20 @@ function configurarAcao(
     motoboyId: "motorista-a",
   });
 
-  const query = criarQuery(resultados);
+  const query = criarQuery(resultadosQuery);
   const from = vi.fn().mockReturnValue(query);
+  const rpc = vi.fn();
+
+  for (const resultado of resultadosRpc) {
+    rpc.mockResolvedValueOnce(resultado);
+  }
 
   createAdminClientMock.mockReturnValue({
     from,
+    rpc,
   } as unknown as NonNullable<ReturnType<typeof createAdminClient>>);
 
-  return { query, from };
+  return { query, from, rpc };
 }
 
 describe("ações de entrega do motorista", () => {
@@ -106,10 +114,12 @@ describe("ações de entrega do motorista", () => {
   });
 
   it("não inicia a mesma entrega duas vezes", async () => {
-    configurarAcao([
-      { data: { id: "entrega-1" }, error: null },
-      { data: null, error: null },
-    ]);
+    configurarAcao({
+      resultadosQuery: [
+        { data: { id: "entrega-1" }, error: null },
+        { data: null, error: null },
+      ],
+    });
 
     await expect(iniciarEntrega("entrega-1")).resolves.toEqual({ ok: true });
     await expect(iniciarEntrega("entrega-1")).resolves.toEqual({
@@ -119,24 +129,23 @@ describe("ações de entrega do motorista", () => {
   });
 
   it("confirma somente entrega própria, pendente e previamente iniciada", async () => {
-    const { query } = configurarAcao();
+    const { rpc } = configurarAcao();
 
     await expect(confirmarEntrega("entrega-1")).resolves.toEqual({ ok: true });
 
-    expect(query.update).toHaveBeenCalledTimes(1);
-    expect(query.update).toHaveBeenCalledWith({
-      cliente_assinou_em: expect.any(String),
-      status: "entregue",
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("confirmar_entrega_motorista", {
+      p_entrega_id: "entrega-1",
+      p_motoboy_id: "motorista-a",
+      p_confirmado_em: expect.any(String),
     });
-    expect(query.eq).toHaveBeenCalledWith("id", "entrega-1");
-    expect(query.eq).toHaveBeenCalledWith("motoboy_id", "motorista-a");
-    expect(query.eq).toHaveBeenCalledWith("status", "pendente");
-    expect(query.not).toHaveBeenCalledWith("hora_saida", "is", null);
     expect(revalidatePathMock).toHaveBeenCalledWith("/motorista");
   });
 
   it("não confirma uma entrega que ainda não foi iniciada", async () => {
-    configurarAcao([{ data: null, error: null }]);
+    configurarAcao({
+      resultadosRpc: [{ data: null, error: null }],
+    });
 
     await expect(confirmarEntrega("entrega-1")).resolves.toEqual({
       ok: false,
@@ -146,10 +155,12 @@ describe("ações de entrega do motorista", () => {
   });
 
   it("não confirma a mesma entrega duas vezes", async () => {
-    configurarAcao([
-      { data: { id: "entrega-1" }, error: null },
-      { data: null, error: null },
-    ]);
+    configurarAcao({
+      resultadosRpc: [
+        { data: "entrega-1", error: null },
+        { data: null, error: null },
+      ],
+    });
 
     await expect(confirmarEntrega("entrega-1")).resolves.toEqual({ ok: true });
     await expect(confirmarEntrega("entrega-1")).resolves.toEqual({
