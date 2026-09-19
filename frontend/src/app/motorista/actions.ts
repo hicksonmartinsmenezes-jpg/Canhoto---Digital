@@ -1,20 +1,14 @@
 "use server";
 
-// Server Actions da área logada do app do motorista.
-//
-// A identidade do motorista é sempre derivada da sessão assinada e validada
-// no banco pela camada `motorista-authorization`. O client nunca informa
-// qual motorista está autenticado.
-
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getDb } from "@/lib/db";
+import { entregaHistorico, entregas } from "@/lib/db/schema";
 import { checarRateLimit } from "@/lib/rate-limit";
-import { descreverErroSupabase } from "@/lib/erros-supabase";
 import {
   ERRO_MOTORISTA_SESSAO,
   motoristaPodeAcessarEntrega,
-  obterMotoristaAutorizado,
 } from "@/lib/motorista-authorization";
 import { encerrarSessaoMotorista } from "@/lib/motorista-session";
 
@@ -28,8 +22,12 @@ export interface AcaoEntregaResult {
   error?: string;
 }
 
-const ERRO_SUPABASE =
-  "O Supabase ainda não está configurado neste ambiente — confirme o .env.local.";
+const ERRO_BANCO =
+  "Banco de dados indisponível neste ambiente — confirme a DATABASE_URL.";
+
+function horaLocalAtual(): string {
+  return new Date().toTimeString().slice(0, 8);
+}
 
 export async function iniciarEntrega(
   entregaId: string
@@ -38,31 +36,42 @@ export async function iniciarEntrega(
   if (!limite.permitido) {
     return {
       ok: false,
-      error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
     };
   }
 
   const acesso = await motoristaPodeAcessarEntrega(entregaId);
   if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
-  const supabase = createAdminClient();
-  if (!supabase) return { ok: false, error: ERRO_SUPABASE };
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
 
-  const { data, error } = await supabase
-    .from("entregas")
-    .update({ hora_saida: new Date().toISOString() })
-    .eq("id", entregaId)
-    .eq("motoboy_id", acesso.motoboyId)
-    .eq("status", "pendente")
-    .is("hora_saida", null)
-    .select("id")
-    .maybeSingle();
+  try {
+    const [atualizada] = await db
+      .update(entregas)
+      .set({ horaSaida: horaLocalAtual() })
+      .where(
+        and(
+          eq(entregas.id, entregaId),
+          eq(entregas.motoboyId, acesso.motoboyId),
+          eq(entregas.status, "pendente"),
+          isNull(entregas.horaSaida)
+        )
+      )
+      .returning({ id: entregas.id });
 
-  if (error) {
-    return { ok: false, error: `Erro ao iniciar a entrega: ${descreverErroSupabase(error.message)}.` };
-  }
-  if (!data) {
-    return { ok: false, error: "Entrega não encontrada ou já iniciada." };
+    if (!atualizada) {
+      return {
+        ok: false,
+        error: "Entrega não encontrada ou já iniciada.",
+      };
+    }
+  } catch {
+    return {
+      ok: false,
+      error: "Erro ao iniciar a entrega. Tente novamente.",
+    };
   }
 
   revalidatePath("/motorista");
@@ -76,33 +85,57 @@ export async function confirmarEntrega(
   if (!limite.permitido) {
     return {
       ok: false,
-      error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
     };
   }
 
   const acesso = await motoristaPodeAcessarEntrega(entregaId);
   if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
-  const supabase = createAdminClient();
-  if (!supabase) return { ok: false, error: ERRO_SUPABASE };
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
 
-  const { data, error } = await supabase
-    .from("entregas")
-    .update({ cliente_assinou_em: new Date().toISOString(), status: "entregue" })
-    .eq("id", entregaId)
-    .eq("motoboy_id", acesso.motoboyId)
-    .eq("status", "pendente")
-    .not("hora_saida", "is", null)
-    .select("id")
-    .maybeSingle();
+  try {
+    const confirmado = await db.transaction(async (tx) => {
+      const [atualizada] = await tx
+        .update(entregas)
+        .set({
+          clienteAssinouEm: new Date().toISOString(),
+          status: "entregue",
+        })
+        .where(
+          and(
+            eq(entregas.id, entregaId),
+            eq(entregas.motoboyId, acesso.motoboyId),
+            eq(entregas.status, "pendente"),
+            isNotNull(entregas.horaSaida)
+          )
+        )
+        .returning({ id: entregas.id });
 
-  if (error) {
-    return { ok: false, error: `Erro ao confirmar a entrega: ${descreverErroSupabase(error.message)}.` };
-  }
-  if (!data) {
+      if (!atualizada) return false;
+
+      await tx.insert(entregaHistorico).values({
+        entregaId,
+        statusAnterior: "pendente",
+        statusNovo: "entregue",
+        alteradoPorMotoboy: acesso.motoboyId,
+      });
+
+      return true;
+    });
+
+    if (!confirmado) {
+      return {
+        ok: false,
+        error: "Entrega não encontrada ou ainda não iniciada.",
+      };
+    }
+  } catch {
     return {
       ok: false,
-      error: "Entrega não encontrada ou ainda não iniciada.",
+      error: "Erro ao confirmar a entrega. Tente novamente.",
     };
   }
 
