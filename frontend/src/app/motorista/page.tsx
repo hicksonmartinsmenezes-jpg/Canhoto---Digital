@@ -6,15 +6,15 @@
 
 import { redirect } from "next/navigation";
 import { LogOut, PackageCheck } from "lucide-react";
-import { obterMotoboyIdDaSessao } from "@/lib/motorista-session";
+import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 import { getMotoboyNome } from "@/lib/data/motoboys";
-import { getEntregasDoMotorista } from "@/lib/data/entregas";
+import { getEntregasDoMotoristaAtual } from "@/lib/data/entregas-motorista";
 import { EntregaMotoristaCard } from "@/components/motorista/EntregaMotoristaCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { sairMotorista } from "./actions";
 
 export default async function MotoristaPage() {
-  const motoboyId = await obterMotoboyIdDaSessao();
+  const motoboyId = await obterMotoristaAutorizado();
   // O middleware (@/middleware) já bloqueia essa rota sem sessão válida —
   // este redirect é só uma segunda camada de segurança (ex.: se o
   // middleware não rodar por algum motivo de config de deploy).
@@ -22,7 +22,7 @@ export default async function MotoristaPage() {
 
   const [nome, entregas] = await Promise.all([
     getMotoboyNome(motoboyId).then((n) => n ?? "Motorista"),
-    getEntregasDoMotorista(motoboyId),
+    getEntregasDoMotoristaAtual(),
   ]);
 
   return (
