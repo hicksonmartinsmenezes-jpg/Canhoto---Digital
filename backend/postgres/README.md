@@ -33,14 +33,21 @@ O banco fica disponível somente em:
 
 A porta do PostgreSQL nunca deve ser configurada no Cloudflare Tunnel.
 
-## Aplicar a baseline
+## Aplicar as migrations
 
-Com o container saudável:
+Com o container saudável, aplique os arquivos em ordem:
 
 ```powershell
-Get-Content -Raw backend/postgres/migrations/0001_baseline.sql |
-  docker exec -i canhoto_digital_postgres psql -v ON_ERROR_STOP=1 -U canhoto_app -d canhoto_db
+Get-ChildItem backend/postgres/migrations/*.sql |
+  Sort-Object Name |
+  ForEach-Object {
+    Write-Host "Aplicando $($_.Name)"
+    Get-Content -Raw $_.FullName |
+      docker exec -i canhoto_digital_postgres psql -v ON_ERROR_STOP=1 -U canhoto_app -d canhoto_db
+  }
 ```
+
+Se a `0001_baseline.sql` já foi aplicada anteriormente, aplique somente as migrations novas. Não rode a baseline uma segunda vez no mesmo banco.
 
 ## Verificar
 
