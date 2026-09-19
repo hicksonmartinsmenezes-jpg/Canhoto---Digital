@@ -1,59 +1,90 @@
 "use server";
 
-import { headers } from "next/headers";
+import bcrypt from "bcryptjs";
+import { and, eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { getDb } from "@/lib/db";
+import { usuariosAdmin } from "@/lib/db/schema";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
-import { createClient } from "@/lib/supabase/server";
+import {
+  definirCookieSessaoAdmin,
+  encerrarSessaoAdmin,
+} from "@/lib/admin-session";
 
 export interface LoginAdminResult {
   ok: boolean;
   error?: string;
 }
 
-const MENSAGEM_ENVIO_INVALIDA =
-  "Não foi possível enviar o link de acesso. Confirme se o e-mail está correto.";
+const ERRO_CREDENCIAIS = "E-mail ou senha inválidos.";
 
-async function origemLogin(): Promise<string | null> {
-  const configurada = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (configurada) {
-    try {
-      const url = new URL(configurada);
-      if (url.protocol === "https:" || url.hostname === "localhost") return url.origin;
-    } catch {
-      return null;
-    }
-  }
-
-  if (process.env.NODE_ENV !== "production") {
-    const h = await headers();
-    const host = h.get("host");
-    if (!host) return null;
-    return `http://${host}`;
-  }
-
-  return null;
-}
-
-export async function enviarLinkLogin(email: string): Promise<LoginAdminResult> {
-  const limite = await checarRateLimit("enviarLinkLogin", RATE_LIMIT_ESTRITO);
+export async function entrarAdmin(
+  email: string,
+  senha: string
+): Promise<LoginAdminResult> {
+  const limite = await checarRateLimit("entrarAdmin", RATE_LIMIT_ESTRITO);
   if (!limite.permitido) {
-    return { ok: false, error: "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo." };
+    return {
+      ok: false,
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
   }
 
   const emailNormalizado = email.trim().toLowerCase();
-  if (!emailNormalizado) return { ok: false, error: "Informe seu e-mail." };
+  if (!emailNormalizado) {
+    return { ok: false, error: "Informe seu e-mail." };
+  }
+  if (!senha) {
+    return { ok: false, error: "Informe sua senha." };
+  }
+  if (Buffer.byteLength(senha, "utf8") > 72) {
+    return { ok: false, error: ERRO_CREDENCIAIS };
+  }
 
-  const origem = await origemLogin();
-  if (!origem) return { ok: false, error: MENSAGEM_ENVIO_INVALIDA };
+  const db = getDb();
+  if (!db) {
+    return {
+      ok: false,
+      error: "Banco de dados indisponível neste ambiente.",
+    };
+  }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: emailNormalizado,
-    options: {
-      shouldCreateUser: false,
-      emailRedirectTo: `${origem}/auth/confirm`,
-    },
-  });
+  const [usuario] = await db
+    .select({
+      id: usuariosAdmin.id,
+      senhaHash: usuariosAdmin.senhaHash,
+    })
+    .from(usuariosAdmin)
+    .where(
+      and(
+        eq(usuariosAdmin.email, emailNormalizado),
+        eq(usuariosAdmin.ativo, true)
+      )
+    )
+    .limit(1);
 
-  if (error) return { ok: false, error: MENSAGEM_ENVIO_INVALIDA };
+  if (!usuario) {
+    return { ok: false, error: ERRO_CREDENCIAIS };
+  }
+
+  const senhaValida = await bcrypt.compare(senha, usuario.senhaHash);
+  if (!senhaValida) {
+    return { ok: false, error: ERRO_CREDENCIAIS };
+  }
+
+  const sessaoCriada = await definirCookieSessaoAdmin(usuario.id);
+  if (!sessaoCriada) {
+    return {
+      ok: false,
+      error: "Sessão administrativa não está configurada neste ambiente.",
+    };
+  }
+
   return { ok: true };
+}
+
+export async function sairAdmin(): Promise<void> {
+  await encerrarSessaoAdmin();
+  redirect("/login");
 }
