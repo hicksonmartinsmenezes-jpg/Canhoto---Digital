@@ -102,8 +102,8 @@ export function EntregaMotoristaCard({
           entregue
             ? "border-emerald-100 bg-emerald-50/70"
             : emRota
-              ? "border-amber-100 bg-amber-50/80"
-              : "border-slate-100 bg-slate-50/80"
+              ? "border-[#F2B22E]/30 bg-[#F2B22E]/10"
+              : "border-[#0A1F44]/10 bg-[#0A1F44]/5"
         }`}
       >
         <div
@@ -111,7 +111,7 @@ export function EntregaMotoristaCard({
             entregue
               ? "text-emerald-700"
               : emRota
-                ? "text-amber-700"
+                ? "text-[#DE6C09]"
                 : "text-[#0A1F44]"
           }`}
         >
@@ -134,7 +134,7 @@ export function EntregaMotoristaCard({
             entregue
               ? "bg-emerald-100 text-emerald-700"
               : emRota
-                ? "bg-amber-100 text-amber-700"
+                ? "bg-[#F2B22E]/15 text-[#DE6C09]"
                 : "bg-[#0A1F44]/10 text-[#0A1F44]"
           }`}
         >
