@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "motion/react";
 import {
@@ -15,6 +15,7 @@ import {
   Trash2,
   Wrench,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -309,7 +310,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                           </p>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="inline-flex bg-[#0A1F44]/7 px-2.5 py-1 text-xs font-semibold text-[#0A1F44]">
+                          <span className="inline-flex bg-[#0A1F44]/10 px-2.5 py-1 text-xs font-semibold text-[#0A1F44]">
                             {TIPO_GASTO_VEICULO_LABEL[gasto.tipo]}
                           </span>
                         </td>
@@ -401,7 +402,7 @@ function ResumoCard({
 }: {
   label: string;
   value: string;
-  icon: typeof Car;
+  icon: LucideIcon;
   tone: "navy" | "accent" | "neutral";
 }) {
   return (
@@ -850,7 +851,7 @@ function Campo({
 }: {
   label: string;
   opcional?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className="block">
