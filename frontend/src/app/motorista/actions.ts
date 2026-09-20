@@ -6,6 +6,7 @@ import path from "node:path";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { diretorioRaizUploads } from "@/lib/comprovantes-storage";
 import { getDb } from "@/lib/db";
 import {
   entregaAnexos,
@@ -51,13 +52,6 @@ function uuidValido(valor: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     valor
   );
-}
-
-function diretorioRaizUploads(): string {
-  const configurado = process.env.CANHOTO_UPLOAD_DIR?.trim();
-  if (configurado) return path.resolve(configurado);
-
-  return path.resolve(process.cwd(), "..", "storage", "uploads");
 }
 
 function validarFoto(valor: FormDataEntryValue | null): File | null {
