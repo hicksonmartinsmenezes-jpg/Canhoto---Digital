@@ -7,7 +7,7 @@ import { getDb } from "@/lib/db";
 import { codigoErroPostgres, mensagemErroBanco } from "@/lib/db/errors";
 import { veiculoGastos, veiculos } from "@/lib/db/schema";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
-import type { TipoGastoVeiculo } from "@/lib/data/veiculos";
+import type { TipoGastoVeiculo } from "@/lib/veiculos";
 
 export interface VeiculoActionResult {
   ok: boolean;
