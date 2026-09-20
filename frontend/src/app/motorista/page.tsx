@@ -90,10 +90,10 @@ export default async function MotoristaPage({
       >
         <header className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-slate-500">
+            <p className="text-xs font-semibold text-slate-500">
               {formatarDataHoje()}
             </p>
-            <h1 className="mt-1 text-[26px] font-black leading-[1.08] tracking-tight text-[#071A3D]">
+            <h1 className="mt-1 text-2xl font-black leading-tight tracking-tight text-[#071A3D]">
               Olá, {nome} <span aria-hidden="true">👋</span>
             </h1>
           </div>
@@ -124,48 +124,45 @@ export default async function MotoristaPage({
           <>
             <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
               <div className="grid grid-cols-3">
-                <div className="px-3 py-3.5 sm:px-4">
-                  <span className="grid size-9 place-items-center rounded-full bg-blue-50 text-blue-600">
-                    <Package className="size-4.5" />
-                  </span>
-                  <p className="mt-2 text-[11px] font-bold text-slate-500 sm:text-xs">
-                    Entregas
-                  </p>
-                  <p className="mt-1 text-[28px] font-black leading-none text-[#071A3D]">
+                <div className="px-3 py-3 sm:px-4">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-600">
+                      <Package className="size-4" />
+                    </span>
+                    <p className="text-[11px] font-bold text-slate-500">
+                      Entregas
+                    </p>
+                  </div>
+                  <p className="mt-2 text-[26px] font-black leading-none text-[#071A3D]">
                     {totalHoje}
                   </p>
-                  <p className="mt-2 text-[11px] text-slate-400 sm:text-xs">
-                    no dia de hoje
-                  </p>
                 </div>
 
-                <div className="border-x border-slate-200 px-3 py-3.5 sm:px-4">
-                  <span className="grid size-9 place-items-center rounded-full bg-emerald-50 text-emerald-600">
-                    <CheckCircle2 className="size-4.5" />
-                  </span>
-                  <p className="mt-2 text-[11px] font-bold text-slate-500 sm:text-xs">
-                    Concluídas
-                  </p>
-                  <p className="mt-1 text-[28px] font-black leading-none text-[#071A3D]">
+                <div className="border-x border-slate-200 px-3 py-3 sm:px-4">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+                      <CheckCircle2 className="size-4" />
+                    </span>
+                    <p className="text-[11px] font-bold text-slate-500">
+                      Concluídas
+                    </p>
+                  </div>
+                  <p className="mt-2 text-[26px] font-black leading-none text-[#071A3D]">
                     {entregues}
                   </p>
-                  <p className="mt-2 text-[11px] text-slate-400 sm:text-xs">
-                    no dia de hoje
-                  </p>
                 </div>
 
-                <div className="px-3 py-3.5 sm:px-4">
-                  <span className="grid size-9 place-items-center rounded-full bg-orange-50 text-orange-600">
-                    <Clock3 className="size-4.5" />
-                  </span>
-                  <p className="mt-2 text-[11px] font-bold text-slate-500 sm:text-xs">
-                    Pendentes
-                  </p>
-                  <p className="mt-1 text-[28px] font-black leading-none text-[#071A3D]">
+                <div className="px-3 py-3 sm:px-4">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-600">
+                      <Clock3 className="size-4" />
+                    </span>
+                    <p className="text-[11px] font-bold text-slate-500">
+                      Pendentes
+                    </p>
+                  </div>
+                  <p className="mt-2 text-[26px] font-black leading-none text-[#071A3D]">
                     {pendentes}
-                  </p>
-                  <p className="mt-2 text-[11px] text-slate-400 sm:text-xs">
-                    no dia de hoje
                   </p>
                 </div>
               </div>
