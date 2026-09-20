@@ -180,8 +180,18 @@ export const entregaAnexos = pgTable(
       .notNull()
       .defaultNow(),
     capturadoPor: uuid("capturado_por").references(() => colaboradores.id),
+    capturadoPorMotoboy: uuid("capturado_por_motoboy").references(
+      () => motoboys.id
+    ),
   },
-  (table) => [index("idx_entrega_anexos_entrega").on(table.entregaId)]
+  (table) => [
+    index("idx_entrega_anexos_entrega").on(table.entregaId),
+    index("idx_entrega_anexos_motoboy").on(table.capturadoPorMotoboy),
+    check(
+      "ck_entrega_anexos_um_ator",
+      sql`num_nonnulls(${table.capturadoPor}, ${table.capturadoPorMotoboy}) <= 1`
+    ),
+  ]
 );
 
 export const entregaHistorico = pgTable(
