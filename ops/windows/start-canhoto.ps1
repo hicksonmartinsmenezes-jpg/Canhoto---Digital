@@ -14,19 +14,59 @@ function Write-StartupLog([string]$Message) {
     Add-Content -Path $logPath -Value "[$timestamp] $Message"
 }
 
-# Scheduled tasks can start with an environment snapshot that differs from an
-# interactive shell. Refresh both machine and user PATH values before looking
-# for Docker/Node.
+function Invoke-NativeWithTimeout {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [int]$TimeoutSeconds = 5
+    )
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.Arguments = (($Arguments | ForEach-Object {
+        if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\\"') + '"' } else { $_ }
+    }) -join " ")
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
+
+    try {
+        if (-not $process.Start()) {
+            return @{ TimedOut = $false; ExitCode = -1; StdOut = ""; StdErr = "Could not start process." }
+        }
+
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            try { $process.Kill() } catch {}
+            return @{ TimedOut = $true; ExitCode = -1; StdOut = ""; StdErr = "Timed out." }
+        }
+
+        return @{
+            TimedOut = $false
+            ExitCode = $process.ExitCode
+            StdOut = $process.StandardOutput.ReadToEnd().Trim()
+            StdErr = $process.StandardError.ReadToEnd().Trim()
+        }
+    }
+    finally {
+        $process.Dispose()
+    }
+}
+
+# Refresh PATH because scheduled tasks can inherit an older environment snapshot.
 $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 $env:Path = @($machinePath, $userPath) -join ";"
 
 Write-StartupLog "Startup task invoked."
 
-$docker = Get-Command docker -ErrorAction SilentlyContinue
+$docker = Get-Command docker.exe -ErrorAction SilentlyContinue
 if (-not $docker) {
-    Write-StartupLog "ERROR: docker not found in PATH."
-    throw "docker not found in PATH."
+    Write-StartupLog "ERROR: docker.exe not found in PATH."
+    throw "docker.exe not found in PATH."
 }
 
 $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
@@ -42,46 +82,25 @@ if (-not (Test-Path (Join-Path $frontendDir ".next"))) {
     throw "Production build is missing. Run npm ci and npm run build first."
 }
 
-# Docker Desktop often needs a few seconds after Windows logon before its
-# engine accepts commands. Native stderr during that window must not abort the
-# script, otherwise the scheduled task exits before the retry loop can work.
 $deadline = (Get-Date).AddMinutes(5)
 $health = ""
+$attempt = 0
 
 do {
-    $dockerReady = $false
+    $attempt++
+    Write-StartupLog "Waiting for Docker/PostgreSQL (attempt $attempt)."
 
-    try {
-        $previousPreference = $ErrorActionPreference
-        $ErrorActionPreference = "Continue"
-        & $docker.Source info 1>$null 2>$null
-        $dockerReady = ($LASTEXITCODE -eq 0)
-    }
-    catch {
-        $dockerReady = $false
-    }
-    finally {
-        $ErrorActionPreference = $previousPreference
-    }
+    $dockerInfo = Invoke-NativeWithTimeout -FilePath $docker.Source -Arguments @("info") -TimeoutSeconds 5
 
-    if ($dockerReady) {
-        try {
-            $previousPreference = $ErrorActionPreference
-            $ErrorActionPreference = "Continue"
-            $health = (& $docker.Source inspect --format "{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}" $container 2>$null | Select-Object -First 1)
-            $inspectOk = ($LASTEXITCODE -eq 0)
-        }
-        catch {
-            $inspectOk = $false
-            $health = ""
-        }
-        finally {
-            $ErrorActionPreference = $previousPreference
-        }
+    if (-not $dockerInfo.TimedOut -and $dockerInfo.ExitCode -eq 0) {
+        $inspect = Invoke-NativeWithTimeout -FilePath $docker.Source -Arguments @("inspect", "--format", "{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}", $container) -TimeoutSeconds 5
 
-        if ($inspectOk -and $health -eq "healthy") {
-            Write-StartupLog "Docker is ready and PostgreSQL is healthy."
-            break
+        if (-not $inspect.TimedOut -and $inspect.ExitCode -eq 0) {
+            $health = $inspect.StdOut
+            if ($health -eq "healthy") {
+                Write-StartupLog "Docker is ready and PostgreSQL is healthy."
+                break
+            }
         }
     }
 
