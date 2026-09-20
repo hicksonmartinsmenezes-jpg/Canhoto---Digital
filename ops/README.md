@@ -137,55 +137,73 @@ http://IP-DA-MAQUINA:3003
 
 `config.example.yml` existe apenas para o caso de optar no futuro por um túnel localmente gerenciado.
 
-## 5. Backup externo no Cloudflare R2
+## 5. Backup PostgreSQL + cópia externa sincronizada
 
-O backup usa `pg_dump -Fc`, executado dentro do próprio container PostgreSQL, e envia o arquivo ao R2 via AWS CLI.
+O backup não depende de Cloudflare R2 nem de AWS CLI.
 
-Instale a AWS CLI na máquina antes de usar os scripts.
+O script sempre cria um `pg_dump -Fc` local em:
 
-Crie no R2:
+```text
+backups/postgres/
+```
 
-- bucket dedicado, por exemplo `canhoto-digital-backups`;
-- credencial/token limitado ao bucket com leitura e escrita.
+Opcionalmente, ele copia o mesmo arquivo para uma pasta sincronizada por outro serviço, como OneDrive ou Google Drive.
 
-Copie:
+Crie a configuração local:
 
 ```powershell
 Copy-Item ops\backup\backup.env.example ops\backup\.env.backup
 notepad ops\backup\.env.backup
 ```
 
-Preencha apenas localmente:
+Configuração padrão:
 
 ```env
-R2_ACCOUNT_ID=
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-R2_BUCKET=canhoto-digital-backups
-R2_RETENTION_DAYS=30
+BACKUP_RETENTION_DAYS=30
+BACKUP_MIRROR_DIR=
 ```
 
-Nunca envie esse arquivo para o Git.
+Enquanto `BACKUP_MIRROR_DIR` estiver vazio, o backup fica apenas na máquina local.
+
+Exemplos de espelho externo:
+
+```env
+BACKUP_MIRROR_DIR=%OneDrive%\Canhoto Digital\Backups
+```
+
+ou:
+
+```env
+BACKUP_MIRROR_DIR=G:\Meu Drive\Canhoto Digital\Backups
+```
+
+A pasta escolhida deve pertencer a um cliente de sincronização já configurado no Windows.
 
 ### Teste manual obrigatório
 
-Execute primeiro:
+Primeiro crie um backup real:
 
 ```powershell
-.\ops\backup\backup-postgres-r2.ps1
+.\ops\backup\backup-postgres.ps1
 ```
 
-Confirme no Dashboard do R2 que o objeto existe em `postgres/`.
+O script:
 
-Depois teste uma restauração real:
+- executa `pg_dump -Fc` dentro do container PostgreSQL;
+- valida o dump com `pg_restore -l`;
+- copia o arquivo para `backups/postgres/`;
+- copia para `BACKUP_MIRROR_DIR` quando configurado;
+- mantém a retenção configurada.
+
+Depois faça uma restauração real em banco separado:
 
 ```powershell
-.\ops\backup\test-restore-r2.ps1
+.\ops\backup\test-restore.ps1
 ```
 
-O teste cria um **novo banco**, com nome `canhoto_restore_...`, e não sobrescreve produção.
+O teste cria um novo banco chamado `canhoto_restore_...`, restaura o dump e confirma as sete tabelas essenciais.
 
-O banco de teste não é apagado automaticamente de propósito. Só remova depois de conferir a restauração.
+Ele não sobrescreve `canhoto_db` e o banco de teste não é apagado automaticamente, para permitir inspeção.
 
 Somente depois de backup + restore passarem registre o agendamento:
 
@@ -208,6 +226,6 @@ Após toda configuração estar concluída:
 7. confirme o hostname público `/motorista`;
 8. confirme que o hostname público retorna 404 para o Portal Admin;
 9. confirme o serviço `cloudflared` como Running;
-10. faça um backup manual e um restore de teste após mudanças relevantes na infraestrutura.
+10. confirme que o backup local e a cópia sincronizada estão atualizados e faça um restore de teste após mudanças relevantes na infraestrutura.
 
 O servidor só deve ser considerado recuperável quando o restore do backup tiver sido realmente validado.
