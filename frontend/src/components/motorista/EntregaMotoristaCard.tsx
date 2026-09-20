@@ -112,7 +112,7 @@ export function EntregaMotoristaCard({
               ? "text-emerald-700"
               : emRota
                 ? "text-amber-700"
-                : "text-slate-600"
+                : "text-[#0A1F44]"
           }`}
         >
           {entregue ? (
@@ -135,7 +135,7 @@ export function EntregaMotoristaCard({
               ? "bg-emerald-100 text-emerald-700"
               : emRota
                 ? "bg-amber-100 text-amber-700"
-                : "bg-slate-200 text-slate-600"
+                : "bg-[#0A1F44]/10 text-[#0A1F44]"
           }`}
         >
           {entrega.numero}
@@ -200,7 +200,7 @@ export function EntregaMotoristaCard({
               <button
                 type="button"
                 onClick={abrirRota}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-extrabold text-blue-700 transition hover:bg-blue-100"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#0A1F44]/20 bg-[#0A1F44]/5 px-4 py-3 text-sm font-extrabold text-[#0A1F44] transition hover:bg-[#FFD200]/15"
               >
                 <Navigation className="size-4" />
                 Abrir rota no Waze
