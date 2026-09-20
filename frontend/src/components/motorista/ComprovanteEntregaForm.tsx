@@ -281,7 +281,7 @@ export function ComprovanteEntregaForm({
         type="button"
         disabled={pending}
         onClick={confirmar}
-        className="mt-4 inline-flex w-full items-center justify-center gap-2 bg-amber-500 px-4 py-3 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 bg-linear-to-r from-[#F2B22E] to-[#DE6C09] px-4 py-3 text-sm font-bold text-white transition-[transform,filter] duration-150 hover:brightness-95 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
       >
         {pending ? (
           <>
