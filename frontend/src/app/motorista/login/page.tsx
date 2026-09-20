@@ -32,22 +32,13 @@ export default function MotoristaLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
       <div className="w-full max-w-sm overflow-hidden border border-slate-200 bg-white shadow-sm">
         <div className="bg-[#0A1F44] px-6 py-5">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/rildon-express-logo-white.svg"
               alt="Rildon Express"
-              className="h-9 w-auto max-w-[210px]"
+              className="h-10 w-auto max-w-[230px]"
             />
-
-            <div className="grid size-12 shrink-0 place-items-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/rildon-mark.png"
-                alt="Rildon"
-                className="max-h-12 max-w-12 object-contain"
-              />
-            </div>
           </div>
         </div>
 
