@@ -65,9 +65,6 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
     <div>
       <div className="mb-7">
         <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Consulte e exporte as entregas registradas por período, situação e forma de pagamento.
-        </p>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
