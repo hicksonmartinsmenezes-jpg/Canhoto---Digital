@@ -8,6 +8,7 @@
 // @/lib/data/entregas (getAlertas/getEntregasDoMotorista).
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, MapPin, Navigation, Truck } from "lucide-react";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 import { atualizarLocalizacaoMotorista, iniciarEntrega } from "@/app/motorista/actions";
@@ -19,6 +20,7 @@ export function EntregaMotoristaCard({
 }: {
   entrega: EntregaMotorista;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
 
@@ -74,10 +76,7 @@ export function EntregaMotoristaCard({
       }
 
       await registrarLocalizacaoAtual();
-
-      if (entrega.endereco) {
-        abrirRota();
-      }
+      router.refresh();
     });
   }
 
