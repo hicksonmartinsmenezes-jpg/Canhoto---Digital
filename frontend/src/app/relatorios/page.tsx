@@ -80,13 +80,13 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
         <StatCard
           label="Valor total"
           value={totais.valorTotal}
-          sub="Soma do valor de pagamento das entregas filtradas"
+          sub=""
           icon={<Wallet className="size-5" strokeWidth={2} />}
         />
         <StatCard
           label="Ticket médio"
           value={totais.ticketMedio}
-          sub="Valor total dividido pela quantidade de entregas"
+          sub=""
           icon={<FileBarChart className="size-5" strokeWidth={2} />}
         />
       </div>
@@ -195,7 +195,6 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
           <EmptyState
             icon={Package}
             title="Nenhuma entrega encontrada"
-            description="Ajuste o período ou os filtros acima e tente novamente."
           />
         ) : (
           <div className="overflow-x-auto">
