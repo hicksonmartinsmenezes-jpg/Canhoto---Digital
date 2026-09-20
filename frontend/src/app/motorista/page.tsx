@@ -86,14 +86,14 @@ export default async function MotoristaPage({
 
       <main
         id="inicio"
-        className="w-full px-3 pb-24 pt-4 sm:px-4"
+        className="w-full px-2 pb-24 pt-3 sm:px-3"
       >
-        <header className="mb-4 flex items-start justify-between gap-3">
+        <header className="mb-3 flex items-center justify-between gap-3 px-1">
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-slate-500">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               {formatarDataHoje()}
             </p>
-            <h1 className="mt-1 text-2xl font-black leading-tight tracking-tight text-[#0A1F44]">
+            <h1 className="mt-0.5 text-[23px] font-black leading-tight tracking-tight text-[#0A1F44]">
               Olá, {nome} <span aria-hidden="true">👋</span>
             </h1>
           </div>
@@ -122,55 +122,55 @@ export default async function MotoristaPage({
 
         {view === "inicio" && (
           <>
-            <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
-              <div className="grid grid-cols-3">
-                <div className="px-3 py-3 sm:px-4">
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#0A1F44]/8 text-[#0A1F44]">
-                      <Package className="size-4" />
-                    </span>
-                    <p className="text-[11px] font-bold text-slate-500">
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
+              <div className="grid grid-cols-3 divide-x divide-slate-200">
+                <div className="flex items-center gap-2.5 px-3 py-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#0A1F44]/8 text-[#0A1F44]">
+                    <Package className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
                       Entregas
                     </p>
+                    <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
+                      {totalHoje}
+                    </p>
                   </div>
-                  <p className="mt-2 text-[26px] font-black leading-none text-[#0A1F44]">
-                    {totalHoje}
-                  </p>
                 </div>
 
-                <div className="border-x border-slate-200 px-3 py-3 sm:px-4">
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600">
-                      <CheckCircle2 className="size-4" />
-                    </span>
-                    <p className="text-[11px] font-bold text-slate-500">
+                <div className="flex items-center gap-2.5 px-3 py-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <CheckCircle2 className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
                       Concluídas
                     </p>
-                  </div>
-                  <p className="mt-2 text-[26px] font-black leading-none text-[#0A1F44]">
-                    {entregues}
-                  </p>
-                </div>
-
-                <div className="px-3 py-3 sm:px-4">
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#DE6C09]/10 text-[#DE6C09]">
-                      <Clock3 className="size-4" />
-                    </span>
-                    <p className="text-[11px] font-bold text-slate-500">
-                      Pendentes
+                    <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
+                      {entregues}
                     </p>
                   </div>
-                  <p className="mt-2 text-[26px] font-black leading-none text-[#0A1F44]">
-                    {pendentes}
-                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5 px-3 py-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#DE6C09]/10 text-[#DE6C09]">
+                    <Clock3 className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                      Pendentes
+                    </p>
+                    <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
+                      {pendentes}
+                    </p>
+                  </div>
                 </div>
               </div>
             </section>
 
             <a
               href="#entregas-hoje"
-              className="mt-4 block rounded-[22px] border border-amber-200 bg-[#FFF9E8] p-4 shadow-[0_8px_24px_rgba(10,31,68,0.06)] transition hover:bg-amber-50"
+              className="mt-3 block rounded-2xl border border-amber-200 bg-[#FFF9E8] px-4 py-3.5 shadow-[0_6px_18px_rgba(10,31,68,0.05)] transition hover:bg-amber-50"
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -191,7 +191,7 @@ export default async function MotoristaPage({
                 />
               </div>
 
-              <p className="mt-3 text-[13px] font-medium text-slate-500">
+              <p className="mt-2.5 text-xs font-semibold text-slate-500">
                 {totalHoje === 0
                   ? "Nenhuma entrega programada para hoje"
                   : `${entregues} de ${totalHoje} ${totalHoje === 1 ? "entrega concluída" : "entregas concluídas"}`}
@@ -219,7 +219,7 @@ export default async function MotoristaPage({
               </h2>
             </div>
 
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_12px_35px_rgba(15,23,42,0.07)]">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
               <div className="flex items-center gap-4 border-b border-slate-100 p-5">
                 <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#0A1F44] text-white">
                   <UserRound className="size-7" />
