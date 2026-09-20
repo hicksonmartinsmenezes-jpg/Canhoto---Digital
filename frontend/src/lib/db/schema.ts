@@ -108,6 +108,39 @@ export const motoboys = pgTable("motoboys", {
     .defaultNow(),
 });
 
+export const motoboyLocalizacoes = pgTable(
+  "motoboy_localizacoes",
+  {
+    motoboyId: uuid("motoboy_id")
+      .primaryKey()
+      .references(() => motoboys.id, { onDelete: "cascade" }),
+    latitude: numeric("latitude", { precision: 9, scale: 6 }).notNull(),
+    longitude: numeric("longitude", { precision: 9, scale: 6 }).notNull(),
+    precisaoMetros: numeric("precisao_metros", { precision: 10, scale: 2 }),
+    atualizadoEm: timestamp("atualizado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_motoboy_localizacoes_atualizado").on(table.atualizadoEm),
+    check(
+      "ck_motoboy_localizacao_latitude",
+      sql`${table.latitude} between -90 and 90`
+    ),
+    check(
+      "ck_motoboy_localizacao_longitude",
+      sql`${table.longitude} between -180 and 180`
+    ),
+    check(
+      "ck_motoboy_localizacao_precisao",
+      sql`${table.precisaoMetros} is null or ${table.precisaoMetros} >= 0`
+    ),
+  ]
+);
+
 export const entregas = pgTable(
   "entregas",
   {
