@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { treinamentoProgresso } from "@/lib/db/schema";
 import type { StatusTreinamento } from "@/lib/treinamentos";
@@ -45,8 +45,12 @@ export async function getTreinamentoProgresso(
     })
     .from(treinamentoProgresso)
     .where(
-      eq(treinamentoProgresso.usuarioAdminId, usuarioAdminId)
-    );
+      and(
+        eq(treinamentoProgresso.usuarioAdminId, usuarioAdminId),
+        eq(treinamentoProgresso.treinamentoSlug, slug)
+      )
+    )
+    .limit(1);
 
-  return progresso?.slug === slug ? progresso : null;
+  return progresso ?? null;
 }
