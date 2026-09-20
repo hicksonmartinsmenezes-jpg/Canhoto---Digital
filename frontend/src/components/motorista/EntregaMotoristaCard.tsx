@@ -10,7 +10,8 @@
 import { useState, useTransition } from "react";
 import { CheckCircle2, Loader2, MapPin, Navigation, Truck } from "lucide-react";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
-import { confirmarEntrega, iniciarEntrega } from "@/app/motorista/actions";
+import { iniciarEntrega } from "@/app/motorista/actions";
+import { ComprovanteEntregaForm } from "@/components/motorista/ComprovanteEntregaForm";
 import type { EntregaMotorista } from "@/lib/data/entregas";
 
 export function EntregaMotoristaCard({
@@ -37,17 +38,16 @@ export function EntregaMotoristaCard({
 
   function executar() {
     setErro(null);
-    const acao = emRota ? confirmarEntrega : iniciarEntrega;
 
     startTransition(async () => {
-      const resultado = await acao(entrega.id);
+      const resultado = await iniciarEntrega(entrega.id);
 
       if (!resultado.ok) {
-        setErro(resultado.error ?? "Não foi possível concluir a ação.");
+        setErro(resultado.error ?? "Não foi possível iniciar a entrega.");
         return;
       }
 
-      if (!emRota && entrega.endereco) {
+      if (entrega.endereco) {
         abrirRota();
       }
     });
@@ -101,9 +101,9 @@ export function EntregaMotoristaCard({
           <CheckCircle2 className="size-4" />
           Entrega concluída
         </div>
-      ) : (
-        <div className="mt-4 space-y-2">
-          {emRota && entrega.endereco && (
+      ) : emRota ? (
+        <div className="mt-4 space-y-3">
+          {entrega.endereco && (
             <button
               type="button"
               onClick={abrirRota}
@@ -114,30 +114,27 @@ export function EntregaMotoristaCard({
             </button>
           )}
 
-          <button
-            type="button"
-            disabled={pending}
-            onClick={executar}
-            className="inline-flex w-full items-center justify-center gap-1.5 bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
-          >
-            {pending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                {emRota ? "Confirmando..." : "Iniciando..."}
-              </>
-            ) : emRota ? (
-              <>
-                <CheckCircle2 className="size-4" />
-                Confirmar entrega
-              </>
-            ) : (
-              <>
-                <Truck className="size-4" />
-                Iniciar entrega
-              </>
-            )}
-          </button>
+          <ComprovanteEntregaForm entregaId={entrega.id} />
         </div>
+      ) : (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={executar}
+          className="mt-4 inline-flex w-full items-center justify-center gap-1.5 bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
+        >
+          {pending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Iniciando...
+            </>
+          ) : (
+            <>
+              <Truck className="size-4" />
+              Iniciar entrega
+            </>
+          )}
+        </button>
       )}
     </div>
   );
