@@ -73,10 +73,6 @@ export function MotoboysManager({ motoboys }: MotoboysManagerProps) {
             icon={Bike}
             title="Nenhum motorista cadastrado ainda"
             description="Cadastre o primeiro motorista terceirizado pra vincular às entregas."
-            action={{
-              label: "Novo Motorista",
-              onClick: () => setModal({ tipo: "novo" }),
-            }}
           />
         ) : (
           <div className="overflow-x-auto">
