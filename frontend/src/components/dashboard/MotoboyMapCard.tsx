@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   Bike,
@@ -55,24 +55,6 @@ export function MotoboyMapCard({
     )?.motoboyId ?? motoristasIniciais[0]?.motoboyId ?? null
   );
 
-  useEffect(() => {
-    if (
-      selecionadoId &&
-      motoristas.some((motorista) => motorista.motoboyId === selecionadoId)
-    ) {
-      return;
-    }
-
-    const primeiroComLocalizacao = motoristas.find(
-      (motorista) =>
-        motorista.latitude !== null && motorista.longitude !== null
-    );
-
-    setSelecionadoId(
-      primeiroComLocalizacao?.motoboyId ?? motoristas[0]?.motoboyId ?? null
-    );
-  }, [motoristas, selecionadoId]);
-
   const comLocalizacao = useMemo(
     () =>
       motoristas.filter(
@@ -82,6 +64,15 @@ export function MotoboyMapCard({
     [motoristas]
   );
   const semLocalizacao = motoristas.length - comLocalizacao;
+  const primeiroComLocalizacao = motoristas.find(
+    (motorista) =>
+      motorista.latitude !== null && motorista.longitude !== null
+  );
+  const selecionadoEfetivoId =
+    selecionadoId &&
+    motoristas.some((motorista) => motorista.motoboyId === selecionadoEfetivoId)
+      ? selecionadoId
+      : primeiroComLocalizacao?.motoboyId ?? motoristas[0]?.motoboyId ?? null;
 
   return (
     <Card className="overflow-hidden p-0">
@@ -145,7 +136,7 @@ export function MotoboyMapCard({
                 const possuiLocalizacao =
                   motorista.latitude !== null &&
                   motorista.longitude !== null;
-                const selecionado = motorista.motoboyId === selecionadoId;
+                const selecionado = motorista.motoboyId === selecionadoEfetivoId;
 
                 return (
                   <button
@@ -236,7 +227,7 @@ export function MotoboyMapCard({
         <div className="relative min-h-[360px] lg:min-h-[420px]">
           <MotoboyMap
             motoristas={motoristas}
-            motoristaSelecionadoId={selecionadoId}
+            motoristaSelecionadoId={selecionadoEfetivoId}
             onSelecionarMotorista={setSelecionadoId}
           />
 
