@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { diretorioRaizUploads } from "@/lib/comprovantes-storage";
@@ -156,6 +156,26 @@ export async function iniciarEntrega(
         ok: false,
         error: "Entrega não encontrada ou já iniciada.",
       };
+    }
+
+    const [outraEmRota] = await db
+      .select({ id: entregas.id })
+      .from(entregas)
+      .where(
+        and(
+          eq(entregas.motoboyId, acesso.motoboyId),
+          eq(entregas.data, dataLocalAtual()),
+          eq(entregas.status, "pendente"),
+          isNotNull(entregas.horaSaida),
+          ne(entregas.id, entregaId)
+        )
+      )
+      .limit(1);
+
+    if (!outraEmRota) {
+      await db
+        .delete(motoboyLocalizacoes)
+        .where(eq(motoboyLocalizacoes.motoboyId, acesso.motoboyId));
     }
   } catch {
     return {
