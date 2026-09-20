@@ -93,7 +93,7 @@ export default async function MotoristaPage({
             <p className="text-xs font-semibold text-slate-500">
               {formatarDataHoje()}
             </p>
-            <h1 className="mt-1 text-2xl font-black leading-tight tracking-tight text-[#071A3D]">
+            <h1 className="mt-1 text-2xl font-black leading-tight tracking-tight text-[#0A1F44]">
               Olá, {nome} <span aria-hidden="true">👋</span>
             </h1>
           </div>
@@ -126,14 +126,14 @@ export default async function MotoristaPage({
               <div className="grid grid-cols-3">
                 <div className="px-3 py-3 sm:px-4">
                   <div className="flex items-center gap-2">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-600">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#0A1F44]/8 text-[#0A1F44]">
                       <Package className="size-4" />
                     </span>
                     <p className="text-[11px] font-bold text-slate-500">
                       Entregas
                     </p>
                   </div>
-                  <p className="mt-2 text-[26px] font-black leading-none text-[#071A3D]">
+                  <p className="mt-2 text-[26px] font-black leading-none text-[#0A1F44]">
                     {totalHoje}
                   </p>
                 </div>
@@ -147,7 +147,7 @@ export default async function MotoristaPage({
                       Concluídas
                     </p>
                   </div>
-                  <p className="mt-2 text-[26px] font-black leading-none text-[#071A3D]">
+                  <p className="mt-2 text-[26px] font-black leading-none text-[#0A1F44]">
                     {entregues}
                   </p>
                 </div>
@@ -161,7 +161,7 @@ export default async function MotoristaPage({
                       Pendentes
                     </p>
                   </div>
-                  <p className="mt-2 text-[26px] font-black leading-none text-[#071A3D]">
+                  <p className="mt-2 text-[26px] font-black leading-none text-[#0A1F44]">
                     {pendentes}
                   </p>
                 </div>
@@ -170,23 +170,23 @@ export default async function MotoristaPage({
 
             <a
               href="#entregas-hoje"
-              className="mt-4 block rounded-[22px] border border-emerald-100 bg-emerald-50/70 p-4 shadow-[0_8px_24px_rgba(16,185,129,0.07)] transition hover:bg-emerald-50"
+              className="mt-4 block rounded-[22px] border border-amber-200 bg-[#FFF9E8] p-4 shadow-[0_8px_24px_rgba(10,31,68,0.06)] transition hover:bg-amber-50"
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <BarChart3 className="size-5 text-emerald-600" />
-                  <h2 className="text-base font-extrabold text-[#071A3D]">
+                  <BarChart3 className="size-5 text-[#0A1F44]" />
+                  <h2 className="text-base font-extrabold text-[#0A1F44]">
                     Progresso do dia
                   </h2>
                 </div>
-                <span className="text-lg font-black text-emerald-600">
+                <span className="text-lg font-black text-[#DE6C09]">
                   {progresso}%
                 </span>
               </div>
 
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-emerald-100">
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-amber-100">
                 <div
-                  className="h-full rounded-full bg-emerald-500 transition-[width]"
+                  className="h-full rounded-full bg-linear-to-r from-[#F2B22E] to-[#DE6C09] transition-[width]"
                   style={{ width: `${progresso}%` }}
                 />
               </div>
@@ -214,7 +214,7 @@ export default async function MotoristaPage({
           <section>
             <div className="mb-5">
               <p className="text-sm font-semibold text-slate-500">Perfil</p>
-              <h2 className="mt-1 text-2xl font-black tracking-tight text-[#071A3D]">
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-[#0A1F44]">
                 Minha conta
               </h2>
             </div>
@@ -225,7 +225,7 @@ export default async function MotoristaPage({
                   <UserRound className="size-7" />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-xl font-black text-[#071A3D]">
+                  <p className="truncate text-xl font-black text-[#0A1F44]">
                     {nome}
                   </p>
                   <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600">
@@ -237,7 +237,7 @@ export default async function MotoristaPage({
 
               <div className="grid grid-cols-3 divide-x divide-slate-100 px-2 py-5 text-center">
                 <div>
-                  <p className="text-2xl font-black text-[#071A3D]">
+                  <p className="text-2xl font-black text-[#0A1F44]">
                     {totalHoje}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
