@@ -11,6 +11,8 @@ interface StatCardProps {
   /** Ícone à direita do valor (badge redondo). Pode aparecer junto do
    * `trend` — os dois ficam agrupados lado a lado, sem quebrar o alinhamento. */
   icon?: ReactNode;
+  /** Remove o fundo do ícone quando a tela pede visual mais limpo. */
+  iconBare?: boolean;
   /** Métrica secundária compacta à direita do valor (ex.: "Eficiência 78,6%"). */
   mini?: { label: string; value: string };
   /** "accent" = card em destaque (gradiente âmbar → laranja, texto branco
@@ -30,6 +32,7 @@ export function StatCard({
   sub,
   trend,
   icon,
+  iconBare = false,
   mini,
   variant = "default",
 }: StatCardProps) {
@@ -73,7 +76,7 @@ export function StatCard({
 
             {icon && (
               <span
-                className={`grid size-10 shrink-0 place-items-center rounded-xl ${accent ? "bg-white/15 text-white" : "bg-amber-500/10 text-black"}`}
+                className={`grid size-10 shrink-0 place-items-center ${iconBare ? (accent ? "text-white" : "text-black") : `rounded-xl ${accent ? "bg-white/15 text-white" : "bg-amber-500/10 text-black"}`}`}
               >
                 {icon}
               </span>
