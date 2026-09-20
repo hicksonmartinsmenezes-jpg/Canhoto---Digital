@@ -720,6 +720,56 @@ export interface EntregaMotorista {
   clienteAssinouEm: string | null;
 }
 
+export interface EntregaHistoricoMotorista extends EntregaMotorista {
+  data: string;
+}
+
+export async function getHistoricoDoMotorista(
+  motoboyId: string,
+  limit = 20
+): Promise<EntregaHistoricoMotorista[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      id: entregas.id,
+      numero: entregas.numero,
+      data: entregas.data,
+      clienteNome: entregas.clienteNome,
+      endereco: entregas.endereco,
+      cep: entregas.cep,
+      valorPagamento: entregas.valorPagamento,
+      formaPagamento: entregas.formaPagamento,
+      status: entregas.status,
+      horaSaida: entregas.horaSaida,
+      clienteAssinouEm: entregas.clienteAssinouEm,
+    })
+    .from(entregas)
+    .where(
+      and(
+        eq(entregas.motoboyId, motoboyId),
+        eq(entregas.status, "entregue")
+      )
+    )
+    .orderBy(desc(entregas.data), desc(entregas.numero))
+    .limit(limit);
+
+  return rows.map((entrega) => ({
+    id: entrega.id,
+    numero: `#${entrega.numero}`,
+    data: formatDateBR(entrega.data),
+    clienteNome: entrega.clienteNome,
+    endereco: entrega.endereco ?? "",
+    cep: entrega.cep ? formatCep(entrega.cep) : "",
+    valor: formatBRL(Number(entrega.valorPagamento)),
+    formaPagamento: entrega.formaPagamento,
+    status: entrega.status,
+    horaSaida: entrega.horaSaida,
+    clienteAssinouEm: entrega.clienteAssinouEm,
+  }));
+}
+
 export async function getEntregasDoMotorista(
   motoboyId: string
 ): Promise<EntregaMotorista[]> {
