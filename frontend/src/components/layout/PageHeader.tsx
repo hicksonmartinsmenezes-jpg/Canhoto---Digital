@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { GraduationCap } from "lucide-react";
 import type { ReactNode } from "react";
 import { NotificationsBell } from "./NotificationsBell";
@@ -41,9 +42,9 @@ export function PageHeader({ title, beta, action, alertas }: PageHeaderProps) {
 
 function TreinamentoButton() {
   return (
-    <button className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A1F44]/90">
+    <Link href="/treinamentos" className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A1F44]/90">
       <GraduationCap className="size-4" />
       Treinamento
-    </button>
+    </Link>
   );
 }

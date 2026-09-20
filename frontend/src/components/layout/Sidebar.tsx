@@ -14,6 +14,7 @@ import {
   ClipboardList,
   ChevronDown,
   Car,
+  GraduationCap,
 } from "lucide-react";
 
 // Estrutura de navegação do Portal Web Admin — Canhoto Digital.
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   },
   { type: "link" as const, href: "/veiculos", label: "Gestão de Veículos", icon: Car },
   { type: "link" as const, href: "/relatorios", label: "Relatórios", icon: FileBarChart },
+  { type: "link" as const, href: "/treinamentos", label: "Treinamentos", icon: GraduationCap },
 ];
 
 // Barra lateral com auto-abertura (19/08/2026, v2): agora fica sempre
