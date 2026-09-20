@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* Upload de comprovantes (Issue #68): o Next limita Server Actions a 1 MB
+   * por padrão. Foto + assinatura são validadas novamente no servidor. */
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
   async headers() {
     return [
       {
