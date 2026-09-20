@@ -65,6 +65,7 @@ export async function atualizarEntrega(
   if (!input.formaPagamento) {
     return { ok: false, error: "Selecione a forma de pagamento." };
   }
+  const formaPagamento: FormaPagamento = input.formaPagamento;
 
   try {
     const atualizada = await db.transaction(async (tx) => {
@@ -86,7 +87,7 @@ export async function atualizarEntrega(
           numeroPedido: input.numeroPedido.trim() || null,
           numeroNfe: input.numeroNfe.trim() || null,
           valorPagamento: input.valorPagamento.toFixed(2),
-          formaPagamento: input.formaPagamento,
+          formaPagamento,
           motoboyId: input.motoboyId || null,
           observacoes: input.observacoes.trim() || null,
           status: input.status,
