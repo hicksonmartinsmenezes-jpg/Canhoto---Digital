@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, LockKeyhole, LogIn, Phone } from "lucide-react";
+import { Bike, Loader2, LockKeyhole, LogIn, Phone } from "lucide-react";
 import { maskPhoneInput } from "@/lib/format";
 import { loginMotorista } from "./actions";
 
@@ -31,24 +31,26 @@ export default function MotoristaLoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
       <div className="w-full max-w-sm overflow-hidden border border-slate-200 bg-white shadow-sm">
-        <div className="bg-[#0A1F44] px-6 py-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/rildon-express-logo-white.svg"
-            alt="Rildon Express"
-            className="h-9 w-auto max-w-[190px]"
-          />
-          <div className="mt-5 border-l-4 border-[#FFD200] pl-3">
-            <h1 className="text-xl font-bold text-white">Canhoto Digital</h1>
-            <p className="mt-1 text-sm text-white/70">Acesso do motorista</p>
+        <div className="bg-[#0A1F44] px-6 py-5">
+          <div className="flex items-center justify-between gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/rildon-express-logo-white.svg"
+              alt="Rildon Express"
+              className="h-9 w-auto max-w-[210px]"
+            />
+
+            <span
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-[#FFD200] text-[#0A1F44]"
+              aria-label="Motorista"
+              title="Motorista"
+            >
+              <Bike className="size-6" strokeWidth={2.4} />
+            </span>
           </div>
         </div>
 
         <div className="p-6">
-          <p className="mb-5 text-sm leading-6 text-slate-500">
-            Entre com o telefone cadastrado e o PIN fornecido pela expedição.
-          </p>
-
           <div>
             <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
               Telefone
@@ -117,9 +119,6 @@ export default function MotoristaLoginPage() {
             )}
           </button>
 
-          <p className="mt-5 text-center text-xs text-slate-400">
-            Rildon Express · uso interno
-          </p>
         </div>
       </div>
     </div>
