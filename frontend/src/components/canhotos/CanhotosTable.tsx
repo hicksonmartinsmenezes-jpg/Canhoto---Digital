@@ -22,7 +22,6 @@ export function CanhotosTable({ entregas }: CanhotosTableProps) {
       <EmptyState
         icon={Package}
         title="Nenhuma entrega cadastrada ainda"
-        description="Comece cadastrando a primeira entrega do dia."
       />
     );
   }
