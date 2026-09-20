@@ -98,7 +98,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
           <button
             type="button"
             onClick={() => setModal({ tipo: "novo-veiculo" })}
-            className="inline-flex items-center gap-2 bg-linear-to-r from-[#F2B22E] to-[#DE6C09] px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-95"
+            className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97]"
           >
             <Plus className="size-4" strokeWidth={2.5} />
             Novo veículo
@@ -421,10 +421,10 @@ function ResumoCard({
         <span
           className={`grid size-10 place-items-center ${
             tone === "accent"
-              ? "bg-white/15 text-white"
+              ? "text-white"
               : tone === "navy"
-                ? "bg-[#0A1F44]/8 text-[#0A1F44]"
-                : "bg-slate-100 text-slate-500"
+                ? "text-[#0A1F44]"
+                : "text-slate-500"
           }`}
         >
           <Icon className="size-5" />
@@ -744,7 +744,7 @@ function GastoFormModal({
           type="button"
           disabled={pending}
           onClick={salvar}
-          className="inline-flex items-center gap-2 bg-linear-to-r from-[#F2B22E] to-[#DE6C09] px-4 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-60"
+          className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-[#102b5d] active:scale-[0.97] disabled:opacity-60"
         >
           {pending && <Loader2 className="size-4 animate-spin" />}
           Registrar gasto
