@@ -86,7 +86,7 @@ export default async function MotoristaPage({
 
       <main
         id="inicio"
-        className="mx-auto w-full max-w-xl px-4 pb-24 pt-4 sm:px-5"
+        className="w-full px-3 pb-24 pt-4 sm:px-4"
       >
         <header className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
