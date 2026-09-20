@@ -154,7 +154,7 @@ export default async function MotoristaPage({
 
                 <div className="px-3 py-3 sm:px-4">
                   <div className="flex items-center gap-2">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-600">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#DE6C09]/10 text-[#DE6C09]">
                       <Clock3 className="size-4" />
                     </span>
                     <p className="text-[11px] font-bold text-slate-500">
@@ -253,7 +253,7 @@ export default async function MotoristaPage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-orange-600">
+                  <p className="text-2xl font-black text-[#DE6C09]">
                     {pendentes}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
