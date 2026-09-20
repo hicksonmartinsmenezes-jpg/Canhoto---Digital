@@ -96,9 +96,9 @@ export function EntregaMotoristaCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_12px_35px_rgba(15,23,42,0.07)]">
+    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
       <div
-        className={`flex items-center justify-between gap-3 border-b px-5 py-3.5 ${
+        className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${
           entregue
             ? "border-emerald-100 bg-emerald-50/70"
             : emRota
@@ -142,14 +142,14 @@ export function EntregaMotoristaCard({
         </span>
       </div>
 
-      <div className="p-5">
+      <div className="p-4">
         <div className="flex items-start gap-4">
-          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 text-[#0A1F44]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-[#0A1F44]">
             <UserRound className="size-6" />
           </span>
 
           <div className="min-w-0 flex-1">
-            <h3 className="text-xl font-extrabold tracking-tight text-[#0A1F44]">
+            <h3 className="text-lg font-extrabold tracking-tight text-[#0A1F44]">
               {entrega.clienteNome}
             </h3>
 
@@ -184,13 +184,13 @@ export function EntregaMotoristaCard({
         </div>
 
         {erro && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             {erro}
           </div>
         )}
 
         {entregue ? (
-          <div className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-700">
+          <div className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-700">
             <CheckCircle2 className="size-5" />
             Entrega finalizada
           </div>
@@ -200,14 +200,14 @@ export function EntregaMotoristaCard({
               <button
                 type="button"
                 onClick={abrirRota}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#0A1F44]/20 bg-[#0A1F44]/5 px-4 py-3 text-sm font-extrabold text-[#0A1F44] transition hover:bg-[#FFD200]/15"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#0A1F44]/20 bg-[#0A1F44]/5 px-4 py-3 text-sm font-extrabold text-[#0A1F44] transition hover:bg-[#FFD200]/15"
               >
                 <Navigation className="size-4" />
                 Abrir rota no Waze
               </button>
             )}
 
-            <details className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+            <details className="group overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
               <summary className="flex cursor-pointer list-none items-center justify-center gap-2 px-4 py-3 text-sm font-extrabold text-[#0A1F44]">
                 <CheckCircle2 className="size-4" />
                 Concluir entrega
@@ -222,7 +222,7 @@ export function EntregaMotoristaCard({
             type="button"
             disabled={pending}
             onClick={executar}
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0A1F44] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#102b5d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0A1F44] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#102b5d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending ? (
               <>
