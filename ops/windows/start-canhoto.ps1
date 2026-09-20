@@ -41,6 +41,7 @@ function Invoke-NativeWithTimeout {
 
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
             try { $process.Kill() } catch {}
+            try { $process.WaitForExit(1000) | Out-Null } catch {}
             return @{ TimedOut = $true; ExitCode = -1; StdOut = ""; StdErr = "Timed out." }
         }
 
@@ -56,73 +57,93 @@ function Invoke-NativeWithTimeout {
     }
 }
 
-# Refresh PATH because scheduled tasks can inherit an older environment snapshot.
-$machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-$env:Path = @($machinePath, $userPath) -join ";"
+try {
+    # Scheduled tasks may inherit an older PATH snapshot.
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = @($machinePath, $userPath) -join ";"
 
-Write-StartupLog "Startup task invoked."
+    Write-StartupLog "Startup task invoked."
 
-$docker = Get-Command docker.exe -ErrorAction SilentlyContinue
-if (-not $docker) {
-    Write-StartupLog "ERROR: docker.exe not found in PATH."
-    throw "docker.exe not found in PATH."
-}
+    $docker = Get-Command docker.exe -ErrorAction SilentlyContinue
+    if (-not $docker) {
+        throw "docker.exe not found in PATH."
+    }
 
-$npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
-if (-not $npm) {
-    Write-StartupLog "ERROR: npm.cmd not found in PATH."
-    throw "npm.cmd not found in PATH."
-}
+    $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
+    if (-not $npm) {
+        throw "npm.cmd not found in PATH."
+    }
 
-Set-Location $frontendDir
+    Set-Location $frontendDir
 
-if (-not (Test-Path (Join-Path $frontendDir ".next"))) {
-    Write-StartupLog "ERROR: production build (.next) is missing."
-    throw "Production build is missing. Run npm ci and npm run build first."
-}
+    if (-not (Test-Path (Join-Path $frontendDir ".next"))) {
+        throw "Production build is missing. Run npm ci and npm run build first."
+    }
 
-$deadline = (Get-Date).AddMinutes(5)
-$health = ""
-$attempt = 0
+    # Give Docker Desktop a short grace period after Windows logon.
+    Write-StartupLog "Waiting 20 seconds for Docker Desktop startup."
+    Start-Sleep -Seconds 20
 
-do {
-    $attempt++
-    Write-StartupLog "Waiting for Docker/PostgreSQL (attempt $attempt)."
+    $deadline = (Get-Date).AddMinutes(5)
+    $health = ""
+    $attempt = 0
 
-    $dockerInfo = Invoke-NativeWithTimeout -FilePath $docker.Source -Arguments @("info") -TimeoutSeconds 5
+    do {
+        $attempt++
+        Write-StartupLog "Checking PostgreSQL health (attempt $attempt)."
 
-    if (-not $dockerInfo.TimedOut -and $dockerInfo.ExitCode -eq 0) {
-        $inspect = Invoke-NativeWithTimeout -FilePath $docker.Source -Arguments @("inspect", "--format", "{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}", $container) -TimeoutSeconds 5
+        $inspect = Invoke-NativeWithTimeout -FilePath $docker.Source -Arguments @(
+            "inspect",
+            "--format",
+            "{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}",
+            $container
+        ) -TimeoutSeconds 5
 
-        if (-not $inspect.TimedOut -and $inspect.ExitCode -eq 0) {
+        if ($inspect.TimedOut) {
+            Write-StartupLog "Docker inspect timed out."
+        }
+        elseif ($inspect.ExitCode -ne 0) {
+            $detail = $inspect.StdErr
+            if ($detail.Length -gt 180) { $detail = $detail.Substring(0, 180) }
+            Write-StartupLog "Docker inspect not ready (exit $($inspect.ExitCode)): $detail"
+        }
+        else {
             $health = $inspect.StdOut
+            Write-StartupLog "PostgreSQL health: $health"
+
             if ($health -eq "healthy") {
                 Write-StartupLog "Docker is ready and PostgreSQL is healthy."
                 break
             }
         }
+
+        Start-Sleep -Seconds 5
+    } while ((Get-Date) -lt $deadline)
+
+    if ($health -ne "healthy") {
+        throw "Docker/PostgreSQL did not become healthy within 5 minutes."
     }
 
-    Start-Sleep -Seconds 5
-} while ((Get-Date) -lt $deadline)
+    Write-StartupLog "Starting Next.js on port 3003."
 
-if ($health -ne "healthy") {
-    Write-StartupLog "ERROR: Docker/PostgreSQL did not become healthy within 5 minutes."
-    throw "Docker/PostgreSQL did not become available within 5 minutes."
+    $env:NO_COLOR = "1"
+    $env:FORCE_COLOR = "0"
+
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $npm.Source run start *>> $logPath
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousPreference
+    }
+
+    Write-StartupLog "Next.js process exited with code $exitCode."
+    exit $exitCode
 }
-
-Write-StartupLog "Starting Next.js on port 3003."
-
-$previousPreference = $ErrorActionPreference
-$ErrorActionPreference = "Continue"
-try {
-    & $npm.Source run start *>> $logPath
-    $exitCode = $LASTEXITCODE
+catch {
+    Write-StartupLog ("ERROR: " + $_.Exception.Message)
+    exit 1
 }
-finally {
-    $ErrorActionPreference = $previousPreference
-}
-
-Write-StartupLog "Next.js process exited with code $exitCode."
-exit $exitCode
