@@ -123,6 +123,7 @@ export async function atualizarEntrega(
   }
 
   revalidatePath("/canhotos");
+  revalidatePath("/motorista");
   revalidatePath("/");
   return { ok: true };
 }
