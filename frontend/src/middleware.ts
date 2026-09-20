@@ -7,6 +7,7 @@ import {
   MOTORISTA_COOKIE_NAME,
   verificarTokenSessao,
 } from "@/lib/motorista-session-core";
+import { hostEhPublicoMotorista } from "@/lib/public-motorista-host";
 
 function hostnameDaRequisicao(request: NextRequest): string {
   const encaminhado = request.headers.get("x-forwarded-host");
@@ -21,17 +22,14 @@ function hostnameDaRequisicao(request: NextRequest): string {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Quando o Cloudflare Tunnel usar um hostname público específico para os
-  // motoristas, esse host não expõe o Portal Admin. A mesma instância Next.js
+  // Hostnames públicos dos motoristas (hostname configurado ou Quick Tunnel
+  // *.trycloudflare.com) nunca expõem o Portal Admin. A mesma instância Next.js
   // continua acessível internamente pelo IP/nome da máquina da loja.
-  const hostPublicoMotorista = process.env.PUBLIC_MOTORISTA_HOST
-    ?.trim()
-    .toLowerCase();
-  if (
-    hostPublicoMotorista &&
-    hostnameDaRequisicao(request) === hostPublicoMotorista &&
-    !pathname.startsWith("/motorista")
-  ) {
+  const hostPublicoMotorista = hostEhPublicoMotorista(
+    hostnameDaRequisicao(request),
+    process.env.PUBLIC_MOTORISTA_HOST
+  );
+  if (hostPublicoMotorista && !pathname.startsWith("/motorista")) {
     return new NextResponse("Not Found", {
       status: 404,
       headers: { "Cache-Control": "no-store" },
