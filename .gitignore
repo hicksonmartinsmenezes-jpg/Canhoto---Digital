@@ -13,3 +13,6 @@ _to_delete/
 
 # Dumps locais de backup
 /backups/
+
+# Comprovantes locais de entrega (foto/assinatura)
+/storage/
