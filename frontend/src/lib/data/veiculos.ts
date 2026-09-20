@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte } from "drizzle-orm";
+import { asc, desc, eq, gte } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { veiculoGastos, veiculos } from "@/lib/db/schema";
 import { formatBRL, formatDateBR } from "@/lib/format";
