@@ -57,17 +57,33 @@ export async function concluirTreinamento(slug: string): Promise<void> {
   const agora = new Date().toISOString();
   const supabase = await createClient();
 
-  await supabase.from("treinamento_progresso").upsert(
-    {
+  const { data: existente } = await supabase
+    .from("treinamento_progresso")
+    .select("id")
+    .eq("usuario_id", admin.authUserId)
+    .eq("treinamento_slug", slug)
+    .maybeSingle();
+
+  if (existente) {
+    await supabase
+      .from("treinamento_progresso")
+      .update({
+        status: "concluido",
+        concluido_em: agora,
+        atualizado_em: agora,
+      })
+      .eq("id", existente.id)
+      .eq("usuario_id", admin.authUserId);
+  } else {
+    await supabase.from("treinamento_progresso").insert({
       usuario_id: admin.authUserId,
       treinamento_slug: slug,
       status: "concluido",
       iniciado_em: agora,
       concluido_em: agora,
       atualizado_em: agora,
-    },
-    { onConflict: "usuario_id,treinamento_slug" }
-  );
+    });
+  }
 
   revalidatePath("/treinamentos");
   revalidatePath(`/treinamentos/${slug}`);
