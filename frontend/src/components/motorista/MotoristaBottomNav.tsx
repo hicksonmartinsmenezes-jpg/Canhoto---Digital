@@ -59,11 +59,7 @@ export function MotoristaBottomNav({
                   : "text-slate-500 hover:bg-slate-50 hover:text-[#0A1F44]"
               }`}
             >
-              <Icon
-                className={`size-5.5 ${
-                  selecionado ? "stroke-[2.6]" : "stroke-2"
-                }`}
-              />
+              <Icon className="size-5 stroke-2" />
               <span>{item.label}</span>
               {selecionado && (
                 <span className="absolute bottom-0 h-0.5 w-8 rounded-full bg-emerald-500" />
