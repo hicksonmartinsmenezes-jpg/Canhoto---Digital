@@ -1,10 +1,17 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
-import { entregaHistorico, entregas } from "@/lib/db/schema";
+import {
+  entregaAnexos,
+  entregaHistorico,
+  entregas,
+} from "@/lib/db/schema";
 import { checarRateLimit } from "@/lib/rate-limit";
 import {
   ERRO_MOTORISTA_SESSAO,
@@ -25,8 +32,46 @@ export interface AcaoEntregaResult {
 const ERRO_BANCO =
   "Banco de dados indisponível neste ambiente — confirme a DATABASE_URL.";
 
+const TAMANHO_MAX_FOTO = 8 * 1024 * 1024;
+const TAMANHO_MAX_ASSINATURA = 1024 * 1024;
+
+const EXTENSAO_POR_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
+};
+
 function horaLocalAtual(): string {
   return new Date().toTimeString().slice(0, 8);
+}
+
+function uuidValido(valor: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    valor
+  );
+}
+
+function diretorioRaizUploads(): string {
+  const configurado = process.env.CANHOTO_UPLOAD_DIR?.trim();
+  if (configurado) return path.resolve(configurado);
+
+  return path.resolve(process.cwd(), "..", "storage", "uploads");
+}
+
+function validarFoto(valor: FormDataEntryValue | null): File | null {
+  if (!(valor instanceof File) || valor.size === 0) return null;
+  if (!(valor.type in EXTENSAO_POR_MIME)) return null;
+  if (valor.size > TAMANHO_MAX_FOTO) return null;
+  return valor;
+}
+
+function validarAssinatura(valor: FormDataEntryValue | null): File | null {
+  if (!(valor instanceof File) || valor.size === 0) return null;
+  if (valor.type !== "image/png") return null;
+  if (valor.size > TAMANHO_MAX_ASSINATURA) return null;
+  return valor;
 }
 
 export async function iniciarEntrega(
@@ -79,8 +124,13 @@ export async function iniciarEntrega(
 }
 
 export async function confirmarEntrega(
-  entregaId: string
+  entregaId: string,
+  formData: FormData
 ): Promise<AcaoEntregaResult> {
+  if (!uuidValido(entregaId)) {
+    return { ok: false, error: "Entrega inválida." };
+  }
+
   const limite = await checarRateLimit("confirmarEntrega");
   if (!limite.permitido) {
     return {
@@ -93,10 +143,87 @@ export async function confirmarEntrega(
   const acesso = await motoristaPodeAcessarEntrega(entregaId);
   if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
+  const fotoEntrada = formData.get("foto");
+  const assinaturaEntrada = formData.get("assinatura");
+  const foto = validarFoto(fotoEntrada);
+  const assinatura = validarAssinatura(assinaturaEntrada);
+
+  if (!foto) {
+    return {
+      ok: false,
+      error:
+        "Envie uma foto válida do comprovante (JPG, PNG, WEBP, HEIC ou HEIF, até 8 MB).",
+    };
+  }
+
+  if (!assinatura) {
+    return {
+      ok: false,
+      error: "Colete a assinatura do cliente antes de confirmar a entrega.",
+    };
+  }
+
   const db = getDb();
   if (!db) return { ok: false, error: ERRO_BANCO };
 
   try {
+    const [entregaConfirmavel] = await db
+      .select({ id: entregas.id })
+      .from(entregas)
+      .where(
+        and(
+          eq(entregas.id, entregaId),
+          eq(entregas.motoboyId, acesso.motoboyId),
+          eq(entregas.status, "pendente"),
+          isNotNull(entregas.horaSaida)
+        )
+      )
+      .limit(1);
+
+    if (!entregaConfirmavel) {
+      return {
+        ok: false,
+        error: "Entrega não encontrada, já concluída ou ainda não iniciada.",
+      };
+    }
+  } catch {
+    return {
+      ok: false,
+      error: "Não foi possível validar a entrega. Tente novamente.",
+    };
+  }
+
+  const pastaEntrega = path.join(
+    diretorioRaizUploads(),
+    "entregas",
+    entregaId
+  );
+  const extensaoFoto = EXTENSAO_POR_MIME[foto.type];
+  const nomeFoto = `foto-${randomUUID()}.${extensaoFoto}`;
+  const nomeAssinatura = `assinatura-${randomUUID()}.png`;
+  const caminhoFoto = path.join(pastaEntrega, nomeFoto);
+  const caminhoAssinatura = path.join(pastaEntrega, nomeAssinatura);
+  const arquivoUrlFoto = `entregas/${entregaId}/${nomeFoto}`;
+  const arquivoUrlAssinatura = `entregas/${entregaId}/${nomeAssinatura}`;
+
+  let arquivosGravados = false;
+
+  try {
+    await mkdir(pastaEntrega, { recursive: true });
+
+    const [bytesFoto, bytesAssinatura] = await Promise.all([
+      foto.arrayBuffer(),
+      assinatura.arrayBuffer(),
+    ]);
+
+    await Promise.all([
+      writeFile(caminhoFoto, new Uint8Array(bytesFoto), { flag: "wx" }),
+      writeFile(caminhoAssinatura, new Uint8Array(bytesAssinatura), {
+        flag: "wx",
+      }),
+    ]);
+    arquivosGravados = true;
+
     const confirmado = await db.transaction(async (tx) => {
       const [atualizada] = await tx
         .update(entregas)
@@ -116,29 +243,59 @@ export async function confirmarEntrega(
 
       if (!atualizada) return false;
 
+      await tx.insert(entregaAnexos).values([
+        {
+          entregaId,
+          tipo: "foto",
+          arquivoUrl: arquivoUrlFoto,
+          capturadoPorMotoboy: acesso.motoboyId,
+        },
+        {
+          entregaId,
+          tipo: "assinatura_cliente",
+          arquivoUrl: arquivoUrlAssinatura,
+          capturadoPorMotoboy: acesso.motoboyId,
+        },
+      ]);
+
       await tx.insert(entregaHistorico).values({
         entregaId,
         statusAnterior: "pendente",
         statusNovo: "entregue",
         alteradoPorMotoboy: acesso.motoboyId,
+        observacao: "Entrega confirmada com foto e assinatura do cliente.",
       });
 
       return true;
     });
 
     if (!confirmado) {
+      throw new Error("ENTREGA_NAO_CONFIRMAVEL");
+    }
+  } catch (error) {
+    if (arquivosGravados) {
+      await Promise.allSettled([
+        rm(caminhoFoto, { force: true }),
+        rm(caminhoAssinatura, { force: true }),
+      ]);
+    }
+
+    if (error instanceof Error && error.message === "ENTREGA_NAO_CONFIRMAVEL") {
       return {
         ok: false,
-        error: "Entrega não encontrada ou ainda não iniciada.",
+        error: "Entrega já concluída ou não está mais disponível.",
       };
     }
-  } catch {
+
     return {
       ok: false,
-      error: "Erro ao confirmar a entrega. Tente novamente.",
+      error:
+        "Não foi possível salvar os comprovantes. Confira a conexão e tente novamente.",
     };
   }
 
   revalidatePath("/motorista");
+  revalidatePath("/canhotos");
+  revalidatePath("/");
   return { ok: true };
 }
