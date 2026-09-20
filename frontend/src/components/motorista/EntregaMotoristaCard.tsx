@@ -1,19 +1,33 @@
 "use client";
 
-// Card de uma entrega na lista do app do motorista (Issue #5, sub-issue
-// #30) — mostra "Iniciar entrega" quando ainda não saiu, "Confirmar
-// entrega" quando já está em rota, e um estado só de leitura quando já
-// entregue. "Em rota" é calculado (status "pendente" + hora_saida
-// preenchida), não é um status próprio — mesma regra usada em
-// @/lib/data/entregas (getAlertas/getEntregasDoMotorista).
-
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, MapPin, Navigation, Truck } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleDollarSign,
+  Clock3,
+  Loader2,
+  MapPin,
+  Navigation,
+  Truck,
+  UserRound,
+} from "lucide-react";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
-import { atualizarLocalizacaoMotorista, iniciarEntrega } from "@/app/motorista/actions";
+import {
+  atualizarLocalizacaoMotorista,
+  iniciarEntrega,
+} from "@/app/motorista/actions";
 import { ComprovanteEntregaForm } from "@/components/motorista/ComprovanteEntregaForm";
 import type { EntregaMotorista } from "@/lib/data/entregas";
+
+function formatarHoraEntrega(valor: string | null): string | null {
+  if (!valor) return null;
+
+  return new Date(valor).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export function EntregaMotoristaCard({
   entrega,
@@ -26,6 +40,7 @@ export function EntregaMotoristaCard({
 
   const emRota = entrega.status === "pendente" && entrega.horaSaida !== null;
   const entregue = entrega.status === "entregue";
+  const horaEntrega = formatarHoraEntrega(entrega.clienteAssinouEm);
 
   function abrirRota() {
     if (!entrega.endereco) return;
@@ -81,91 +96,148 @@ export function EntregaMotoristaCard({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-            {entrega.numero}
-          </p>
-          <p className="text-base font-bold text-[#0A1F44]">
-            {entrega.clienteNome}
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+    <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_12px_35px_rgba(15,23,42,0.07)]">
+      <div
+        className={`flex items-center justify-between gap-3 border-b px-5 py-3.5 ${
+          entregue
+            ? "border-emerald-100 bg-emerald-50/70"
+            : emRota
+              ? "border-amber-100 bg-amber-50/80"
+              : "border-slate-100 bg-slate-50/80"
+        }`}
+      >
+        <div
+          className={`inline-flex items-center gap-2 text-sm font-extrabold ${
             entregue
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              ? "text-emerald-700"
               : emRota
-                ? "border-amber-200 bg-amber-50 text-amber-700"
-                : "border-slate-200 bg-slate-50 text-slate-500"
+                ? "text-amber-700"
+                : "text-slate-600"
           }`}
         >
-          {entregue ? "Entregue" : emRota ? "Em rota" : "Aguardando saída"}
+          {entregue ? (
+            <CheckCircle2 className="size-5" />
+          ) : emRota ? (
+            <Navigation className="size-5" />
+          ) : (
+            <Clock3 className="size-5" />
+          )}
+          {entregue
+            ? "Entrega concluída"
+            : emRota
+              ? "Entrega em rota"
+              : "Aguardando saída"}
+        </div>
+
+        <span
+          className={`rounded-full px-3 py-1.5 text-sm font-black ${
+            entregue
+              ? "bg-emerald-100 text-emerald-700"
+              : emRota
+                ? "bg-amber-100 text-amber-700"
+                : "bg-slate-200 text-slate-600"
+          }`}
+        >
+          {entrega.numero}
         </span>
       </div>
 
-      {entrega.endereco && (
-        <p className="mt-2 flex items-start gap-1.5 text-sm text-slate-500">
-          <MapPin className="mt-0.5 size-4 shrink-0" />
-          <span>
-            {entrega.endereco}
-            {entrega.cep ? ` · CEP ${entrega.cep}` : ""}
+      <div className="p-5">
+        <div className="flex items-start gap-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 text-[#0A1F44]">
+            <UserRound className="size-6" />
           </span>
-        </p>
-      )}
 
-      <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-        <span className="font-bold">{entrega.valor}</span>
-        <span className="text-slate-300">•</span>
-        <span>{FORMA_PAGAMENTO_LABEL[entrega.formaPagamento]}</span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xl font-extrabold tracking-tight text-[#0A1F44]">
+              {entrega.clienteNome}
+            </h3>
+
+            {entrega.endereco && (
+              <div className="mt-2 flex items-start gap-2 text-sm leading-5 text-slate-500">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-slate-500" />
+                <span>
+                  {entrega.endereco}
+                  {entrega.cep ? ` · CEP ${entrega.cep}` : ""}
+                </span>
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-4 text-sm text-slate-600">
+              <span className="inline-flex items-center gap-2 font-extrabold text-slate-700">
+                <CircleDollarSign className="size-5 text-[#0A1F44]" />
+                {entrega.valor}
+              </span>
+              <span className="hidden h-5 w-px bg-slate-200 sm:block" />
+              <span className="font-semibold">
+                {FORMA_PAGAMENTO_LABEL[entrega.formaPagamento]}
+              </span>
+            </div>
+
+            {entregue && horaEntrega && (
+              <p className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-emerald-600">
+                <Clock3 className="size-4" />
+                Entregue às {horaEntrega}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {erro && (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            {erro}
+          </div>
+        )}
+
+        {entregue ? (
+          <div className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-700">
+            <CheckCircle2 className="size-5" />
+            Entrega finalizada
+          </div>
+        ) : emRota ? (
+          <div className="mt-5 space-y-3">
+            {entrega.endereco && (
+              <button
+                type="button"
+                onClick={abrirRota}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-extrabold text-blue-700 transition hover:bg-blue-100"
+              >
+                <Navigation className="size-4" />
+                Abrir rota no Waze
+              </button>
+            )}
+
+            <details className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+              <summary className="flex cursor-pointer list-none items-center justify-center gap-2 px-4 py-3 text-sm font-extrabold text-[#0A1F44]">
+                <CheckCircle2 className="size-4" />
+                Concluir entrega
+              </summary>
+              <div className="border-t border-slate-200 bg-white p-3">
+                <ComprovanteEntregaForm entregaId={entrega.id} />
+              </div>
+            </details>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={executar}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0A1F44] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#102b5d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {pending ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Iniciando...
+              </>
+            ) : (
+              <>
+                <Truck className="size-4" />
+                Iniciar entrega
+              </>
+            )}
+          </button>
+        )}
       </div>
-
-      {erro && (
-        <div className="mt-3 rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
-          {erro}
-        </div>
-      )}
-
-      {entregue ? (
-        <div className="mt-4 flex items-center justify-center gap-1.5 text-sm font-bold text-emerald-600">
-          <CheckCircle2 className="size-4" />
-          Entrega concluída
-        </div>
-      ) : emRota ? (
-        <div className="mt-4 space-y-3">
-          {entrega.endereco && (
-            <button
-              type="button"
-              onClick={abrirRota}
-              className="inline-flex w-full items-center justify-center gap-2 border border-[#0A1F44] bg-white px-4 py-2.5 text-sm font-bold text-[#0A1F44] transition-colors hover:bg-slate-50"
-            >
-              <Navigation className="size-4" />
-              Abrir rota no Waze
-            </button>
-          )}
-
-          <ComprovanteEntregaForm entregaId={entrega.id} />
-        </div>
-      ) : (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={executar}
-          className="mt-4 inline-flex w-full items-center justify-center gap-1.5 bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
-        >
-          {pending ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Iniciando...
-            </>
-          ) : (
-            <>
-              <Truck className="size-4" />
-              Iniciar entrega
-            </>
-          )}
-        </button>
-      )}
-    </div>
+    </article>
   );
 }
