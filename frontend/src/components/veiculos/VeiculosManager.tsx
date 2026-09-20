@@ -79,9 +79,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
           <h1 className="text-2xl font-bold tracking-tight text-[#0A1F44]">
             Gestão de Veículos
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Controle da frota e dos gastos operacionais.
-          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -155,7 +152,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
               <EmptyState
                 icon={Car}
                 title="Nenhum veículo cadastrado"
-                description="Cadastre o primeiro veículo para começar a controlar os gastos da frota."
               />
             ) : (
               <div className="overflow-x-auto">
@@ -258,16 +254,12 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
               <h2 className="text-[15px] font-bold text-[#0A1F44]">
                 Gastos recentes
               </h2>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Últimos lançamentos registrados na frota.
-              </p>
             </div>
 
             {data.gastosRecentes.length === 0 ? (
               <EmptyState
                 icon={ReceiptText}
                 title="Nenhum gasto registrado"
-                description="Os gastos de combustível, manutenção, multas e outros aparecerão aqui."
               />
             ) : (
               <div className="overflow-x-auto">
