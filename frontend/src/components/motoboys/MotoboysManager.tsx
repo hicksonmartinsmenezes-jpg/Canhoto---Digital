@@ -72,7 +72,6 @@ export function MotoboysManager({ motoboys }: MotoboysManagerProps) {
           <EmptyState
             icon={Bike}
             title="Nenhum motorista cadastrado ainda"
-            description="Cadastre o primeiro motorista terceirizado pra vincular às entregas."
           />
         ) : (
           <div className="overflow-x-auto">
