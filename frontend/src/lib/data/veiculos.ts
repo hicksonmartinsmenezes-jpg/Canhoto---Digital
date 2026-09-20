@@ -1,3 +1,5 @@
+import "server-only";
+
 import { asc, desc, eq, gte } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { veiculoGastos, veiculos } from "@/lib/db/schema";
@@ -12,13 +14,6 @@ function inicioMesAtual(): string {
   const ano = agora.getFullYear();
   const mes = String(agora.getMonth() + 1).padStart(2, "0");
   return `${ano}-${mes}-01`;
-}
-
-export function formatarPlaca(placa: string): string {
-  if (/^[A-Z]{3}[0-9]{4}$/.test(placa)) {
-    return `${placa.slice(0, 3)}-${placa.slice(3)}`;
-  }
-  return placa;
 }
 
 export async function getVeiculosData(): Promise<VeiculosData> {
