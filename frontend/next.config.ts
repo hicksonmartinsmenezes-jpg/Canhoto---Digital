@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: "bottom-right",
   },
-  allowedDevOrigins: ["192.168.0.228"],
+  allowedDevOrigins: ["192.168.0.228", "*.trycloudflare.com"],
   turbopack: {
     root: __dirname,
   },
