@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bike, Loader2, LockKeyhole, LogIn, Phone } from "lucide-react";
+import { Loader2, LockKeyhole, LogIn, Phone } from "lucide-react";
 import { maskPhoneInput } from "@/lib/format";
 import { loginMotorista } from "./actions";
 
@@ -40,13 +40,14 @@ export default function MotoristaLoginPage() {
               className="h-9 w-auto max-w-[210px]"
             />
 
-            <span
-              className="grid size-11 shrink-0 place-items-center rounded-full bg-[#FFD200] text-[#0A1F44]"
-              aria-label="Motorista"
-              title="Motorista"
-            >
-              <Bike className="size-6" strokeWidth={2.4} />
-            </span>
+            <div className="grid size-12 shrink-0 place-items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/rildon-mark.png"
+                alt="Rildon"
+                className="max-h-12 max-w-12 object-contain"
+              />
+            </div>
           </div>
         </div>
 
