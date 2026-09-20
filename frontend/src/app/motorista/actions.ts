@@ -62,7 +62,7 @@ function diretorioRaizUploads(): string {
 
 function validarFoto(valor: FormDataEntryValue | null): File | null {
   if (!(valor instanceof File) || valor.size === 0) return null;
-  if (!(valor.type in EXTENSAO_POR_MIME)) return null;
+  if (!Object.hasOwn(EXTENSAO_POR_MIME, valor.type)) return null;
   if (valor.size > TAMANHO_MAX_FOTO) return null;
   return valor;
 }
@@ -206,7 +206,8 @@ export async function confirmarEntrega(
   const arquivoUrlFoto = `entregas/${entregaId}/${nomeFoto}`;
   const arquivoUrlAssinatura = `entregas/${entregaId}/${nomeAssinatura}`;
 
-  let arquivosGravados = false;
+  let fotoGravada = false;
+  let assinaturaGravada = false;
 
   try {
     await mkdir(pastaEntrega, { recursive: true });
@@ -216,13 +217,13 @@ export async function confirmarEntrega(
       assinatura.arrayBuffer(),
     ]);
 
-    await Promise.all([
-      writeFile(caminhoFoto, new Uint8Array(bytesFoto), { flag: "wx" }),
-      writeFile(caminhoAssinatura, new Uint8Array(bytesAssinatura), {
-        flag: "wx",
-      }),
-    ]);
-    arquivosGravados = true;
+    await writeFile(caminhoFoto, new Uint8Array(bytesFoto), { flag: "wx" });
+    fotoGravada = true;
+
+    await writeFile(caminhoAssinatura, new Uint8Array(bytesAssinatura), {
+      flag: "wx",
+    });
+    assinaturaGravada = true;
 
     const confirmado = await db.transaction(async (tx) => {
       const [atualizada] = await tx
@@ -273,12 +274,12 @@ export async function confirmarEntrega(
       throw new Error("ENTREGA_NAO_CONFIRMAVEL");
     }
   } catch (error) {
-    if (arquivosGravados) {
-      await Promise.allSettled([
-        rm(caminhoFoto, { force: true }),
-        rm(caminhoAssinatura, { force: true }),
-      ]);
-    }
+    await Promise.allSettled([
+      fotoGravada ? rm(caminhoFoto, { force: true }) : Promise.resolve(),
+      assinaturaGravada
+        ? rm(caminhoAssinatura, { force: true })
+        : Promise.resolve(),
+    ]);
 
     if (error instanceof Error && error.message === "ENTREGA_NAO_CONFIRMAVEL") {
       return {
