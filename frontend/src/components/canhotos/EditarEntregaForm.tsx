@@ -7,7 +7,7 @@ import { Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL, STATUS_LABEL } from "@/lib/status";
-import { maskCurrencyInput, maskPhoneInput, parseCurrencyInput } from "@/lib/format";
+import { maskCepInput, maskCurrencyInput, maskPhoneInput, parseCurrencyInput } from "@/lib/format";
 import { atualizarEntrega } from "@/app/canhotos/[id]/editar/actions";
 import type { EntregaDetalhe } from "@/lib/data/entregas";
 import type { MotoboyOption } from "@/lib/data/motoboys";
@@ -34,6 +34,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
     motoboyId: entrega.motoboyId,
     clienteTelefone: entrega.clienteTelefone,
     endereco: entrega.endereco,
+    cep: entrega.cep,
     observacoes: entrega.observacoes,
     status: entrega.status as StatusEntrega,
   });
@@ -69,6 +70,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
         motoboyId: form.motoboyId,
         clienteTelefone: form.clienteTelefone,
         endereco: form.endereco,
+        cep: form.cep,
         observacoes: form.observacoes,
         status: form.status,
       });
@@ -189,6 +191,17 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   className={inputClass}
                   value={form.endereco}
                   onChange={(e) => set("endereco", e.target.value)}
+                />
+              </Field>
+              <Field label="CEP" optional>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="00000-000"
+                  maxLength={9}
+                  className={inputClass}
+                  value={form.cep}
+                  onChange={(e) => set("cep", maskCepInput(e.target.value))}
                 />
               </Field>
             </div>
