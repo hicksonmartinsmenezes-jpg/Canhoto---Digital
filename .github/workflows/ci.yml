@@ -68,6 +68,18 @@ jobs:
         if: always()
         run: docker compose down -v
 
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=high
+
   lint:
     runs-on: ubuntu-latest
     steps:
