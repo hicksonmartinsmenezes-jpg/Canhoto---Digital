@@ -40,7 +40,45 @@ O agendamento usa `AtLogOn` porque Docker Desktop é executado na sessão do usu
 
 No Docker Desktop, deixe habilitado o início automático ao entrar no Windows.
 
-## 3. Cloudflare Tunnel — recomendado
+## 3. Cloudflare Tunnel — teste sem domínio
+
+Enquanto a empresa não possuir domínio próprio, use apenas um **Quick Tunnel temporário** para validar a área do motorista.
+
+Pré-requisito: `cloudflared` instalado no Windows e disponível no `PATH`.
+
+Com o Next.js de produção já rodando em `:3003`, execute na raiz:
+
+```powershell
+.\ops\cloudflare\start-quick-tunnel.ps1
+```
+
+O Cloudflare imprimirá uma URL aleatória semelhante a:
+
+```text
+https://palavras-aleatorias.trycloudflare.com
+```
+
+Teste pelo 4G/5G:
+
+```text
+https://...trycloudflare.com/motorista/login
+```
+
+O middleware reconhece automaticamente `*.trycloudflare.com` como host público e bloqueia o Portal Admin:
+
+```text
+/motorista/login  permitido
+/motorista        permitido após autenticação
+/                 404
+/login            404
+/canhotos         404
+```
+
+Quick Tunnel é somente para teste. A URL é temporária e muda quando o processo é recriado. Mantenha o PowerShell aberto durante o teste e use `Ctrl+C` para encerrar.
+
+Se existir `%USERPROFILE%\.cloudflared\config.yml` ou `config.yaml`, o script interrompe a execução porque Quick Tunnel não é compatível com esse arquivo de configuração.
+
+## 4. Cloudflare Tunnel — produção com domínio
 
 Use um túnel **remotamente gerenciado** pelo Dashboard.
 
@@ -99,7 +137,7 @@ http://IP-DA-MAQUINA:3003
 
 `config.example.yml` existe apenas para o caso de optar no futuro por um túnel localmente gerenciado.
 
-## 4. Backup externo no Cloudflare R2
+## 5. Backup externo no Cloudflare R2
 
 O backup usa `pg_dump -Fc`, executado dentro do próprio container PostgreSQL, e envia o arquivo ao R2 via AWS CLI.
 
@@ -157,7 +195,7 @@ Somente depois de backup + restore passarem registre o agendamento:
 
 Por padrão o backup fica agendado diariamente às 02:30.
 
-## 5. Checklist de reinicialização
+## 6. Checklist de reinicialização
 
 Após toda configuração estar concluída:
 
