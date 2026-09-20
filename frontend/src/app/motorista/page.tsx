@@ -1,9 +1,15 @@
 import { redirect } from "next/navigation";
-import { CheckCircle2, Clock3, LogOut, PackageCheck } from "lucide-react";
-import { EntregaMotoristaCard } from "@/components/motorista/EntregaMotoristaCard";
+import {
+  BarChart3,
+  CheckCircle2,
+  Clock3,
+  LogOut,
+  MoreVertical,
+  Package,
+} from "lucide-react";
 import { MotoristaAutoRefresh } from "@/components/motorista/MotoristaAutoRefresh";
+import { MotoristaEntregasHoje } from "@/components/motorista/MotoristaEntregasHoje";
 import { MotoristaLocationTracker } from "@/components/motorista/MotoristaLocationTracker";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { getEntregasDoMotorista } from "@/lib/data/entregas";
 import { getMotoboyNome } from "@/lib/data/motoboys";
 import { obterMotoboyIdDaSessao } from "@/lib/motorista-session";
@@ -35,111 +41,132 @@ export default async function MotoristaPage() {
     (entrega) => entrega.status === "entregue"
   ).length;
   const pendentes = totalHoje - entregues;
+  const progresso =
+    totalHoje > 0 ? Math.round((entregues / totalHoje) * 100) : 0;
   const possuiEntregaEmRota = entregas.some(
     (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <MotoristaAutoRefresh />
       <MotoristaLocationTracker ativo={possuiEntregaEmRota} />
-      <main className="mx-auto max-w-md px-4 py-6">
-        <div className="mb-5 flex items-start justify-between gap-4">
+
+      <main className="mx-auto w-full max-w-xl px-4 pb-10 pt-6 sm:px-5">
+        <header className="mb-6 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-500">
+            <p className="text-sm font-semibold text-slate-500">
               {formatarDataHoje()}
             </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-              Olá, {nome}
+            <h1 className="mt-1 text-[30px] font-black leading-tight tracking-tight text-[#071A3D]">
+              Olá, {nome} <span aria-hidden="true">👋</span>
             </h1>
-          </div>
-
-          <form action={sairMotorista} className="shrink-0">
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0A1F44] shadow-sm transition-colors hover:bg-slate-50"
-            >
-              <LogOut className="size-4" />
-              Sair
-            </button>
-          </form>
-        </div>
-
-        <section className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 border border-transparent bg-linear-to-br from-[#F2B22E] to-[#DE6C09] p-4 text-white shadow-sm">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide">
-                  Entregas de hoje
-                </p>
-                <p className="mt-2 text-4xl font-bold leading-none">
-                  {totalHoje}
-                </p>
-              </div>
-              <PackageCheck className="size-8 opacity-90" />
-            </div>
-          </div>
-
-          <div className="border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Pendentes
-                </p>
-                <p className="mt-2 text-3xl font-bold leading-none text-slate-900">
-                  {pendentes}
-                </p>
-              </div>
-              <span className="grid size-9 place-items-center text-amber-700">
-                <Clock3 className="size-5" />
-              </span>
-            </div>
-          </div>
-
-          <div className="border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Entregues
-                </p>
-                <p className="mt-2 text-3xl font-bold leading-none text-slate-900">
-                  {entregues}
-                </p>
-              </div>
-              <span className="grid size-9 place-items-center text-emerald-700">
-                <CheckCircle2 className="size-5" />
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-6">
-          <div className="mb-3">
-            <h2 className="text-base font-bold text-[#0A1F44]">
-              Entregas atribuídas
-            </h2>
-            <p className="mt-0.5 text-sm text-slate-500">
-              Pedidos programados para hoje.
+            <p className="mt-2 text-base font-medium text-slate-500">
+              Bora fazer mais entregas hoje!
             </p>
           </div>
 
-          <div className="flex flex-col gap-4">
-            {entregas.length === 0 ? (
-              <div className="border border-slate-200 bg-white shadow-sm">
-                <EmptyState
-                  compact
-                  icon={PackageCheck}
-                  title="Nenhuma entrega para hoje"
-                  description="Quando uma entrega for atribuída a você, ela aparecerá nesta lista."
-                />
-              </div>
-            ) : (
-              entregas.map((entrega) => (
-                <EntregaMotoristaCard key={entrega.id} entrega={entrega} />
-              ))
-            )}
+          <details className="group relative shrink-0">
+            <summary
+              aria-label="Abrir menu"
+              className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-slate-200 bg-white text-[#0A1F44] shadow-sm transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
+            >
+              <MoreVertical className="size-5" />
+            </summary>
+
+            <div className="absolute right-0 top-13 z-50 w-36 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+              <form action={sairMotorista}>
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <LogOut className="size-4" />
+                  Sair
+                </button>
+              </form>
+            </div>
+          </details>
+        </header>
+
+        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_12px_35px_rgba(15,23,42,0.07)]">
+          <div className="grid grid-cols-3">
+            <div className="px-3 py-5 sm:px-5">
+              <span className="grid size-10 place-items-center rounded-full bg-blue-50 text-blue-600">
+                <Package className="size-5" />
+              </span>
+              <p className="mt-3 text-xs font-bold text-slate-500 sm:text-sm">
+                Entregas
+              </p>
+              <p className="mt-1 text-3xl font-black leading-none text-[#071A3D]">
+                {totalHoje}
+              </p>
+              <p className="mt-2 text-[11px] text-slate-400 sm:text-xs">
+                no dia de hoje
+              </p>
+            </div>
+
+            <div className="border-x border-slate-200 px-3 py-5 sm:px-5">
+              <span className="grid size-10 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+                <CheckCircle2 className="size-5" />
+              </span>
+              <p className="mt-3 text-xs font-bold text-slate-500 sm:text-sm">
+                Concluídas
+              </p>
+              <p className="mt-1 text-3xl font-black leading-none text-[#071A3D]">
+                {entregues}
+              </p>
+              <p className="mt-2 text-[11px] text-slate-400 sm:text-xs">
+                no dia de hoje
+              </p>
+            </div>
+
+            <div className="px-3 py-5 sm:px-5">
+              <span className="grid size-10 place-items-center rounded-full bg-orange-50 text-orange-600">
+                <Clock3 className="size-5" />
+              </span>
+              <p className="mt-3 text-xs font-bold text-slate-500 sm:text-sm">
+                Pendentes
+              </p>
+              <p className="mt-1 text-3xl font-black leading-none text-[#071A3D]">
+                {pendentes}
+              </p>
+              <p className="mt-2 text-[11px] text-slate-400 sm:text-xs">
+                no dia de hoje
+              </p>
+            </div>
           </div>
         </section>
+
+        <a
+          href="#entregas-hoje"
+          className="mt-5 block rounded-3xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-[0_10px_30px_rgba(16,185,129,0.08)] transition hover:bg-emerald-50"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="size-6 text-emerald-600" />
+              <h2 className="text-lg font-extrabold text-[#071A3D]">
+                Progresso do dia
+              </h2>
+            </div>
+            <span className="text-xl font-black text-emerald-600">
+              {progresso}%
+            </span>
+          </div>
+
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-emerald-100">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-[width]"
+              style={{ width: `${progresso}%` }}
+            />
+          </div>
+
+          <p className="mt-4 text-sm font-medium text-slate-500">
+            {entregues} de {totalHoje} entrega{totalHoje === 1 ? "" : "s"} concluída
+            {entregues === 1 ? "" : "s"}
+          </p>
+        </a>
+
+        <MotoristaEntregasHoje entregas={entregas} />
       </main>
     </div>
   );
