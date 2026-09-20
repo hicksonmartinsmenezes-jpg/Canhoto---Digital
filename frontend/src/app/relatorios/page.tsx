@@ -73,18 +73,21 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
           value={String(totais.quantidade)}
           sub={`${dataInicio.split("-").reverse().join("/")} a ${dataFim.split("-").reverse().join("/")}`}
           icon={<Package className="size-5" strokeWidth={2} />}
+          iconBare
         />
         <StatCard
           label="Valor total"
           value={totais.valorTotal}
           sub=""
           icon={<Wallet className="size-5" strokeWidth={2} />}
+          iconBare
         />
         <StatCard
           label="Ticket médio"
           value={totais.ticketMedio}
           sub=""
           icon={<FileBarChart className="size-5" strokeWidth={2} />}
+          iconBare
         />
       </div>
 
