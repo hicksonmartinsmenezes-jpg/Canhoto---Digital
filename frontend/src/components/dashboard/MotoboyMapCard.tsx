@@ -248,11 +248,6 @@ export function MotoboyMapCard({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-6 py-3 text-[11px] text-slate-500">
-        <span>
-          Clique em um motorista para localizá-lo no mapa.
-        </span>
-      </div>
     </Card>
   );
 }
