@@ -5,3 +5,11 @@
 # pastas temporárias criadas durante transferências Claude <-> dispositivo
 _to_delete/
 **/_to_delete/
+
+# Romaneio legado/protótipo: dados operacionais e comprovantes nunca vão para o Git.
+romaneio/data/*
+!romaneio/data/.gitkeep
+romaneio/uploads/fotos/*
+!romaneio/uploads/fotos/.gitkeep
+romaneio/uploads/assinaturas/*
+!romaneio/uploads/assinaturas/.gitkeep
