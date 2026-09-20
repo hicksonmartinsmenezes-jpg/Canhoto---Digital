@@ -8,7 +8,7 @@
 // @/lib/data/entregas (getAlertas/getEntregasDoMotorista).
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, Loader2, MapPin, Truck } from "lucide-react";
+import { CheckCircle2, Loader2, MapPin, Navigation, Truck } from "lucide-react";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 import { confirmarEntrega, iniciarEntrega } from "@/app/motorista/actions";
 import type { EntregaMotorista } from "@/lib/data/entregas";
@@ -24,13 +24,33 @@ export function EntregaMotoristaCard({
   const emRota = entrega.status === "pendente" && entrega.horaSaida !== null;
   const entregue = entrega.status === "entregue";
 
+  function abrirRota() {
+    if (!entrega.endereco) return;
+
+    const params = new URLSearchParams({
+      api: "1",
+      destination: entrega.endereco,
+      travelmode: "driving",
+      dir_action: "navigate",
+    });
+
+    window.location.assign(`https://www.google.com/maps/dir/?${params.toString()}`);
+  }
+
   function executar() {
     setErro(null);
     const acao = emRota ? confirmarEntrega : iniciarEntrega;
+
     startTransition(async () => {
       const resultado = await acao(entrega.id);
+
       if (!resultado.ok) {
         setErro(resultado.error ?? "Não foi possível concluir a ação.");
+        return;
+      }
+
+      if (!emRota && entrega.endereco) {
+        abrirRota();
       }
     });
   }
@@ -84,29 +104,42 @@ export function EntregaMotoristaCard({
           Entrega concluída
         </div>
       ) : (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={executar}
-          className="mt-4 inline-flex w-full items-center justify-center gap-1.5 bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
-        >
-          {pending ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              {emRota ? "Confirmando..." : "Iniciando..."}
-            </>
-          ) : emRota ? (
-            <>
-              <CheckCircle2 className="size-4" />
-              Confirmar entrega
-            </>
-          ) : (
-            <>
-              <Truck className="size-4" />
-              Iniciar entrega
-            </>
+        <div className="mt-4 space-y-2">
+          {emRota && entrega.endereco && (
+            <button
+              type="button"
+              onClick={abrirRota}
+              className="inline-flex w-full items-center justify-center gap-2 border border-[#0A1F44] bg-white px-4 py-2.5 text-sm font-bold text-[#0A1F44] transition-colors hover:bg-slate-50"
+            >
+              <Navigation className="size-4" />
+              Abrir rota no Google Maps
+            </button>
           )}
-        </button>
+
+          <button
+            type="button"
+            disabled={pending}
+            onClick={executar}
+            className="inline-flex w-full items-center justify-center gap-1.5 bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
+          >
+            {pending ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                {emRota ? "Confirmando..." : "Iniciando..."}
+              </>
+            ) : emRota ? (
+              <>
+                <CheckCircle2 className="size-4" />
+                Confirmar entrega
+              </>
+            ) : (
+              <>
+                <Truck className="size-4" />
+                Iniciar entrega
+              </>
+            )}
+          </button>
+        </div>
       )}
     </div>
   );
