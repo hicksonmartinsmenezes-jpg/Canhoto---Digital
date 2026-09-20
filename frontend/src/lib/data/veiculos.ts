@@ -2,60 +2,10 @@ import { asc, desc, eq, gte } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { veiculoGastos, veiculos } from "@/lib/db/schema";
 import { formatBRL, formatDateBR } from "@/lib/format";
-
-export type TipoGastoVeiculo =
-  | "combustivel"
-  | "manutencao"
-  | "multa"
-  | "lava_jato"
-  | "pedagio"
-  | "outro";
-
-export const TIPO_GASTO_VEICULO_LABEL: Record<TipoGastoVeiculo, string> = {
-  combustivel: "Combustível",
-  manutencao: "Manutenção",
-  multa: "Multa",
-  lava_jato: "Lava-jato",
-  pedagio: "Pedágio",
-  outro: "Outro",
-};
-
-export interface VeiculoListItem {
-  id: string;
-  placa: string;
-  marca: string;
-  modelo: string;
-  ano: number | null;
-  ativo: boolean;
-  gastoMes: string;
-  gastoMesNumerico: number;
-}
-
-export interface VeiculoGastoItem {
-  id: string;
-  veiculoId: string;
-  veiculo: string;
-  placa: string;
-  tipo: TipoGastoVeiculo;
-  data: string;
-  valor: string;
-  valorNumerico: number;
-  quilometragem: number | null;
-  observacao: string | null;
-}
-
-export interface VeiculosResumo {
-  ativos: number;
-  totalMes: string;
-  combustivelMes: string;
-  manutencaoMes: string;
-}
-
-export interface VeiculosData {
-  veiculos: VeiculoListItem[];
-  gastosRecentes: VeiculoGastoItem[];
-  resumo: VeiculosResumo;
-}
+import {
+  formatarPlaca,
+  type VeiculosData,
+} from "@/lib/veiculos";
 
 function inicioMesAtual(): string {
   const agora = new Date();
