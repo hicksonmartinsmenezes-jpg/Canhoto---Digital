@@ -1,32 +1,138 @@
 # Canhoto Digital — Rildon Eletropeças
 
-Portal Web Admin para digitalizar e organizar o **Canhoto Interno**: o comprovante de recebimento de documentos entre funcionários e setores da Rildon. Substitui o controle manual em papel, permitindo registrar cada recebimento (funcionário responsável, documento, setor, data e status) e consultar/rastrear os comprovantes depois.
+Sistema interno para registrar e acompanhar entregas realizadas por motoboys a clientes externos.
 
-Escopo confirmado (18/08/2026): apenas o fluxo interno de recebimento de documentos. Não inclui entrega a cliente externo (motoboy, transportadora) — esse era o escopo do Termo de Abertura original e foi descartado.
+O fluxo atual cobre:
 
-## Estrutura do repositório
+- cadastro da entrega;
+- saída do motorista;
+- confirmação de recebimento pelo cliente;
+- conferência de caixa quando aplicável;
+- histórico de alterações e responsáveis;
+- Portal Admin para operação interna;
+- área mobile-first do motorista.
 
+## Arquitetura
+
+```text
+Windows 11 — máquina da loja
+│
+├── Next.js 16
+│   ├── Portal Admin
+│   ├── Área /motorista
+│   ├── Server Components
+│   └── Server Actions
+│
+├── Drizzle ORM
+│
+└── Docker Desktop / WSL2
+    └── PostgreSQL 16
+        └── volume persistente
 ```
-Canhoto - Digital/
-├── frontend/   # Next.js (TypeScript + Tailwind) — Portal Web Admin
-└── backend/    # Supabase (Postgres + Auth + Storage) — schema, migrations, functions
-```
 
-Cada pasta tem seu próprio README com instruções específicas.
+O PostgreSQL é publicado no host somente em `127.0.0.1:5433`. A porta do banco nunca deve ser exposta pelo Cloudflare Tunnel.
+
+Produção do Next.js usa a porta `3003`. Desenvolvimento continua em `3002`.
 
 ## Stack
 
-- **Frontend**: Next.js (App Router, TypeScript, Tailwind CSS), cliente Supabase via `@supabase/ssr`.
-- **Backend**: Supabase (Postgres relacional, Auth, Storage para anexos/fotos/assinaturas, Realtime).
-- **Sem servidor Node/Express próprio** — decisão consciente para um time pequeno priorizar velocidade de entrega; se necessário no futuro, dá para adicionar Edge Functions do Supabase sem subir um serviço separado.
+- Next.js 16 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Drizzle ORM
+- PostgreSQL 16
+- postgres.js
+- Docker Compose
+- bcrypt para senha do Portal Admin
+- cookies assinados com HMAC-SHA256 para sessões Admin e motorista
+- Cloudflare Tunnel para acesso externo da área do motorista
+- Cloudflare R2 para backup externo do PostgreSQL
 
-## Como começar
+Não existe um serviço Node/Express separado. O backend da aplicação vive no próprio Next.js através de Server Components, Server Actions e módulos server-only.
 
-1. `cd frontend && npm install`
-2. Copie `frontend/.env.local.example` para `frontend/.env.local` e preencha com as chaves do projeto Supabase.
-3. `cd backend && npx supabase start` (ambiente local) ou `npx supabase link --project-ref <ID>` (projeto na nuvem) — ver `backend/README.md`.
-4. `cd frontend && npm run dev` — abre em `http://localhost:3000`.
+## Estrutura relevante
 
-## Documentação do projeto
+```text
+Canhoto---Digital/
+├── docker-compose.yml
+├── backend/
+│   └── postgres/
+│       └── migrations/
+├── frontend/
+│   ├── src/lib/db/
+│   ├── src/lib/data/
+│   └── src/app/
+├── ops/
+│   ├── backup/
+│   ├── cloudflare/
+│   └── windows/
+└── scripts/
+```
 
-As decisões de produto, modelo de dados, análise de UX/UI de referência e demais registros ficam no projeto Claude "Canhoto Rildon Eletropeças" (fora deste repositório) — consulte-o para contexto antes de propor mudanças de escopo.
+## Banco local
+
+Na raiz do projeto:
+
+```powershell
+Copy-Item .env.example .env
+docker compose config --quiet
+docker compose up -d postgres
+docker compose ps
+```
+
+As migrations ficam em `backend/postgres/migrations` e devem ser aplicadas em ordem numérica.
+
+**Nunca execute `docker compose down -v` em produção sem backup validado.** O parâmetro `-v` remove o volume persistente do banco.
+
+## Frontend
+
+Crie `frontend/.env.local` a partir de `frontend/.env.example` e configure localmente:
+
+- `DATABASE_URL`;
+- `ADMIN_SESSION_SECRET`;
+- `MOTORISTA_SESSION_SECRET`;
+- `PUBLIC_MOTORISTA_HOST` quando o Cloudflare Tunnel for configurado.
+
+Depois:
+
+```powershell
+cd frontend
+npm ci
+npm run build
+npm run start
+```
+
+Produção responde em:
+
+```text
+http://localhost:3003
+```
+
+## Primeiro usuário Admin
+
+Depois de aplicar todas as migrations e configurar `frontend/.env.local`:
+
+```powershell
+.\scripts\criar-admin.ps1
+```
+
+A senha é solicitada de forma oculta. O banco recebe somente o hash bcrypt.
+
+## Segurança
+
+O Portal Admin usa e-mail + senha e sessão assinada. Toda Server Action administrativa valida a sessão antes de acessar o banco.
+
+A área do motorista continua usando telefone + PIN e sessão própria assinada. A identidade do motoboy vem sempre da sessão; IDs enviados pelo cliente não definem quem está autenticado.
+
+Quando `PUBLIC_MOTORISTA_HOST` estiver configurado, o hostname público do Cloudflare só aceita rotas `/motorista`. O Portal Admin deve continuar sendo acessado pela rede interna da empresa.
+
+Segredos reais ficam somente em arquivos locais ignorados pelo Git. Nunca versionar senhas, chaves do R2 ou segredos de sessão.
+
+## Operação
+
+- `ops/cloudflare/`: exemplo do Cloudflare Tunnel;
+- `ops/backup/`: backup `pg_dump` para R2 e teste de restauração;
+- `ops/windows/`: scripts para inicialização e agendamento no Windows.
+
+Antes de considerar o backup pronto para produção, é obrigatório executar um backup real e restaurá-lo em um banco de teste.
