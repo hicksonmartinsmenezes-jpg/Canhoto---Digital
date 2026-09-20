@@ -98,11 +98,11 @@ export default async function DashboardPage() {
           <EntregasPorDiaChart dados={entregasPorDia} />
         </div>
 
-        <div className="col-span-12 xl:col-span-8">
+        <div className="col-span-12">
           <RecentCanhotosTable entregas={entregasRecentes} />
         </div>
 
-        <div className="col-span-12 xl:col-span-4">
+        <div className="col-span-12">
           <MotoboyMapCard motoristasIniciais={motoristasEmRota} />
         </div>
       </div>
