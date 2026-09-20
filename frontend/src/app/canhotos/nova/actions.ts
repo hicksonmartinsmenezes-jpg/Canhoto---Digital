@@ -13,6 +13,7 @@ export interface CriarEntregaInput {
   clienteNome: string;
   clienteTelefone: string;
   endereco: string;
+  cep: string;
   numeroPedido: string;
   numeroNfe: string;
   valorPagamento: number;
@@ -63,12 +64,18 @@ export async function criarEntrega(
     return { ok: false, error: "Selecione a forma de pagamento." };
   }
 
+  const cep = input.cep.replace(/\D/g, "");
+  if (cep && cep.length !== 8) {
+    return { ok: false, error: "Informe um CEP válido com 8 dígitos." };
+  }
+
   try {
     await db.insert(entregas).values({
       data: input.data,
       clienteNome,
       clienteTelefone: input.clienteTelefone.trim() || null,
       endereco: input.endereco.trim() || null,
+      cep: cep || null,
       numeroPedido: input.numeroPedido.trim() || null,
       numeroNfe: input.numeroNfe.trim() || null,
       valorPagamento: input.valorPagamento.toFixed(2),
