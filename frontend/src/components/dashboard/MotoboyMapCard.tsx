@@ -94,16 +94,25 @@ export function MotoboyMapCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-1 py-1.5 text-xs font-bold text-amber-700">
+          <span
+            className="inline-flex items-center gap-1.5 px-1 py-1.5 text-xs font-bold text-amber-700"
+            style={{ background: "transparent", border: 0, boxShadow: "none" }}
+          >
             <Radio className="size-3.5" />
             {motoristas.length} em rota
           </span>
-          <span className="inline-flex items-center gap-1.5 px-1 py-1.5 text-xs font-bold text-emerald-700">
+          <span
+            className="inline-flex items-center gap-1.5 px-1 py-1.5 text-xs font-bold text-emerald-700"
+            style={{ background: "transparent", border: 0, boxShadow: "none" }}
+          >
             <MapPin className="size-3.5" />
             {comLocalizacao} com localização
           </span>
           {semLocalizacao > 0 && (
-            <span className="inline-flex items-center px-1 py-1.5 text-xs font-bold text-slate-600">
+            <span
+              className="inline-flex items-center px-1 py-1.5 text-xs font-bold text-slate-600"
+              style={{ background: "transparent", border: 0, boxShadow: "none" }}
+            >
               {semLocalizacao} sem localização
             </span>
           )}
