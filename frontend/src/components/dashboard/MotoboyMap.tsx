@@ -1,13 +1,17 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { MOTOBOYS_LOCALIZACAO } from "@/lib/motoboys-localizacao-mock";
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
+import type { MotoristaEmRota } from "@/lib/data/entregas";
 
-// Ícone customizado (ponto pulsante âmbar) em vez do marcador padrão do
-// Leaflet — evita o problema clássico de path de imagem quebrado com
-// bundlers (Next/webpack) e já fica no tom da marca.
 const motoboyIcon = L.divIcon({
   className: "",
   html: `
@@ -20,14 +24,64 @@ const motoboyIcon = L.divIcon({
   iconAnchor: [8, 8],
 });
 
-// Centro do mapa: Aracaju/SE, onde fica a sede da Rildon Eletropeças.
-const CENTRO_ARACAJU: [number, number] = [-10.9472, -37.0731];
+const CENTRO_PADRAO: [number, number] = [-10.9472, -37.0731];
 
-export function MotoboyMap() {
+function AjustarMapa({
+  pontos,
+}: {
+  pontos: Array<[number, number]>;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (pontos.length === 0) {
+      map.setView(CENTRO_PADRAO, 12);
+      return;
+    }
+
+    if (pontos.length === 1) {
+      map.setView(pontos[0], 14);
+      return;
+    }
+
+    map.fitBounds(pontos, { padding: [28, 28] });
+  }, [map, pontos]);
+
+  return null;
+}
+
+function formatarAtualizacao(valor: string | null): string {
+  if (!valor) return "sem localização";
+
+  return new Date(valor).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function MotoboyMap({
+  motoristas,
+}: {
+  motoristas: MotoristaEmRota[];
+}) {
+  const comLocalizacao = motoristas.filter(
+    (motorista) =>
+      motorista.latitude !== null && motorista.longitude !== null
+  );
+
+  const pontos = useMemo(
+    () =>
+      comLocalizacao.map(
+        (motorista) =>
+          [motorista.latitude!, motorista.longitude!] as [number, number]
+      ),
+    [comLocalizacao]
+  );
+
   return (
     <MapContainer
-      center={CENTRO_ARACAJU}
-      zoom={13}
+      center={CENTRO_PADRAO}
+      zoom={12}
       scrollWheelZoom={false}
       className="h-full w-full"
     >
@@ -35,15 +89,29 @@ export function MotoboyMap() {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {MOTOBOYS_LOCALIZACAO.map((m) => (
-        <Marker key={m.id} position={[m.lat, m.lng]} icon={motoboyIcon}>
+
+      <AjustarMapa pontos={pontos} />
+
+      {comLocalizacao.map((motorista) => (
+        <Marker
+          key={motorista.motoboyId}
+          position={[motorista.latitude!, motorista.longitude!]}
+          icon={motoboyIcon}
+        >
           <Popup>
-            <strong>{m.motoboy}</strong>
+            <strong>{motorista.nome}</strong>
             <br />
-            Entrega {m.entregaNumero} · {m.cliente}
-            <br />
-            <span style={{ color: "#94a3b8" }}>
-              Atualizado {m.atualizadoEm}
+            {motorista.entregas.map((entrega) => (
+              <span key={entrega.numero}>
+                {entrega.numero} · {entrega.cliente}
+                <br />
+              </span>
+            ))}
+            <span style={{ color: "#64748b" }}>
+              Última localização: {formatarAtualizacao(motorista.localizacaoAtualizadaEm)}
+              {motorista.precisaoMetros !== null
+                ? ` · precisão aproximada ±${Math.round(motorista.precisaoMetros)} m`
+                : ""}
             </span>
           </Popup>
         </Marker>

@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { diretorioRaizUploads } from "@/lib/comprovantes-storage";
@@ -12,11 +12,13 @@ import {
   entregaAnexos,
   entregaHistorico,
   entregas,
+  motoboyLocalizacoes,
 } from "@/lib/db/schema";
 import { checarRateLimit } from "@/lib/rate-limit";
 import {
   ERRO_MOTORISTA_SESSAO,
   motoristaPodeAcessarEntrega,
+  obterMotoristaAutorizado,
 } from "@/lib/motorista-authorization";
 import { encerrarSessaoMotorista } from "@/lib/motorista-session";
 
@@ -46,6 +48,14 @@ const EXTENSAO_POR_MIME: Record<string, string> = {
 
 function horaLocalAtual(): string {
   return new Date().toTimeString().slice(0, 8);
+}
+
+function dataLocalAtual(): string {
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
 }
 
 function uuidValido(valor: string): boolean {
@@ -147,6 +157,26 @@ export async function iniciarEntrega(
         error: "Entrega não encontrada ou já iniciada.",
       };
     }
+
+    const [outraEmRota] = await db
+      .select({ id: entregas.id })
+      .from(entregas)
+      .where(
+        and(
+          eq(entregas.motoboyId, acesso.motoboyId),
+          eq(entregas.data, dataLocalAtual()),
+          eq(entregas.status, "pendente"),
+          isNotNull(entregas.horaSaida),
+          ne(entregas.id, entregaId)
+        )
+      )
+      .limit(1);
+
+    if (!outraEmRota) {
+      await db
+        .delete(motoboyLocalizacoes)
+        .where(eq(motoboyLocalizacoes.motoboyId, acesso.motoboyId));
+    }
   } catch {
     return {
       ok: false,
@@ -156,6 +186,90 @@ export async function iniciarEntrega(
 
   revalidatePath("/motorista");
   return { ok: true };
+}
+
+export async function atualizarLocalizacaoMotorista(input: {
+  latitude: number;
+  longitude: number;
+  precisaoMetros?: number | null;
+}): Promise<AcaoEntregaResult> {
+  const limite = await checarRateLimit("atualizarLocalizacaoMotorista", 30);
+  if (!limite.permitido) {
+    return { ok: false, error: "Muitas atualizações de localização." };
+  }
+
+  const motoboyId = await obterMotoristaAutorizado();
+  if (!motoboyId) {
+    return { ok: false, error: ERRO_MOTORISTA_SESSAO };
+  }
+
+  const { latitude, longitude } = input;
+  const precisaoMetros = input.precisaoMetros ?? null;
+
+  if (
+    !Number.isFinite(latitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    !Number.isFinite(longitude) ||
+    longitude < -180 ||
+    longitude > 180 ||
+    (precisaoMetros !== null &&
+      (!Number.isFinite(precisaoMetros) || precisaoMetros < 0))
+  ) {
+    return { ok: false, error: "Localização inválida." };
+  }
+
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
+
+  try {
+    const [emRota] = await db
+      .select({ id: entregas.id })
+      .from(entregas)
+      .where(
+        and(
+          eq(entregas.motoboyId, motoboyId),
+          eq(entregas.data, dataLocalAtual()),
+          eq(entregas.status, "pendente"),
+          isNotNull(entregas.horaSaida)
+        )
+      )
+      .limit(1);
+
+    if (!emRota) {
+      return { ok: false, error: "Nenhuma entrega em rota no momento." };
+    }
+
+    const atualizadoEm = new Date().toISOString();
+
+    await db
+      .insert(motoboyLocalizacoes)
+      .values({
+        motoboyId,
+        latitude: latitude.toFixed(6),
+        longitude: longitude.toFixed(6),
+        precisaoMetros:
+          precisaoMetros === null ? null : precisaoMetros.toFixed(2),
+        atualizadoEm,
+      })
+      .onConflictDoUpdate({
+        target: motoboyLocalizacoes.motoboyId,
+        set: {
+          latitude: latitude.toFixed(6),
+          longitude: longitude.toFixed(6),
+          precisaoMetros:
+            precisaoMetros === null ? null : precisaoMetros.toFixed(2),
+          atualizadoEm,
+        },
+      });
+
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      error: "Não foi possível atualizar a localização.",
+    };
+  }
 }
 
 export async function confirmarEntrega(

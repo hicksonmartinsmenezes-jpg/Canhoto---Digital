@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RecentCanhotosTable } from "@/components/dashboard/RecentCanhotosTable";
 import { MotoboyMapCard } from "@/components/dashboard/MotoboyMapCard";
+import { MotoristasStatCard } from "@/components/dashboard/MotoristasStatCard";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
 import { EntregasPorDiaChart } from "@/components/dashboard/EntregasPorDiaChart";
@@ -11,22 +12,28 @@ import {
   getDashboardStats,
   getEntregasPorDia,
   getEntregasRecentes,
+  getMotoristasEmRota,
 } from "@/lib/data/entregas";
-import { MOTOBOYS_LOCALIZACAO } from "@/lib/motoboys-localizacao-mock";
 
-// Renderiza a cada request — dados vêm do Supabase (ver claude/modelo-de-dados-site.md),
-// não faz sentido cachear estaticamente um dashboard operacional.
+// Renderiza a cada request — o Dashboard é operacional e consulta o PostgreSQL local.
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [stats, entregasRecentes, alertas, atividade, entregasPorDia] =
-    await Promise.all([
-      getDashboardStats(),
-      getEntregasRecentes(5),
-      getAlertas(),
-      getAtividadeRecente(4),
-      getEntregasPorDia(90), // Issue #42: busca 90 dias; o seletor de período do gráfico filtra no cliente
-    ]);
+  const [
+    stats,
+    entregasRecentes,
+    alertas,
+    atividade,
+    entregasPorDia,
+    motoristasEmRota,
+  ] = await Promise.all([
+    getDashboardStats(),
+    getEntregasRecentes(5),
+    getAlertas(),
+    getAtividadeRecente(4),
+    getEntregasPorDia(90),
+    getMotoristasEmRota(),
+  ]);
 
   const eficiencia =
     stats.totalEntregas > 0
@@ -65,16 +72,9 @@ export default async function DashboardPage() {
         </div>
 
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-          {/* "Em rota" subiu pro mini-badge deste card (antes só aparecia
-              no cabeçalho do MotoboyMapCard, mais abaixo) — Hickson pediu
-              pra juntar com Motoristas ativos, já que os dois números
-              contam a mesma história (quantos cadastrados x quantos em
-              entrega agora) e ficam mais fáceis de comparar lado a lado. */}
-          <StatCard
-            label="Motoristas ativos"
-            value={stats.motoristasAtivos.toLocaleString("pt-BR")}
-            sub=""
-            mini={{ label: "Em rota", value: `${MOTOBOYS_LOCALIZACAO.length}` }}
+          <MotoristasStatCard
+            ativos={stats.motoristasAtivos}
+            emRotaIniciais={motoristasEmRota}
           />
         </div>
 
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="col-span-12 xl:col-span-4">
-          <MotoboyMapCard />
+          <MotoboyMapCard motoristasIniciais={motoristasEmRota} />
         </div>
       </div>
     </div>
