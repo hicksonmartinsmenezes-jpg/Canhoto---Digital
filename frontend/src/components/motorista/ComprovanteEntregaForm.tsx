@@ -21,6 +21,7 @@ export function ComprovanteEntregaForm({
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const desenhandoRef = useRef(false);
+  const assinaturaMarcadaRef = useRef(false);
   const [foto, setFoto] = useState<File | null>(null);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [temAssinatura, setTemAssinatura] = useState(false);
@@ -92,7 +93,11 @@ export function ComprovanteEntregaForm({
     const ponto = pontoNoCanvas(evento);
     contexto.lineTo(ponto.x, ponto.y);
     contexto.stroke();
-    setTemAssinatura(true);
+
+    if (!assinaturaMarcadaRef.current) {
+      assinaturaMarcadaRef.current = true;
+      setTemAssinatura(true);
+    }
   }
 
   function encerrarAssinatura(evento: React.PointerEvent<HTMLCanvasElement>) {
@@ -111,6 +116,7 @@ export function ComprovanteEntregaForm({
     contexto.fillStyle = "#ffffff";
     contexto.fillRect(0, 0, canvas.width, canvas.height);
     contexto.strokeStyle = "#0A1F44";
+    assinaturaMarcadaRef.current = false;
     setTemAssinatura(false);
   }
 
