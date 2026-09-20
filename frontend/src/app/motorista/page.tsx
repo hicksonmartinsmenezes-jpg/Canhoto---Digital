@@ -90,7 +90,7 @@ export default async function MotoristaPage() {
                   {pendentes}
                 </p>
               </div>
-              <span className="grid size-9 place-items-center bg-amber-500/10 text-amber-700">
+              <span className="grid size-9 place-items-center text-amber-700">
                 <Clock3 className="size-5" />
               </span>
             </div>
@@ -106,7 +106,7 @@ export default async function MotoristaPage() {
                   {entregues}
                 </p>
               </div>
-              <span className="grid size-9 place-items-center bg-emerald-600/10 text-emerald-700">
+              <span className="grid size-9 place-items-center text-emerald-700">
                 <CheckCircle2 className="size-5" />
               </span>
             </div>
