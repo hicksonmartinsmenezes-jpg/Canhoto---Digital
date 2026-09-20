@@ -8,7 +8,7 @@ import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
-import { maskCurrencyInput, maskPhoneInput, parseCurrencyInput } from "@/lib/format";
+import { maskCepInput, maskCurrencyInput, maskPhoneInput, parseCurrencyInput } from "@/lib/format";
 import { criarEntrega } from "@/app/canhotos/nova/actions";
 import type { MotoboyOption } from "@/lib/data/motoboys";
 import type { FormaPagamento } from "@/types/database";
@@ -28,6 +28,7 @@ interface FormState {
   motoboyId: string;
   clienteTelefone: string;
   endereco: string;
+  cep: string;
   observacoes: string;
 }
 
@@ -87,6 +88,7 @@ export function AdicionarEntregaWizard({
     motoboyId: "",
     clienteTelefone: "",
     endereco: "",
+    cep: "",
     observacoes: "",
   });
 
@@ -158,6 +160,7 @@ export function AdicionarEntregaWizard({
         motoboyId: form.motoboyId,
         clienteTelefone: form.clienteTelefone,
         endereco: form.endereco,
+        cep: form.cep,
         observacoes: form.observacoes,
       });
 
@@ -374,6 +377,17 @@ export function AdicionarEntregaWizard({
                   onChange={(e) => set("endereco", e.target.value)}
                 />
               </Field>
+              <Field label="CEP" optional>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="00000-000"
+                  maxLength={9}
+                  className={inputClass}
+                  value={form.cep}
+                  onChange={(e) => set("cep", maskCepInput(e.target.value))}
+                />
+              </Field>
             </div>
             <Field label="Observações" optional>
               <textarea
@@ -440,6 +454,7 @@ export function AdicionarEntregaWizard({
                 <Resumo label="Motorista" value={motoboySelecionado?.nome ?? null} />
                 <Resumo label="Telefone" value={form.clienteTelefone || null} />
                 <Resumo label="Endereço" value={form.endereco || null} />
+                <Resumo label="CEP" value={form.cep || null} />
               </dl>
               {form.observacoes && (
                 <p className="mt-3 text-sm text-slate-500">

@@ -52,3 +52,21 @@ export function maskPhoneInput(raw: string): string {
   const fim = digits.length <= 10 ? resto.slice(4) : resto.slice(5);
   return `(${ddd}) ${meio}-${fim}`;
 }
+
+
+export function maskCepInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+export function normalizeCep(raw: string): string {
+  return raw.replace(/\D/g, "").slice(0, 8);
+}
+
+export function formatCep(raw: string): string {
+  const digits = normalizeCep(raw);
+  return digits.length === 8
+    ? `${digits.slice(0, 5)}-${digits.slice(5)}`
+    : raw;
+}

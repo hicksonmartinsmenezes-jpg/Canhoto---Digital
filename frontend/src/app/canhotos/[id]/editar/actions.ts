@@ -14,6 +14,7 @@ export interface AtualizarEntregaInput {
   clienteNome: string;
   clienteTelefone: string;
   endereco: string;
+  cep: string;
   numeroPedido: string;
   numeroNfe: string;
   valorPagamento: number;
@@ -66,6 +67,10 @@ export async function atualizarEntrega(
     return { ok: false, error: "Selecione a forma de pagamento." };
   }
   const formaPagamento: FormaPagamento = input.formaPagamento;
+  const cep = input.cep.replace(/\D/g, "");
+  if (cep && cep.length !== 8) {
+    return { ok: false, error: "Informe um CEP válido com 8 dígitos." };
+  }
 
   try {
     const atualizada = await db.transaction(async (tx) => {
@@ -84,6 +89,7 @@ export async function atualizarEntrega(
           clienteNome,
           clienteTelefone: input.clienteTelefone.trim() || null,
           endereco: input.endereco.trim() || null,
+          cep: cep || null,
           numeroPedido: input.numeroPedido.trim() || null,
           numeroNfe: input.numeroNfe.trim() || null,
           valorPagamento: input.valorPagamento.toFixed(2),

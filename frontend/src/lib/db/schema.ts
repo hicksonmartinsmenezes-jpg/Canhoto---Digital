@@ -120,6 +120,7 @@ export const entregas = pgTable(
     clienteNome: text("cliente_nome").notNull(),
     clienteTelefone: text("cliente_telefone"),
     endereco: text("endereco"),
+    cep: text("cep"),
     numeroPedido: text("numero_pedido"),
     numeroNfe: text("numero_nfe"),
     valorPagamento: numeric("valor_pagamento", {
@@ -161,6 +162,10 @@ export const entregas = pgTable(
     index("idx_entregas_status").on(table.status),
     index("idx_entregas_forma_pagamento").on(table.formaPagamento),
     index("idx_entregas_cadastrado_por_admin").on(table.cadastradoPorAdmin),
+    check(
+      "ck_entregas_cep",
+      sql`${table.cep} is null or ${table.cep} ~ '^[0-9]{8}$'`
+    ),
   ]
 );
 
