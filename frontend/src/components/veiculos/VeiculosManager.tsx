@@ -35,7 +35,7 @@ import {
   type VeiculoGastoItem,
   type VeiculoListItem,
   type VeiculosData,
-} from "@/lib/data/veiculos";
+} from "@/lib/veiculos";
 
 type ModalState =
   | { tipo: "novo-veiculo" }
