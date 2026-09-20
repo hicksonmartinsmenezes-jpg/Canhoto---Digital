@@ -1,5 +1,31 @@
 # Operação — Canhoto Digital
 
+## Ambiente atual de desenvolvimento
+
+Enquanto o projeto estiver sendo desenvolvido na estação atual, a inicialização é **manual** pelo VS Code.
+
+O PostgreSQL não reinicia automaticamente com o Docker Desktop e o Next.js não deve ser registrado para iniciar no logon do Windows.
+
+Fluxo manual recomendado:
+
+```powershell
+# raiz do projeto
+docker compose up -d postgres
+
+cd frontend
+npm run dev
+```
+
+Para encerrar:
+
+```powershell
+# frontend: Ctrl+C
+cd ..
+docker compose stop postgres
+```
+
+Os scripts de auto-start em `ops/windows/` ficam preservados apenas para futura implantação em servidor dedicado.
+
 Este diretório contém a configuração operacional da instalação na máquina Windows 11 da loja.
 
 ## 1. Aplicação
