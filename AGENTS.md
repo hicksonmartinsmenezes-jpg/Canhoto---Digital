@@ -110,6 +110,7 @@ Todo PR contra `main` executa `.github/workflows/ci.yml`.
 | Job | Validação |
 |---|---|
 | `postgres-schema` | sobe PostgreSQL descartável, aplica todas as migrations e valida tabelas |
+| `security-audit` | falha se o npm reportar vulnerabilidade high/critical |
 | `lint` | ESLint |
 | `typecheck` | tipos do Next + TypeScript |
 | `knip` | código/dependências não usados |
