@@ -74,7 +74,7 @@ export default async function MotoristaPage() {
               <MoreVertical className="size-5" />
             </summary>
 
-            <div className="absolute right-0 top-13 z-50 w-36 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+            <div className="absolute right-0 top-[52px] z-50 w-36 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
               <form action={sairMotorista}>
                 <button
                   type="submit"
@@ -161,8 +161,9 @@ export default async function MotoristaPage() {
           </div>
 
           <p className="mt-4 text-sm font-medium text-slate-500">
-            {entregues} de {totalHoje} entrega{totalHoje === 1 ? "" : "s"} concluída
-            {entregues === 1 ? "" : "s"}
+            {totalHoje === 0
+              ? "Nenhuma entrega programada para hoje"
+              : `${entregues} de ${totalHoje} ${totalHoje === 1 ? "entrega concluída" : "entregas concluídas"}`}
           </p>
         </a>
 
