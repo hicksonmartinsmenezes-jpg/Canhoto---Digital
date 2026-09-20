@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { SquarePen, MoreVertical, Trash2, X, Loader2 } from "lucide-react";
+import { Eye, SquarePen, MoreVertical, Trash2, X, Loader2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { excluirEntrega } from "@/app/canhotos/actions";
 
@@ -37,6 +37,14 @@ export function EntregaRowActions({ id, numero, cliente }: EntregaRowActionsProp
   return (
     <>
       <div className="relative flex items-center gap-2">
+        <Link
+          href={`/canhotos/${id}`}
+          aria-label="Visualizar entrega e comprovantes"
+          title="Visualizar"
+          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-[transform,color,border-color] duration-150 hover:border-[#0A1F44]/30 hover:text-[#0A1F44] active:scale-90"
+        >
+          <Eye className="size-4" />
+        </Link>
         <Link
           href={`/canhotos/${id}/editar`}
           aria-label="Editar entrega"
