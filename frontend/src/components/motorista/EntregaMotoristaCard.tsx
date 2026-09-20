@@ -10,7 +10,7 @@
 import { useState, useTransition } from "react";
 import { CheckCircle2, Loader2, MapPin, Navigation, Truck } from "lucide-react";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
-import { iniciarEntrega } from "@/app/motorista/actions";
+import { atualizarLocalizacaoMotorista, iniciarEntrega } from "@/app/motorista/actions";
 import { ComprovanteEntregaForm } from "@/components/motorista/ComprovanteEntregaForm";
 import type { EntregaMotorista } from "@/lib/data/entregas";
 
@@ -40,6 +40,28 @@ export function EntregaMotoristaCard({
     window.location.assign(`https://waze.com/ul?${params.toString()}`);
   }
 
+  function registrarLocalizacaoAtual(): Promise<void> {
+    if (!("geolocation" in navigator)) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (posicao) => {
+          void atualizarLocalizacaoMotorista({
+            latitude: posicao.coords.latitude,
+            longitude: posicao.coords.longitude,
+            precisaoMetros: posicao.coords.accuracy,
+          }).finally(resolve);
+        },
+        () => resolve(),
+        {
+          enableHighAccuracy: true,
+          maximumAge: 5_000,
+          timeout: 15_000,
+        }
+      );
+    });
+  }
+
   function executar() {
     setErro(null);
 
@@ -50,6 +72,8 @@ export function EntregaMotoristaCard({
         setErro(resultado.error ?? "Não foi possível iniciar a entrega.");
         return;
       }
+
+      await registrarLocalizacaoAtual();
 
       if (entrega.endereco) {
         abrirRota();
