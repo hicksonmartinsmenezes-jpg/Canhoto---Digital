@@ -87,21 +87,12 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            aria-disabled={data.veiculos.length === 0}
-            title={
-              data.veiculos.length === 0
-                ? "Cadastre um veículo antes de registrar um gasto"
-                : undefined
-            }
             onClick={() => {
               if (data.veiculos.length === 0) return;
               setModal({ tipo: "novo-gasto" });
             }}
-            className={`inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#102b5d] ${
-              data.veiculos.length === 0
-                ? "cursor-not-allowed"
-                : "active:scale-[0.97]"
-            }`}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-[#102b5d] active:scale-[0.97]"
+            style={{ backgroundColor: "#0A1F44" }}
           >
             <ReceiptText className="size-4" />
             Registrar gasto
