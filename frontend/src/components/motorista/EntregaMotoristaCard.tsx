@@ -28,8 +28,12 @@ export function EntregaMotoristaCard({
   function abrirRota() {
     if (!entrega.endereco) return;
 
+    const destino = [entrega.endereco, entrega.cep ? `CEP ${entrega.cep}` : ""]
+      .filter(Boolean)
+      .join(", ");
+
     const params = new URLSearchParams({
-      q: entrega.endereco,
+      q: destino,
       navigate: "yes",
     });
 
@@ -80,7 +84,10 @@ export function EntregaMotoristaCard({
       {entrega.endereco && (
         <p className="mt-2 flex items-start gap-1.5 text-sm text-slate-500">
           <MapPin className="mt-0.5 size-4 shrink-0" />
-          {entrega.endereco}
+          <span>
+            {entrega.endereco}
+            {entrega.cep ? ` · CEP ${entrega.cep}` : ""}
+          </span>
         </p>
       )}
 
