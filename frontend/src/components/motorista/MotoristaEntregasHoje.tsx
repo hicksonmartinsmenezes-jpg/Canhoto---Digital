@@ -28,9 +28,9 @@ export function MotoristaEntregasHoje({
   }, [entregas, filtro]);
 
   return (
-    <section id="entregas-hoje" className="mt-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-xl font-extrabold tracking-tight text-[#0A1F44]">
+    <section id="entregas-hoje" className="mt-4">
+      <div className="mb-2.5 flex items-center justify-between gap-3 px-1">
+        <h2 className="text-[19px] font-extrabold tracking-tight text-[#0A1F44]">
           Entregas de hoje
         </h2>
 
@@ -50,7 +50,7 @@ export function MotoristaEntregasHoje({
       </div>
 
       {filtradas.length === 0 ? (
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <EmptyState
             compact
             icon={PackageCheck}

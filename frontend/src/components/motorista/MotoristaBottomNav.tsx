@@ -55,14 +55,14 @@ export function MotoristaBottomNav({
               aria-current={selecionado ? "page" : undefined}
               className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-bold transition ${
                 selecionado
-                  ? "text-emerald-600"
+                  ? "text-[#0A1F44]"
                   : "text-slate-500 hover:bg-slate-50 hover:text-[#0A1F44]"
               }`}
             >
               <Icon className="size-4.5 stroke-2" />
               <span>{item.label}</span>
               {selecionado && (
-                <span className="absolute bottom-0 h-0.5 w-7 rounded-full bg-emerald-500" />
+                <span className="absolute bottom-0 h-0.5 w-7 rounded-full bg-[#FFD200]" />
               )}
             </Link>
           );

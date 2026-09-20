@@ -25,7 +25,7 @@ export function MotoristaHistorico({
     <section>
       <div className="mb-5">
         <p className="text-sm font-semibold text-slate-500">Histórico</p>
-        <h2 className="mt-1 text-2xl font-black tracking-tight text-[#071A3D]">
+        <h2 className="mt-1 text-2xl font-black tracking-tight text-[#0A1F44]">
           Entregas concluídas
         </h2>
         <p className="mt-1 text-sm text-slate-500">
@@ -40,7 +40,7 @@ export function MotoristaHistorico({
           <span className="mx-auto grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">
             <PackageCheck className="size-6" />
           </span>
-          <p className="mt-4 text-base font-extrabold text-[#071A3D]">
+          <p className="mt-4 text-base font-extrabold text-[#0A1F44]">
             Nenhuma entrega concluída
           </p>
           <p className="mt-1 text-sm text-slate-500">
@@ -73,7 +73,7 @@ export function MotoristaHistorico({
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                         {entrega.data}
                       </p>
-                      <h3 className="mt-1 text-lg font-extrabold text-[#071A3D]">
+                      <h3 className="mt-1 text-lg font-extrabold text-[#0A1F44]">
                         {entrega.clienteNome}
                       </h3>
                     </div>
