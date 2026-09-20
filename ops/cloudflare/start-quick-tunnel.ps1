@@ -2,33 +2,39 @@ $ErrorActionPreference = "Stop"
 
 $origin = "http://127.0.0.1:3003"
 
+# Refresh PATH so PowerShell sessions opened before the MSI installation can
+# discover cloudflared without requiring a full logoff/restart.
+$machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+$env:Path = @($machinePath, $userPath) -join ";"
+
 $cloudflared = Get-Command cloudflared -ErrorAction SilentlyContinue
 if (-not $cloudflared) {
-    throw "cloudflared não encontrado no PATH. Instale a versão Windows oficial antes de continuar."
+    throw "cloudflared not found in PATH. Close and reopen PowerShell or run 'where.exe cloudflared' in CMD to locate the executable."
 }
 
 foreach ($nome in @("config.yml", "config.yaml")) {
     $config = Join-Path $env:USERPROFILE ".cloudflared\$nome"
     if (Test-Path $config) {
-        throw "Quick Tunnel não suporta a configuração encontrada em $config. Renomeie-a temporariamente e execute o script novamente."
+        throw "Quick Tunnel does not support the configuration file found at $config. Rename it temporarily and run the script again."
     }
 }
 
 try {
     $resposta = Invoke-WebRequest "$origin/motorista/login" -UseBasicParsing -TimeoutSec 5
     if ($resposta.StatusCode -ne 200) {
-        throw "A área do motorista respondeu HTTP $($resposta.StatusCode)."
+        throw "Motorista area returned HTTP $($resposta.StatusCode)."
     }
 }
 catch {
-    throw "O Next.js não está respondendo em $origin. Inicie primeiro com npm run start. Detalhe: $($_.Exception.Message)"
+    throw "Next.js is not responding at $origin. Start it first with npm run start. Detail: $($_.Exception.Message)"
 }
 
 Write-Host ""
-Write-Host "Quick Tunnel de TESTE será iniciado para $origin"
-Write-Host "A URL *.trycloudflare.com aparecerá abaixo."
-Write-Host "Mantenha este PowerShell aberto durante o teste."
-Write-Host "Use Ctrl+C para encerrar."
+Write-Host "Quick Tunnel TEST will start for $origin"
+Write-Host "The *.trycloudflare.com URL will appear below."
+Write-Host "Keep this PowerShell window open during the test."
+Write-Host "Use Ctrl+C to stop the tunnel."
 Write-Host ""
 
 & $cloudflared.Source tunnel --url $origin
