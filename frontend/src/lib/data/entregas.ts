@@ -18,6 +18,7 @@ import {
 import { getDb } from "@/lib/db";
 import {
   colaboradores,
+  entregaAnexos,
   entregaHistorico,
   entregas,
   motoboys,
@@ -576,6 +577,47 @@ export async function getEntregaById(
     observacoes: entrega.observacoes ?? "",
     status: entrega.status,
   };
+}
+
+export interface EntregaComprovante {
+  id: string;
+  tipo: "foto" | "assinatura_cliente";
+  capturadoEm: string;
+  capturadoPorMotoboy: string | null;
+}
+
+export async function getComprovantesEntrega(
+  entregaId: string
+): Promise<EntregaComprovante[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      id: entregaAnexos.id,
+      tipo: entregaAnexos.tipo,
+      capturadoEm: entregaAnexos.capturadoEm,
+      motoboyNome: motoboys.nome,
+    })
+    .from(entregaAnexos)
+    .leftJoin(
+      motoboys,
+      eq(entregaAnexos.capturadoPorMotoboy, motoboys.id)
+    )
+    .where(eq(entregaAnexos.entregaId, entregaId))
+    .orderBy(asc(entregaAnexos.capturadoEm));
+
+  return rows
+    .filter(
+      (anexo) =>
+        anexo.tipo === "foto" || anexo.tipo === "assinatura_cliente"
+    )
+    .map((anexo) => ({
+      id: anexo.id,
+      tipo: anexo.tipo as "foto" | "assinatura_cliente",
+      capturadoEm: anexo.capturadoEm,
+      capturadoPorMotoboy: anexo.motoboyNome ?? null,
+    }));
 }
 
 export interface EntregaMotorista {
