@@ -74,6 +74,47 @@ function validarAssinatura(valor: FormDataEntryValue | null): File | null {
   return valor;
 }
 
+function bytesIguais(
+  bytes: Uint8Array,
+  inicio: number,
+  esperado: number[]
+): boolean {
+  return esperado.every((valor, indice) => bytes[inicio + indice] === valor);
+}
+
+function textoAscii(bytes: Uint8Array, inicio: number, tamanho: number): string {
+  return String.fromCharCode(...bytes.slice(inicio, inicio + tamanho));
+}
+
+function conteudoConfereComMime(bytes: Uint8Array, mime: string): boolean {
+  if (mime === "image/jpeg") {
+    return bytesIguais(bytes, 0, [0xff, 0xd8, 0xff]);
+  }
+
+  if (mime === "image/png") {
+    return bytesIguais(bytes, 0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  }
+
+  if (mime === "image/webp") {
+    return (
+      textoAscii(bytes, 0, 4) === "RIFF" &&
+      textoAscii(bytes, 8, 4) === "WEBP"
+    );
+  }
+
+  if (mime === "image/heic" || mime === "image/heif") {
+    const marca = textoAscii(bytes, 8, 4);
+    return (
+      textoAscii(bytes, 4, 4) === "ftyp" &&
+      ["heic", "heix", "hevc", "hevx", "heif", "mif1", "msf1"].includes(
+        marca
+      )
+    );
+  }
+
+  return false;
+}
+
 export async function iniciarEntrega(
   entregaId: string
 ): Promise<AcaoEntregaResult> {
@@ -212,15 +253,27 @@ export async function confirmarEntrega(
   try {
     await mkdir(pastaEntrega, { recursive: true });
 
-    const [bytesFoto, bytesAssinatura] = await Promise.all([
+    const [bufferFoto, bufferAssinatura] = await Promise.all([
       foto.arrayBuffer(),
       assinatura.arrayBuffer(),
     ]);
+    const bytesFoto = new Uint8Array(bufferFoto);
+    const bytesAssinatura = new Uint8Array(bufferAssinatura);
 
-    await writeFile(caminhoFoto, new Uint8Array(bytesFoto), { flag: "wx" });
+    if (
+      !conteudoConfereComMime(bytesFoto, foto.type) ||
+      !conteudoConfereComMime(bytesAssinatura, assinatura.type)
+    ) {
+      return {
+        ok: false,
+        error: "O conteúdo de um dos comprovantes não corresponde a uma imagem válida.",
+      };
+    }
+
+    await writeFile(caminhoFoto, bytesFoto, { flag: "wx" });
     fotoGravada = true;
 
-    await writeFile(caminhoAssinatura, new Uint8Array(bytesAssinatura), {
+    await writeFile(caminhoAssinatura, bytesAssinatura, {
       flag: "wx",
     });
     assinaturaGravada = true;
