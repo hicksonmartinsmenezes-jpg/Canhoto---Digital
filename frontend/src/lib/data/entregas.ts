@@ -24,7 +24,7 @@ import {
   motoboys,
   usuariosAdmin,
 } from "@/lib/db/schema";
-import { formatBRL, formatDateBR } from "@/lib/format";
+import { formatBRL, formatCep, formatDateBR } from "@/lib/format";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 function paraDataInput(dataIso: string): string {
@@ -521,6 +521,7 @@ export interface EntregaDetalhe {
   clienteNome: string;
   clienteTelefone: string;
   endereco: string;
+  cep: string;
   numeroPedido: string;
   numeroNfe: string;
   valorPagamento: string;
@@ -545,6 +546,7 @@ export async function getEntregaById(
       clienteNome: entregas.clienteNome,
       clienteTelefone: entregas.clienteTelefone,
       endereco: entregas.endereco,
+      cep: entregas.cep,
       numeroPedido: entregas.numeroPedido,
       numeroNfe: entregas.numeroNfe,
       valorPagamento: entregas.valorPagamento,
@@ -568,6 +570,7 @@ export async function getEntregaById(
     clienteNome: entrega.clienteNome,
     clienteTelefone: entrega.clienteTelefone ?? "",
     endereco: entrega.endereco ?? "",
+    cep: entrega.cep ? formatCep(entrega.cep) : "",
     numeroPedido: entrega.numeroPedido ?? "",
     numeroNfe: entrega.numeroNfe ?? "",
     valorPagamento: String(entrega.valorPagamento),
@@ -625,6 +628,7 @@ export interface EntregaMotorista {
   numero: string;
   clienteNome: string;
   endereco: string;
+  cep: string;
   valor: string;
   formaPagamento: FormaPagamento;
   status: StatusEntrega;
@@ -646,6 +650,7 @@ export async function getEntregasDoMotorista(
       numero: entregas.numero,
       clienteNome: entregas.clienteNome,
       endereco: entregas.endereco,
+      cep: entregas.cep,
       valorPagamento: entregas.valorPagamento,
       formaPagamento: entregas.formaPagamento,
       status: entregas.status,
@@ -667,6 +672,7 @@ export async function getEntregasDoMotorista(
     numero: `#${entrega.numero}`,
     clienteNome: entrega.clienteNome,
     endereco: entrega.endereco ?? "",
+    cep: entrega.cep ? formatCep(entrega.cep) : "",
     valor: formatBRL(Number(entrega.valorPagamento)),
     formaPagamento: entrega.formaPagamento,
     status: entrega.status,
