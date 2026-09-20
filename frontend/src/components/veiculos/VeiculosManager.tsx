@@ -89,7 +89,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
             type="button"
             onClick={() => setModal({ tipo: "novo-gasto" })}
             disabled={data.veiculos.length === 0}
-            className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#102b5d] disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#102b5d] disabled:cursor-not-allowed disabled:bg-[#0A1F44] disabled:text-white disabled:opacity-100"
           >
             <ReceiptText className="size-4" />
             Registrar gasto
