@@ -70,7 +70,7 @@ export function MotoboyMapCard({
   );
   const selecionadoEfetivoId =
     selecionadoId &&
-    motoristas.some((motorista) => motorista.motoboyId === selecionadoEfetivoId)
+    motoristas.some((motorista) => motorista.motoboyId === selecionadoId)
       ? selecionadoId
       : primeiroComLocalizacao?.motoboyId ?? motoristas[0]?.motoboyId ?? null;
 
