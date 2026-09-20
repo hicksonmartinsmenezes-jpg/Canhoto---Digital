@@ -28,9 +28,9 @@ export function MotoristaEntregasHoje({
   }, [entregas, filtro]);
 
   return (
-    <section id="entregas-hoje" className="mt-7">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-[22px] font-extrabold tracking-tight text-[#0A1F44]">
+    <section id="entregas-hoje" className="mt-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-xl font-extrabold tracking-tight text-[#0A1F44]">
           Entregas de hoje
         </h2>
 
@@ -39,13 +39,13 @@ export function MotoristaEntregasHoje({
             aria-label="Filtrar entregas"
             value={filtro}
             onChange={(event) => setFiltro(event.target.value as Filtro)}
-            className="appearance-none rounded-full border border-slate-200 bg-white py-2 pl-4 pr-9 text-sm font-bold text-slate-600 shadow-sm outline-none transition focus:border-[#0A1F44]"
+            className="appearance-none rounded-full border border-slate-200 bg-white py-1.5 pl-3.5 pr-8 text-[13px] font-bold text-slate-600 shadow-sm outline-none transition focus:border-[#0A1F44]"
           >
             <option value="todas">Todas</option>
             <option value="pendentes">Pendentes</option>
             <option value="concluidas">Concluídas</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" />
         </div>
       </div>
 
@@ -67,7 +67,7 @@ export function MotoristaEntregasHoje({
           />
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           {filtradas.map((entrega) => (
             <EntregaMotoristaCard key={entrega.id} entrega={entrega} />
           ))}
