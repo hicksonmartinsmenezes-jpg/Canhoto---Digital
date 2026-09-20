@@ -2,8 +2,8 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
-$backupScript = Join-Path $repoRoot "ops\backup\backup-postgres-r2.ps1"
-$taskName = "Canhoto Digital - Backup R2"
+$backupScript = Join-Path $repoRoot "ops\backup\backup-postgres.ps1"
+$taskName = "Canhoto Digital - Backup"
 $userId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 $action = New-ScheduledTaskAction `
@@ -28,7 +28,7 @@ Register-ScheduledTask `
     -Trigger $trigger `
     -Settings $settings `
     -Principal $principal `
-    -Description "Executa pg_dump do Canhoto Digital e envia o backup para Cloudflare R2." `
+    -Description "Creates a PostgreSQL dump for Canhoto Digital and mirrors it to the configured synced folder." `
     -Force | Out-Null
 
-Write-Host "Tarefa registrada: $taskName (diariamente às 02:30)"
+Write-Host "Scheduled task registered: $taskName (daily at 02:30)"
