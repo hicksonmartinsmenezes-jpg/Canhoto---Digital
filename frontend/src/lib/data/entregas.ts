@@ -11,6 +11,7 @@ import {
   desc,
   eq,
   gte,
+  isNotNull,
   isNull,
   lte,
   ne,
@@ -21,6 +22,7 @@ import {
   entregaAnexos,
   entregaHistorico,
   entregas,
+  motoboyLocalizacoes,
   motoboys,
   usuariosAdmin,
 } from "@/lib/db/schema";
@@ -29,6 +31,88 @@ import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 function paraDataInput(dataIso: string): string {
   return dataIso.slice(0, 10);
+}
+
+export interface MotoristaEmRota {
+  motoboyId: string;
+  nome: string;
+  entregas: Array<{
+    numero: string;
+    cliente: string;
+    endereco: string;
+    cep: string;
+  }>;
+  latitude: number | null;
+  longitude: number | null;
+  precisaoMetros: number | null;
+  localizacaoAtualizadaEm: string | null;
+}
+
+export async function getMotoristasEmRota(): Promise<MotoristaEmRota[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const hoje = paraChaveDiaLocal(new Date());
+
+  const rows = await db
+    .select({
+      motoboyId: motoboys.id,
+      motoboyNome: motoboys.nome,
+      numero: entregas.numero,
+      clienteNome: entregas.clienteNome,
+      endereco: entregas.endereco,
+      cep: entregas.cep,
+      latitude: motoboyLocalizacoes.latitude,
+      longitude: motoboyLocalizacoes.longitude,
+      precisaoMetros: motoboyLocalizacoes.precisaoMetros,
+      localizacaoAtualizadaEm: motoboyLocalizacoes.atualizadoEm,
+    })
+    .from(entregas)
+    .innerJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
+    .leftJoin(
+      motoboyLocalizacoes,
+      eq(motoboyLocalizacoes.motoboyId, motoboys.id)
+    )
+    .where(
+      and(
+        eq(entregas.data, hoje),
+        eq(entregas.status, "pendente"),
+        isNotNull(entregas.horaSaida),
+        isNotNull(entregas.motoboyId),
+        eq(motoboys.ativo, true)
+      )
+    )
+    .orderBy(asc(motoboys.nome), asc(entregas.numero));
+
+  const porMotorista = new Map<string, MotoristaEmRota>();
+
+  for (const row of rows) {
+    const existente = porMotorista.get(row.motoboyId);
+    const entrega = {
+      numero: `#${row.numero}`,
+      cliente: row.clienteNome,
+      endereco: row.endereco ?? "",
+      cep: row.cep ? formatCep(row.cep) : "",
+    };
+
+    if (existente) {
+      existente.entregas.push(entrega);
+      continue;
+    }
+
+    porMotorista.set(row.motoboyId, {
+      motoboyId: row.motoboyId,
+      nome: row.motoboyNome,
+      entregas: [entrega],
+      latitude: row.latitude === null ? null : Number(row.latitude),
+      longitude: row.longitude === null ? null : Number(row.longitude),
+      precisaoMetros:
+        row.precisaoMetros === null ? null : Number(row.precisaoMetros),
+      localizacaoAtualizadaEm: row.localizacaoAtualizadaEm,
+    });
+  }
+
+  return Array.from(porMotorista.values());
 }
 
 export interface DashboardStats {
