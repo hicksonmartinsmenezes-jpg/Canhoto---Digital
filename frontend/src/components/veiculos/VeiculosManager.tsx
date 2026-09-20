@@ -153,10 +153,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                 icon={Car}
                 title="Nenhum veículo cadastrado"
                 description="Cadastre o primeiro veículo para começar a controlar os gastos da frota."
-                action={{
-                  label: "Novo veículo",
-                  onClick: () => setModal({ tipo: "novo-veiculo" }),
-                }}
               />
             ) : (
               <div className="overflow-x-auto">
@@ -269,14 +265,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                 icon={ReceiptText}
                 title="Nenhum gasto registrado"
                 description="Os gastos de combustível, manutenção, multas e outros aparecerão aqui."
-                action={
-                  data.veiculos.length > 0
-                    ? {
-                        label: "Registrar gasto",
-                        onClick: () => setModal({ tipo: "novo-gasto" }),
-                      }
-                    : undefined
-                }
               />
             ) : (
               <div className="overflow-x-auto">
