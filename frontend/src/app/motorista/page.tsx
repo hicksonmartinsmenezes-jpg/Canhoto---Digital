@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
 import { CheckCircle2, Clock3, LogOut, PackageCheck } from "lucide-react";
 import { EntregaMotoristaCard } from "@/components/motorista/EntregaMotoristaCard";
+import { MotoristaAutoRefresh } from "@/components/motorista/MotoristaAutoRefresh";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getEntregasDoMotorista } from "@/lib/data/entregas";
 import { getMotoboyNome } from "@/lib/data/motoboys";
 import { obterMotoboyIdDaSessao } from "@/lib/motorista-session";
 import { sairMotorista } from "./actions";
+
+export const dynamic = "force-dynamic";
 
 function formatarDataHoje() {
   const data = new Intl.DateTimeFormat("pt-BR", {
@@ -34,6 +37,7 @@ export default async function MotoristaPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <MotoristaAutoRefresh />
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-md items-center justify-between gap-4 px-4 py-4">
           <div className="border-l-4 border-[#0A1F44] pl-3">
