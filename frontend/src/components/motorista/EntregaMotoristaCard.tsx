@@ -28,13 +28,11 @@ export function EntregaMotoristaCard({
     if (!entrega.endereco) return;
 
     const params = new URLSearchParams({
-      api: "1",
-      destination: entrega.endereco,
-      travelmode: "driving",
-      dir_action: "navigate",
+      q: entrega.endereco,
+      navigate: "yes",
     });
 
-    window.location.assign(`https://www.google.com/maps/dir/?${params.toString()}`);
+    window.location.assign(`https://waze.com/ul?${params.toString()}`);
   }
 
   function executar() {
@@ -112,7 +110,7 @@ export function EntregaMotoristaCard({
               className="inline-flex w-full items-center justify-center gap-2 border border-[#0A1F44] bg-white px-4 py-2.5 text-sm font-bold text-[#0A1F44] transition-colors hover:bg-slate-50"
             >
               <Navigation className="size-4" />
-              Abrir rota no Google Maps
+              Abrir rota no Waze
             </button>
           )}
 
