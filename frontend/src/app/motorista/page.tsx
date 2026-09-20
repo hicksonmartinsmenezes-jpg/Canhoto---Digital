@@ -43,35 +43,26 @@ export default async function MotoristaPage() {
     <div className="min-h-screen bg-slate-50">
       <MotoristaAutoRefresh />
       <MotoristaLocationTracker ativo={possuiEntregaEmRota} />
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-md items-center justify-between gap-4 px-4 py-4">
-          <div className="border-l-4 border-[#0A1F44] pl-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Canhoto Digital
+      <main className="mx-auto max-w-md px-4 py-6">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-500">
+              {formatarDataHoje()}
             </p>
-            <h1 className="text-lg font-bold tracking-tight text-[#0A1F44]">
-              Minhas entregas
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+              Olá, {nome}
             </h1>
           </div>
 
-          <form action={sairMotorista}>
+          <form action={sairMotorista} className="shrink-0">
             <button
               type="submit"
-              className="inline-flex items-center gap-2 bg-[#0A1F44] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0A1F44]/90"
+              className="inline-flex items-center gap-2 border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0A1F44] shadow-sm transition-colors hover:bg-slate-50"
             >
               <LogOut className="size-4" />
               Sair
             </button>
           </form>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-md px-4 py-5">
-        <div className="mb-5">
-          <p className="text-sm text-slate-500">{formatarDataHoje()}</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-            Olá, {nome}
-          </h2>
         </div>
 
         <section className="grid grid-cols-2 gap-3">
@@ -123,7 +114,7 @@ export default async function MotoristaPage() {
         </section>
 
         <section className="mt-6">
-          <div className="mb-3 border-l-4 border-[#0A1F44] pl-3">
+          <div className="mb-3">
             <h2 className="text-base font-bold text-[#0A1F44]">
               Entregas atribuídas
             </h2>
