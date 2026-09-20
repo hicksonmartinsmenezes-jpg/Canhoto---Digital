@@ -5,7 +5,6 @@ Esta pasta substitui a infraestrutura de banco do Supabase na Issue #64.
 ## Arquivos
 
 - `migrations/0001_baseline.sql`: schema PostgreSQL puro consolidado.
-- As migrations antigas em `backend/supabase/` são mantidas temporariamente apenas como histórico durante a migração.
 
 ## Subir somente o PostgreSQL
 
