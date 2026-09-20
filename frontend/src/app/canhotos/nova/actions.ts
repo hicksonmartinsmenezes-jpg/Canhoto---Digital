@@ -88,6 +88,7 @@ export async function criarEntrega(
   }
 
   revalidatePath("/canhotos");
+  revalidatePath("/motorista");
   revalidatePath("/");
   return { ok: true };
 }
