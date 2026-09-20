@@ -14,7 +14,9 @@ import {
   ClipboardList,
   ChevronDown,
   Car,
+  LogOut,
 } from "lucide-react";
+import { sairAdmin } from "@/app/login/actions";
 
 // Estrutura de navegação do Portal Web Admin — Canhoto Digital.
 // Escopo confirmado (schema v2, 18/08/2026): entrega ao cliente externo via
@@ -242,6 +244,22 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        <div className="shrink-0 border-t border-white/10 p-2">
+          <form action={sairAdmin}>
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 border-l-2 border-transparent px-1 py-2 text-[15px] text-white/80 transition-[color,background-color,transform] duration-150 hover:bg-white/10 hover:text-white active:scale-[0.98]"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg">
+                <LogOut className="size-5" strokeWidth={2} />
+              </span>
+              <span className="whitespace-nowrap opacity-0 transition-opacity delay-150 duration-300 group-hover:opacity-100">
+                Sair
+              </span>
+            </button>
+          </form>
+        </div>
       </aside>
     </div>
   );
