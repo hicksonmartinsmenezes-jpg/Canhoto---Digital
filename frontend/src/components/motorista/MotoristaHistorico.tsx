@@ -29,7 +29,9 @@ export function MotoristaHistorico({
           Entregas concluídas
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Últimas {Math.min(entregas.length, 20)} entregas finalizadas.
+          {entregas.length === 1
+            ? "Última entrega finalizada."
+            : `Últimas ${Math.min(entregas.length, 20)} entregas finalizadas.`}
         </p>
       </div>
 
