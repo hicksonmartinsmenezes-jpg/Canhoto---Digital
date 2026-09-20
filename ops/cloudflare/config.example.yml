@@ -1,7 +1,12 @@
+# Fallback para túnel LOCALMENTE gerenciado.
+#
+# Para produção, prefira o túnel remotamente gerenciado pelo Dashboard da
+# Cloudflare, conforme ops/README.md. Ele exige apenas o token no serviço
+# Windows e reduz configuração/credenciais mantidas nesta máquina.
+
 tunnel: <TUNNEL_UUID>
 credentials-file: C:\Windows\System32\config\systemprofile\.cloudflared\<TUNNEL_UUID>.json
 
-# O hostname público aponta para o Next.js, nunca para o PostgreSQL.
 ingress:
   - hostname: <PUBLIC_MOTORISTA_HOST>
     service: http://127.0.0.1:3003
