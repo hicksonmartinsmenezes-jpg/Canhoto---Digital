@@ -1,5 +1,6 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import { eq, ilike } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
@@ -22,6 +23,9 @@ export interface ColaboradorDados {
   cargo: string;
   papel: PapelColaborador;
   ativo: boolean;
+  // Só usado quando papel === "gestor_setor". Vazio/undefined ao editar =
+  // não mexe na senha já salva. Ao criar um gestor_setor, é obrigatório.
+  senha?: string;
 }
 
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -67,6 +71,40 @@ function validarDados(
   };
 }
 
+// Retorna o hash pronto pra gravar, ou null se não deve mexer na senha
+// atual (edição sem novo valor digitado). "error" só quando o valor
+// informado é inválido/insuficiente.
+async function resolverSenhaHash(
+  papel: PapelColaborador,
+  senha: string | undefined,
+  { obrigatoria }: { obrigatoria: boolean }
+): Promise<{ ok: true; hash: string | null } | { ok: false; error: string }> {
+  const senhaLimpa = (senha ?? "").trim();
+
+  if (papel !== "gestor_setor") {
+    return { ok: true, hash: null };
+  }
+
+  if (!senhaLimpa) {
+    if (obrigatoria) {
+      return {
+        ok: false,
+        error: "Defina uma senha de acesso pro Gestor de setor.",
+      };
+    }
+    return { ok: true, hash: null };
+  }
+
+  if (senhaLimpa.length < 4) {
+    return { ok: false, error: "A senha deve ter pelo menos 4 caracteres." };
+  }
+  if (Buffer.byteLength(senhaLimpa, "utf8") > 72) {
+    return { ok: false, error: "Senha muito longa." };
+  }
+
+  return { ok: true, hash: await bcrypt.hash(senhaLimpa, 12) };
+}
+
 async function obterSetorPadrao(): Promise<string | null> {
   const db = getDb();
   if (!db) return null;
@@ -109,6 +147,13 @@ export async function criarColaborador(
   const validado = validarDados(dados);
   if (!validado.ok) return { ok: false, error: validado.error };
 
+  const senhaResolvida = await resolverSenhaHash(dados.papel, dados.senha, {
+    obrigatoria: true,
+  });
+  if (!senhaResolvida.ok) {
+    return { ok: false, error: senhaResolvida.error };
+  }
+
   try {
     const setorId = await obterSetorPadrao();
     if (!setorId) {
@@ -122,6 +167,7 @@ export async function criarColaborador(
       setorId,
       cargo: validado.cargo || null,
       papel: dados.papel,
+      senhaHash: senhaResolvida.hash,
     });
   } catch (error) {
     if (codigoErroPostgres(error) === "23505") {
@@ -163,6 +209,17 @@ export async function atualizarColaborador(
   const validado = validarDados(dados);
   if (!validado.ok) return { ok: false, error: validado.error };
 
+  // Ao editar, senha não é obrigatória — campo vazio significa "manter a
+  // senha atual" (mesmo que ainda não exista nenhuma, nesse caso o
+  // colaborador simplesmente continua sem conseguir logar até alguém
+  // definir uma).
+  const senhaResolvida = await resolverSenhaHash(dados.papel, dados.senha, {
+    obrigatoria: false,
+  });
+  if (!senhaResolvida.ok) {
+    return { ok: false, error: senhaResolvida.error };
+  }
+
   try {
     const setorId = await obterSetorPadrao();
     if (!setorId) {
@@ -179,6 +236,9 @@ export async function atualizarColaborador(
         cargo: validado.cargo || null,
         papel: dados.papel,
         ativo: dados.ativo,
+        ...(senhaResolvida.hash !== null
+          ? { senhaHash: senhaResolvida.hash }
+          : {}),
       })
       .where(eq(colaboradores.id, id))
       .returning({ id: colaboradores.id });

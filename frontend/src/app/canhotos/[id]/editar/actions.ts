@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
+import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
 import { entregaHistorico, entregas } from "@/lib/db/schema";
@@ -33,9 +33,9 @@ export async function atualizarEntrega(
   id: string,
   input: AtualizarEntregaInput
 ): Promise<AtualizarEntregaResult> {
-  const admin = await obterAdminAutenticado();
-  if (!admin) {
-    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  const operador = await obterOperadorAutenticado();
+  if (!operador) {
+    return { ok: false, error: "Sessão inválida ou expirada." };
   }
 
   const limite = await checarRateLimit("atualizarEntrega");
@@ -128,10 +128,11 @@ export async function atualizarEntrega(
           entregaId: id,
           statusAnterior: atual.status,
           statusNovo: input.status,
-          alteradoPor: admin.colaboradorId,
-          alteradoPorAdmin: admin.colaboradorId
-            ? null
-            : admin.usuarioAdminId,
+          alteradoPor: operador.colaboradorId,
+          alteradoPorAdmin:
+            operador.tipo === "admin" && !operador.colaboradorId
+              ? operador.usuarioAdminId
+              : null,
         });
       }
 

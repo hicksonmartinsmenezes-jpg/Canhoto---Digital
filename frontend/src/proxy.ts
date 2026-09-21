@@ -4,6 +4,10 @@ import {
   verificarTokenSessaoAdmin,
 } from "@/lib/admin-session-core";
 import {
+  COLABORADOR_COOKIE_NAME,
+  verificarTokenSessaoColaborador,
+} from "@/lib/colaborador-session-core";
+import {
   MOTORISTA_COOKIE_NAME,
   verificarTokenSessao,
 } from "@/lib/motorista-session-core";
@@ -87,6 +91,28 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Colaborador com papel "gestor_setor" — acesso quase igual ao Admin nas
+  // mesmas rotas, só que os dados que ele vê ficam escopados ao setor dele
+  // (isso é feito em cada página/consulta via @/lib/sessao-operador, não
+  // aqui no proxy — aqui só decide SE entra).
+  const segredoColaborador = process.env.COLABORADOR_SESSION_SECRET;
+  const tokenColaborador = request.cookies.get(COLABORADOR_COOKIE_NAME)?.value;
+  const sessaoColaborador =
+    segredoColaborador && tokenColaborador
+      ? await verificarTokenSessaoColaborador(
+          tokenColaborador,
+          segredoColaborador,
+          Date.now()
+        )
+      : null;
+
+  if (pathname === "/colaborador/login") {
+    if (sessaoColaborador) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return NextResponse.next();
+  }
+
   if (!segredoAdmin) {
     return new NextResponse("Serviço temporariamente indisponível.", {
       status: 503,
@@ -94,11 +120,11 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  if (!usuarioAdminId) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (usuarioAdminId || sessaoColaborador) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  return NextResponse.redirect(new URL("/login", request.url));
 }
 
 export const config = {

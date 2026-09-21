@@ -77,6 +77,9 @@ export const colaboradores = pgTable(
     }),
     cargo: text("cargo"),
     papel: papelColaboradorEnum("papel").notNull().default("colaborador"),
+    // Só preenchido pra colaboradores com papel "gestor_setor" — dá acesso
+    // de login escopado ao setor deles (ver @/lib/colaborador-session).
+    senhaHash: text("senha_hash"),
     ativo: boolean("ativo").notNull().default(true),
     criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
       .notNull()
@@ -302,6 +305,11 @@ export const entregas = pgTable(
     cadastradoPorAdmin: uuid("cadastrado_por_admin").references(
       () => usuariosAdmin.id
     ),
+    // Setor dono da entrega (Issue: login por gestor_setor) — usado pra
+    // escopar o que um gestor_setor enxerga no Dashboard/Entregas.
+    setorId: uuid("setor_id").references(() => setores.id, {
+      onDelete: "set null",
+    }),
     criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
@@ -318,6 +326,7 @@ export const entregas = pgTable(
     index("idx_entregas_caixa").on(table.caixaId),
     index("idx_entregas_status").on(table.status),
     index("idx_entregas_forma_pagamento").on(table.formaPagamento),
+    index("idx_entregas_setor").on(table.setorId),
     index("idx_entregas_cadastrado_por_admin").on(table.cadastradoPorAdmin),
     check(
       "ck_entregas_cep",
