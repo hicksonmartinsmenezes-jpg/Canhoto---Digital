@@ -96,22 +96,22 @@ export function EntregaMotoristaCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
+    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div
         className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${
           entregue
-            ? "border-emerald-100 bg-emerald-50/70"
+            ? "border-slate-200 bg-slate-50"
             : emRota
-              ? "border-[#F2B22E]/30 bg-[#F2B22E]/10"
+              ? "border-slate-200 bg-slate-50"
               : "border-[#0A1F44]/10 bg-[#0A1F44]/5"
         }`}
       >
         <div
           className={`inline-flex items-center gap-2 text-sm font-extrabold ${
             entregue
-              ? "text-emerald-700"
+              ? "text-slate-700"
               : emRota
-                ? "text-[#DE6C09]"
+                ? "text-slate-700"
                 : "text-[#0A1F44]"
           }`}
         >
@@ -132,10 +132,10 @@ export function EntregaMotoristaCard({
         <span
           className={`rounded-full px-3 py-1.5 text-sm font-black ${
             entregue
-              ? "bg-emerald-100 text-emerald-700"
+              ? "bg-slate-100 text-slate-700"
               : emRota
-                ? "bg-[#F2B22E]/15 text-[#DE6C09]"
-                : "bg-[#0A1F44]/10 text-[#0A1F44]"
+                ? "bg-slate-100 text-slate-700"
+                : "bg-slate-50 text-[#0A1F44]"
           }`}
         >
           {entrega.numero}
@@ -144,7 +144,7 @@ export function EntregaMotoristaCard({
 
       <div className="p-4">
         <div className="flex items-start gap-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-[#0A1F44]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-50 text-[#0A1F44]">
             <UserRound className="size-6" />
           </span>
 
@@ -175,7 +175,7 @@ export function EntregaMotoristaCard({
             </div>
 
             {entregue && horaEntrega && (
-              <p className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-emerald-600">
+              <p className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-slate-600">
                 <Clock3 className="size-4" />
                 Entregue às {horaEntrega}
               </p>
@@ -190,7 +190,7 @@ export function EntregaMotoristaCard({
         )}
 
         {entregue ? (
-          <div className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-700">
+          <div className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-extrabold text-slate-700">
             <CheckCircle2 className="size-5" />
             Entrega finalizada
           </div>
@@ -200,7 +200,7 @@ export function EntregaMotoristaCard({
               <button
                 type="button"
                 onClick={abrirRota}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#0A1F44]/20 bg-[#0A1F44]/5 px-4 py-3 text-sm font-extrabold text-[#0A1F44] transition hover:bg-[#FFD200]/15"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-[#0A1F44] transition hover:bg-slate-50"
               >
                 <Navigation className="size-4" />
                 Abrir rota no Waze
@@ -222,7 +222,7 @@ export function EntregaMotoristaCard({
             type="button"
             disabled={pending}
             onClick={executar}
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0A1F44] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#102b5d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0A1F44] px-4 py-3 text-sm font-extrabold text-white transition hover:bg-[#102b5d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending ? (
               <>
