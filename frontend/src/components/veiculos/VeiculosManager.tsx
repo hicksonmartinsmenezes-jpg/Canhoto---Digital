@@ -389,37 +389,19 @@ function ResumoCard({
   tone: "navy" | "accent" | "neutral";
 }) {
   return (
-    <Card
-      className={`p-5 ${
-        tone === "accent"
-          ? "border-transparent! bg-linear-to-br from-[#F2B22E] to-[#DE6C09] text-white"
-          : ""
-      }`}
-    >
+    <Card className="p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p
-            className={`text-[11px] font-bold uppercase tracking-wide ${
-              tone === "accent" ? "text-white/85" : "text-slate-400"
-            }`}
-          >
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
             {label}
           </p>
-          <p
-            className={`mt-2 text-2xl font-black tracking-tight ${
-              tone === "accent" ? "text-white" : "text-[#0A1F44]"
-            }`}
-          >
+          <p className="mt-2 text-2xl font-black tracking-tight text-[#0A1F44]">
             {value}
           </p>
         </div>
         <span
           className={`grid size-10 place-items-center ${
-            tone === "accent"
-              ? "text-white"
-              : tone === "navy"
-                ? "text-[#0A1F44]"
-                : "text-slate-500"
+            tone === "navy" ? "text-[#0A1F44]" : "text-slate-500"
           }`}
         >
           <Icon className="size-5" />

@@ -186,7 +186,7 @@ export default async function TreinamentoDetalhePage({
           <form action={iniciarTreinamento.bind(null, treinamento.slug)}>
             <button
               type="submit"
-              className="inline-flex items-center gap-2 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-400"
+              className="inline-flex items-center gap-2 bg-neutral-600 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-neutral-500 active:scale-[0.97]"
             >
               <PlayCircle className="size-4" />
               Iniciar treinamento
