@@ -1,5 +1,6 @@
 param(
-    [string]$BackupPath = ""
+    [string]$BackupPath = "",
+    [switch]$KeepTestArtifacts
 )
 
 $ErrorActionPreference = "Stop"
@@ -7,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 $configPath = Join-Path $scriptDir ".env.backup"
-$backupDir = Join-Path $repoRoot "backups\postgres"
+$backupRoot = Join-Path (Join-Path $repoRoot "backups") "canhoto"
 $container = "canhoto_digital_postgres"
 
 function Import-EnvFile([string]$Path) {
@@ -24,42 +25,105 @@ function Import-EnvFile([string]$Path) {
     }
 }
 
+function Resolve-OperationalPath([string]$Value) {
+    $expanded = [Environment]::ExpandEnvironmentVariables($Value.Trim())
+    if ([IO.Path]::IsPathRooted($expanded)) {
+        return [IO.Path]::GetFullPath($expanded)
+    }
+
+    return [IO.Path]::GetFullPath((Join-Path $repoRoot $expanded))
+}
+
+function Assert-BackupPackage([string]$PackagePath) {
+    $manifestPath = Join-Path $PackagePath "manifest.json"
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        throw "Backup manifest is missing."
+    }
+
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+    if ($manifest.formatVersion -ne 1) {
+        throw "Unsupported backup format version: $($manifest.formatVersion)"
+    }
+
+    $databasePath = Join-Path $PackagePath $manifest.database.file
+    $uploadsPath = Join-Path $PackagePath $manifest.uploads.file
+
+    foreach ($required in @($databasePath, $uploadsPath)) {
+        if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
+            throw "Backup package is incomplete: $required"
+        }
+        if ((Get-Item -LiteralPath $required).Length -le 0) {
+            throw "Backup file is empty: $required"
+        }
+    }
+
+    $databaseHash = (Get-FileHash -LiteralPath $databasePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $uploadsHash = (Get-FileHash -LiteralPath $uploadsPath -Algorithm SHA256).Hash.ToLowerInvariant()
+
+    if ($databaseHash -ne $manifest.database.sha256.ToLowerInvariant()) {
+        throw "Database dump SHA-256 mismatch."
+    }
+    if ($uploadsHash -ne $manifest.uploads.sha256.ToLowerInvariant()) {
+        throw "Uploads archive SHA-256 mismatch."
+    }
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [IO.Compression.ZipFile]::OpenRead($uploadsPath)
+    try {
+        $null = $zip.Entries.Count
+    }
+    finally {
+        $zip.Dispose()
+    }
+
+    return $manifest
+}
+
 Import-EnvFile $configPath
 
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+    throw "docker not found in PATH."
+}
+
 if (-not $BackupPath) {
-    $latest = Get-ChildItem $backupDir -Filter "canhoto-*.dump" -File -ErrorAction SilentlyContinue |
+    $latest = Get-ChildItem -LiteralPath $backupRoot -Directory -Filter "canhoto-*" -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1
 
     if (-not $latest -and $env:BACKUP_MIRROR_DIR) {
-        $mirrorDir = [Environment]::ExpandEnvironmentVariables($env:BACKUP_MIRROR_DIR.Trim())
-        $latest = Get-ChildItem $mirrorDir -Filter "canhoto-*.dump" -File -ErrorAction SilentlyContinue |
+        $mirrorDir = Resolve-OperationalPath $env:BACKUP_MIRROR_DIR
+        $latest = Get-ChildItem -LiteralPath $mirrorDir -Directory -Filter "canhoto-*" -ErrorAction SilentlyContinue |
             Sort-Object LastWriteTime -Descending |
             Select-Object -First 1
     }
 
     if (-not $latest) {
-        throw "No backup found. Run backup-postgres.ps1 first."
+        throw "No complete backup package found. Run backup-postgres.ps1 first."
     }
 
     $BackupPath = $latest.FullName
 }
 
 $BackupPath = (Resolve-Path -LiteralPath $BackupPath).Path
-if ((Get-Item $BackupPath).Length -le 0) {
-    throw "Backup file is empty."
+if (-not (Test-Path -LiteralPath $BackupPath -PathType Container)) {
+    throw "BackupPath must point to a complete backup directory, not a legacy .dump file."
 }
+
+$manifest = Assert-BackupPackage $BackupPath
 
 $running = docker inspect -f "{{.State.Running}}" $container 2>$null
 if ($LASTEXITCODE -ne 0 -or $running -ne "true") {
     throw "PostgreSQL container is not running."
 }
 
-$fileName = Split-Path $BackupPath -Leaf
-$containerPath = "/tmp/$fileName"
-$restoreDb = "canhoto_restore_" + (Get-Date -Format "yyyyMMddHHmmss")
+$databasePath = Join-Path $BackupPath $manifest.database.file
+$uploadsArchivePath = Join-Path $BackupPath $manifest.uploads.file
+$containerPath = "/tmp/canhoto-restore-" + [guid]::NewGuid().ToString("N") + ".dump"
+$restoreDb = "canhoto_restore_" + (Get-Date -Format "yyyyMMddHHmmss") + "_" + (Get-Random -Minimum 1000 -Maximum 9999)
+$restoreUploadsDir = Join-Path ([IO.Path]::GetTempPath()) ("canhoto-uploads-" + [guid]::NewGuid().ToString("N"))
+$databaseCreated = $false
 
-docker cp $BackupPath ($container + ":" + $containerPath)
+docker cp $databasePath ($container + ":" + $containerPath)
 if ($LASTEXITCODE -ne 0) {
     throw "Could not copy backup into PostgreSQL container."
 }
@@ -76,6 +140,7 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Could not create restore-test database."
     }
+    $databaseCreated = $true
 
     $restoreCommand = 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -h 127.0.0.1 -U "$POSTGRES_USER" -d "' + $restoreDb + '" "' + $containerPath + '"'
     docker exec $container sh -lc $restoreCommand
@@ -83,16 +148,77 @@ try {
         throw "pg_restore failed."
     }
 
-    $requiredTables = docker exec $container psql -At -U canhoto_app -d $restoreDb -c "select count(*) from information_schema.tables where table_schema='public' and table_name in ('colaboradores','entrega_anexos','entrega_historico','entregas','motoboys','setores','usuarios_admin');"
-    if ($LASTEXITCODE -ne 0 -or [int]$requiredTables -ne 7) {
-        throw "Restore finished, but required-table validation failed."
+    $tableNames = @($manifest.requiredTables)
+    if ($tableNames.Count -eq 0) {
+        throw "Backup manifest does not declare required tables."
     }
 
-    Write-Host "Restore validated successfully."
+    $quotedTables = ($tableNames | ForEach-Object { "'" + $_.Replace("'", "''") + "'" }) -join ","
+    $tableQuery = "select count(*) from information_schema.tables where table_schema='public' and table_name in ($quotedTables);"
+    $tableCommand = 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -At -h 127.0.0.1 -U "$POSTGRES_USER" -d "' + $restoreDb + '" -c "' + $tableQuery + '"'
+    $requiredTableCount = docker exec $container sh -lc $tableCommand
+
+    if ($LASTEXITCODE -ne 0 -or [int]$requiredTableCount -ne $tableNames.Count) {
+        throw "Restore finished, but required-table validation failed. Expected $($tableNames.Count), found $requiredTableCount."
+    }
+
+    New-Item -ItemType Directory -Force -Path $restoreUploadsDir | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [IO.Compression.ZipFile]::ExtractToDirectory($uploadsArchivePath, $restoreUploadsDir)
+
+    $restoredFiles = @(Get-ChildItem -LiteralPath $restoreUploadsDir -File -Recurse)
+    if ($restoredFiles.Count -ne [int]$manifest.uploads.fileCount) {
+        throw "Upload file count mismatch after extraction. Expected $($manifest.uploads.fileCount), found $($restoredFiles.Count)."
+    }
+
+    $attachmentQuery = "select arquivo_url from entrega_anexos where arquivo_url is not null and btrim(arquivo_url) <> '' order by arquivo_url;"
+    $attachmentCommand = 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -At -h 127.0.0.1 -U "$POSTGRES_USER" -d "' + $restoreDb + '" -c "' + $attachmentQuery + '"'
+    $attachmentPaths = @(docker exec $container sh -lc $attachmentCommand)
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not validate attachment references after restore."
+    }
+
+    $root = [IO.Path]::GetFullPath($restoreUploadsDir).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $rootPrefix = $root + [IO.Path]::DirectorySeparatorChar
+
+    foreach ($relativeRaw in $attachmentPaths) {
+        $relative = "$relativeRaw".Trim()
+        if (-not $relative) { continue }
+
+        $normalized = $relative.Replace("/", [IO.Path]::DirectorySeparatorChar)
+        $candidate = [IO.Path]::GetFullPath((Join-Path $root $normalized))
+
+        if (-not $candidate.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Unsafe attachment path restored from database: $relative"
+        }
+
+        if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            throw "Database attachment has no matching restored file: $relative"
+        }
+    }
+
+    Write-Host "Complete restore validated successfully."
     Write-Host "Source: $BackupPath"
-    Write-Host "Test database: $restoreDb"
-    Write-Host "The restore-test database was NOT deleted automatically."
+    Write-Host "Tables validated: $($tableNames.Count)"
+    Write-Host "Upload files validated: $($restoredFiles.Count)"
+
+    if ($KeepTestArtifacts) {
+        Write-Host "Restore-test database kept: $restoreDb"
+        Write-Host "Extracted uploads kept: $restoreUploadsDir"
+    }
 }
 finally {
-    docker exec $container rm -f $containerPath | Out-Null
+    docker exec $container rm -f $containerPath 2>$null | Out-Null
+
+    if (-not $KeepTestArtifacts) {
+        if ($databaseCreated) {
+            $dropCommand = 'PGPASSWORD="$POSTGRES_PASSWORD" dropdb -h 127.0.0.1 -U "$POSTGRES_USER" --if-exists "' + $restoreDb + '"'
+            docker exec $container sh -lc $dropCommand 2>$null | Out-Null
+        }
+
+        if (Test-Path -LiteralPath $restoreUploadsDir) {
+            Remove-Item -LiteralPath $restoreUploadsDir -Recurse -Force
+        }
+    }
 }
