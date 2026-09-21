@@ -22,7 +22,7 @@ import {
   getHistoricoDoMotorista,
 } from "@/lib/data/entregas";
 import { getMotoboyNome } from "@/lib/data/motoboys";
-import { obterMotoboyIdDaSessao } from "@/lib/motorista-session";
+import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 import { sairMotorista } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +57,7 @@ export default async function MotoristaPage({
   const params = await searchParams;
   const view = resolverView(params.view);
 
-  const motoboyId = await obterMotoboyIdDaSessao();
+  const motoboyId = await obterMotoristaAutorizado();
   if (!motoboyId) redirect("/motorista/login");
 
   const [nome, entregas, historico] = await Promise.all([
