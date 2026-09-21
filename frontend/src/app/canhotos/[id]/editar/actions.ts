@@ -73,14 +73,24 @@ export async function atualizarEntrega(
   }
 
   try {
-    const atualizada = await db.transaction(async (tx) => {
+    const resultadoTransacao = await db.transaction(async (tx) => {
       const [atual] = await tx
         .select({ status: entregas.status })
         .from(entregas)
         .where(eq(entregas.id, id))
         .limit(1);
 
-      if (!atual) return false;
+      if (!atual) {
+        return { ok: false as const, error: "Entrega não encontrada." };
+      }
+
+      if (input.status === "entregue" && atual.status !== "entregue") {
+        return {
+          ok: false as const,
+          error:
+            "A entrega só pode ser concluída pelo fluxo do motorista com foto e assinatura.",
+        };
+      }
 
       const [resultado] = await tx
         .update(entregas)
@@ -101,7 +111,9 @@ export async function atualizarEntrega(
         .where(eq(entregas.id, id))
         .returning({ id: entregas.id });
 
-      if (!resultado) return false;
+      if (!resultado) {
+        return { ok: false as const, error: "Entrega não encontrada." };
+      }
 
       if (atual.status !== input.status) {
         await tx.insert(entregaHistorico).values({
@@ -115,11 +127,11 @@ export async function atualizarEntrega(
         });
       }
 
-      return true;
+      return { ok: true as const };
     });
 
-    if (!atualizada) {
-      return { ok: false, error: "Entrega não encontrada." };
+    if (!resultadoTransacao.ok) {
+      return resultadoTransacao;
     }
   } catch (error) {
     return {
