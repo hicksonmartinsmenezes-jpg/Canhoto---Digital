@@ -226,13 +226,24 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   value={form.status}
                   onChange={(e) => set("status", e.target.value as StatusEntrega)}
                 >
-                  {Object.entries(STATUS_LABEL).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
+                  {Object.entries(STATUS_LABEL)
+                    .filter(
+                      ([valor]) =>
+                        valor !== "entregue" || entrega.status === "entregue"
+                    )
+                    .map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
                 </select>
               </Field>
+              {entrega.status !== "entregue" && (
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  A conclusão da entrega é feita pelo motorista após registrar
+                  foto e assinatura do cliente.
+                </p>
+              )}
             </div>
           </div>
         </div>
