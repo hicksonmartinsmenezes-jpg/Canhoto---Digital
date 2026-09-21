@@ -163,17 +163,22 @@ http://IP-DA-MAQUINA:3003
 
 `config.example.yml` existe apenas para o caso de optar no futuro por um túnel localmente gerenciado.
 
-## 5. Backup PostgreSQL + cópia externa sincronizada
+## 5. Backup completo + cópia externa sincronizada
 
 O backup não depende de Cloudflare R2 nem de AWS CLI.
 
-O script sempre cria um `pg_dump -Fc` local em:
+Cada execução cria um pacote atômico em:
 
 ```text
-backups/postgres/
+backups/canhoto/canhoto-AAAAMMDD-HHMMSS/
+├── database.dump
+├── uploads.zip
+└── manifest.json
 ```
 
-Opcionalmente, ele copia o mesmo arquivo para uma pasta sincronizada por outro serviço, como OneDrive ou Google Drive.
+O pacote reúne o PostgreSQL e os comprovantes físicos da mesma execução. O `manifest.json` registra hashes SHA-256, quantidade de arquivos e as tabelas obrigatórias. Um backup só é promovido para a pasta final depois de passar nas validações.
+
+Opcionalmente, o pacote completo é copiado para uma pasta sincronizada por outro serviço, como OneDrive ou Google Drive.
 
 Crie a configuração local:
 
@@ -215,10 +220,13 @@ Primeiro crie um backup real:
 
 O script:
 
+- verifica se todo `arquivo_url` registrado em `entrega_anexos` existe no storage;
 - executa `pg_dump -Fc` dentro do container PostgreSQL;
 - valida o dump com `pg_restore -l`;
-- copia o arquivo para `backups/postgres/`;
-- copia para `BACKUP_MIRROR_DIR` quando configurado;
+- compacta `storage/uploads` (ou `CANHOTO_UPLOAD_DIR`) em `uploads.zip`;
+- calcula SHA-256 do banco e do arquivo de comprovantes;
+- grava o `manifest.json`;
+- copia o pacote completo para `BACKUP_MIRROR_DIR` quando configurado;
 - mantém a retenção configurada.
 
 Depois faça uma restauração real em banco separado:
@@ -227,9 +235,13 @@ Depois faça uma restauração real em banco separado:
 .\ops\backup\test-restore.ps1
 ```
 
-O teste cria um novo banco chamado `canhoto_restore_...`, restaura o dump e confirma as sete tabelas essenciais.
+O teste cria um banco temporário `canhoto_restore_...`, restaura o dump, confirma as 11 tabelas essenciais, extrai `uploads.zip` e verifica se cada `arquivo_url` restaurado no banco possui o arquivo físico correspondente.
 
-Ele não sobrescreve `canhoto_db` e o banco de teste não é apagado automaticamente, para permitir inspeção.
+Por padrão, banco e pasta temporários são apagados após uma validação bem-sucedida ou com erro. Para mantê-los para inspeção manual:
+
+```powershell
+.\ops\backup\test-restore.ps1 -KeepTestArtifacts
+```
 
 Somente depois de backup + restore passarem registre o agendamento:
 

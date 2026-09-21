@@ -62,8 +62,23 @@ jobs:
           done
       - name: Verifica tabelas essenciais
         run: |
-          tabelas="$(docker exec canhoto_digital_postgres             psql -At -U canhoto_ci -d canhoto_ci             -c "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('setores','colaboradores','usuarios_admin','motoboys','entregas','entrega_anexos','entrega_historico');")"
-          test "$tabelas" = "7"
+          tabelas="$(docker exec canhoto_digital_postgres \
+            psql -At -U canhoto_ci -d canhoto_ci \
+            -c "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('setores','colaboradores','usuarios_admin','motoboys','motoboy_localizacoes','veiculos','veiculo_gastos','treinamento_progresso','entregas','entrega_anexos','entrega_historico');")"
+          test "$tabelas" = "11"
+      - name: Cria comprovante descartável para validar backup
+        run: |
+          entrega_id="11111111-1111-4111-8111-111111111111"
+          mkdir -p "storage/uploads/entregas/$entrega_id"
+          printf 'arquivo-de-teste-do-backup' > "storage/uploads/entregas/$entrega_id/foto-ci.png"
+
+          docker exec canhoto_digital_postgres \
+            psql -v ON_ERROR_STOP=1 -U canhoto_ci -d canhoto_ci \
+            -c "insert into entregas (id, cliente_nome, valor_pagamento, forma_pagamento, status) values ('$entrega_id', 'Backup CI', 1.00, 'pix', 'entregue'); insert into entrega_anexos (entrega_id, tipo, arquivo_url) values ('$entrega_id', 'foto', 'entregas/$entrega_id/foto-ci.png');"
+      - name: Valida backup completo e restauração
+        run: |
+          pwsh -NoProfile -File ops/backup/backup-postgres.ps1
+          pwsh -NoProfile -File ops/backup/test-restore.ps1
       - name: Derruba o banco descartável
         if: always()
         run: docker compose down -v

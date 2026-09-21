@@ -239,7 +239,11 @@ try {
             file = "uploads.zip"
             sha256 = (Get-FileHash -LiteralPath $uploadsArchivePath -Algorithm SHA256).Hash.ToLowerInvariant()
             fileCount = $uploadFiles.Count
-            totalBytes = [long](($uploadFiles | Measure-Object -Property Length -Sum).Sum ?? 0)
+            totalBytes = [long]($(if ($uploadFiles.Count -gt 0) {
+                ($uploadFiles | Measure-Object -Property Length -Sum).Sum
+            } else {
+                0
+            }))
         }
         requiredTables = $requiredTables
     }
