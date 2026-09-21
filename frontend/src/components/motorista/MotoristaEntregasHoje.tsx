@@ -39,7 +39,7 @@ export function MotoristaEntregasHoje({
             aria-label="Filtrar entregas"
             value={filtro}
             onChange={(event) => setFiltro(event.target.value as Filtro)}
-            className="appearance-none rounded-full border border-slate-200 bg-white py-1.5 pl-3.5 pr-8 text-[13px] font-bold text-slate-600 shadow-sm outline-none transition focus:border-[#0A1F44]"
+            className="appearance-none rounded-full border border-slate-200 bg-white py-1.5 pl-3.5 pr-8 text-[13px] font-bold text-slate-600 outline-none transition focus:border-[#0A1F44]"
           >
             <option value="todas">Todas</option>
             <option value="pendentes">Pendentes</option>
@@ -50,7 +50,7 @@ export function MotoristaEntregasHoje({
       </div>
 
       {filtradas.length === 0 ? (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white ">
           <EmptyState
             compact
             icon={PackageCheck}
