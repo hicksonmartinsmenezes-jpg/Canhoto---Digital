@@ -1,8 +1,7 @@
-# Ver frontend/.gitignore e backend/supabase/.gitignore para regras específicas de cada stack.
 .DS_Store
 *.log
 
-# pastas temporárias criadas durante transferências Claude <-> dispositivo
+# Pastas temporárias de ferramentas/transferências
 _to_delete/
 **/_to_delete/
 
@@ -10,9 +9,15 @@ _to_delete/
 .env
 .env.*
 !.env.example
+**/.env
+**/.env.*
+!**/.env.example
 
-# Dumps locais de backup
+# Dependências/builds são tratados também em frontend/.gitignore
 /backups/
-
-# Comprovantes locais de entrega (foto/assinatura)
 /storage/
+
+# Protótipos legados não fazem parte da aplicação oficial.
+# Não reintroduzir dados operacionais, credenciais, fotos ou assinaturas aqui.
+/romaneio/
+/backend/supabase/

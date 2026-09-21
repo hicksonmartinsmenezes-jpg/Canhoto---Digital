@@ -1,33 +1,47 @@
-# Backend — Canhoto Interno
+# Backend — Canhoto Digital
 
-Backend baseado em [Supabase](https://supabase.com) (Postgres + Auth + Storage + Realtime). Não há servidor Node/Express próprio — o frontend fala direto com o Supabase, e as regras de negócio ficam em migrations SQL, funções/triggers do Postgres e, quando necessário, nas rotas de API do Next.js (dentro de `frontend/`).
+A aplicação usa PostgreSQL 16 local, acessado pelo Next.js através do Drizzle ORM.
+
+Não existe backend Supabase nem serviço Node/Express separado. A camada de servidor vive no próprio Next.js por meio de Server Components, Server Actions e Route Handlers.
 
 ## Estrutura
 
-```
+```text
 backend/
-└── supabase/
-    ├── config.toml       # configuração do projeto Supabase (gerado por `supabase init`)
-    ├── migrations/        # histórico de mudanças no schema (SQL versionado)
-    └── functions/         # Edge Functions (Deno), se/quando precisarmos de lógica server-side extra
+└── postgres/
+    ├── README.md
+    └── migrations/
+        ├── 0001_baseline.sql
+        ├── 0002_...
+        └── ...
 ```
 
-## Como usar
+O mapeamento TypeScript/Drizzle fica em:
 
-1. Instale a CLI do Supabase (se ainda não tiver): `npm install -g supabase` (ou use `npx supabase ...` sem instalar globalmente).
-2. Para desenvolver localmente com Docker: `npx supabase start` (sobe Postgres + Auth + Storage localmente).
-3. Aplique as migrations: `npx supabase db reset` (ambiente local) recria o banco do zero a partir de `migrations/`.
-4. Para conectar a um projeto Supabase real (na nuvem): `npx supabase link --project-ref <ID_DO_PROJETO>` e depois `npx supabase db push` para aplicar as migrations.
-5. Gere os tipos TypeScript para o frontend depois de qualquer mudança de schema:
-   ```
-   npx supabase gen types typescript --linked > ../frontend/src/types/database.ts
-   ```
-   (ou `--local` se estiver usando `supabase start`)
+```text
+frontend/src/lib/db/schema.ts
+```
 
-## Schema atual
+A conexão com o banco fica em:
 
-Ver `supabase/migrations/20260818000000_init_schema.sql` — implementa o modelo de dados definido no projeto (`setores`, `colaboradores`, `tipos_documento`, `canhotos`, `canhoto_anexos`, `canhoto_historico`), incluindo o fluxo de duas etapas (assinatura do funcionário → arquivamento pelo setor responsável) e uma trigger que registra automaticamente o histórico de status.
+```text
+frontend/src/lib/db/index.ts
+```
 
-**Pendências conhecidas** (ver documentação do projeto para decisões em aberto):
-- Regra do `prazo_arquivamento` (fixo por política vs. definido manualmente por canhoto).
-- Políticas de escrita (insert/update/delete) por papel do colaborador — hoje só há política de leitura para usuários autenticados.
+## Banco local
+
+O PostgreSQL roda via Docker Compose e é publicado no host somente em:
+
+```text
+127.0.0.1:5433
+```
+
+A porta do banco não deve ser exposta pelo Cloudflare Tunnel nem diretamente à internet.
+
+Consulte `backend/postgres/README.md` para criação do banco e aplicação das migrations.
+
+## Regra de migrations
+
+Migrations já aplicadas nunca devem ser editadas. Mudanças de schema recebem uma migration incremental nova, aplicada em ordem numérica.
+
+Antes de qualquer operação destrutiva em ambiente com dados, valide backup e restauração.
