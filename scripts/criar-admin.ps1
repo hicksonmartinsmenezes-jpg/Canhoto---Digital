@@ -18,15 +18,15 @@ if (-not $databaseLine) {
 
 $databaseUrl = ($databaseLine -split '=', 2)[1].Trim()
 $email = (Read-Host "E-mail do primeiro Admin").Trim().ToLowerInvariant()
-$senhaSegura = Read-Host "Senha do Admin (mínimo 12 caracteres)" -AsSecureString
+$senhaSegura = Read-Host "Senha do Admin (mínimo 4 caracteres)" -AsSecureString
 
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($senhaSegura)
 
 try {
     $senha = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
 
-    if ($senha.Length -lt 12) {
-        throw "A senha deve ter pelo menos 12 caracteres."
+    if ($senha.Length -lt 4) {
+        throw "A senha deve ter pelo menos 4 caracteres."
     }
 
     $env:DATABASE_URL = $databaseUrl
