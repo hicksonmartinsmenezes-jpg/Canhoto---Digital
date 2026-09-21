@@ -38,7 +38,7 @@ export function MotoristaBottomNav({
   return (
     <nav
       aria-label="Navegação do motorista"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 shadow-[0_-10px_30px_rgba(15,23,42,0.06)] backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white"
     >
       <div
         className="mx-auto grid max-w-xl grid-cols-4 px-2 pt-1.5"
