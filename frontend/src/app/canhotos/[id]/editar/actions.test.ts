@@ -84,6 +84,7 @@ describe("edição administrativa de entrega", () => {
     obterAdminAutenticadoMock.mockResolvedValue({
       usuarioAdminId: "admin-1",
       colaboradorId: null,
+      email: "admin@example.com",
     });
     checarRateLimitMock.mockResolvedValue({
       permitido: true,
