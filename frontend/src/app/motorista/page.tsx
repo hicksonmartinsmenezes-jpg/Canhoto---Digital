@@ -101,12 +101,12 @@ export default async function MotoristaPage({
           <details className="group relative shrink-0">
             <summary
               aria-label="Abrir menu"
-              className="grid size-10 cursor-pointer list-none place-items-center rounded-full border border-slate-200 bg-white text-[#0A1F44] shadow-sm transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
+              className="grid size-10 cursor-pointer list-none place-items-center rounded-full border border-slate-200 bg-white text-[#0A1F44] transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
             >
               <MoreVertical className="size-4.5" />
             </summary>
 
-            <div className="absolute right-0 top-[46px] z-50 w-36 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+            <div className="absolute right-0 top-[46px] z-50 w-36 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5">
               <form action={sairMotorista}>
                 <button
                   type="submit"
@@ -122,7 +122,7 @@ export default async function MotoristaPage({
 
         {view === "inicio" && (
           <>
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
               <div className="grid grid-cols-3 divide-x divide-slate-200">
                 <div className="flex items-center gap-2.5 px-3 py-3">
                   <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#0A1F44]/8 text-[#0A1F44]">
@@ -139,7 +139,7 @@ export default async function MotoristaPage({
                 </div>
 
                 <div className="flex items-center gap-2.5 px-3 py-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-700">
                     <CheckCircle2 className="size-4" />
                   </span>
                   <div className="min-w-0">
@@ -153,7 +153,7 @@ export default async function MotoristaPage({
                 </div>
 
                 <div className="flex items-center gap-2.5 px-3 py-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#DE6C09]/10 text-[#DE6C09]">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700">
                     <Clock3 className="size-4" />
                   </span>
                   <div className="min-w-0">
@@ -170,7 +170,7 @@ export default async function MotoristaPage({
 
             <a
               href="#entregas-hoje"
-              className="mt-3 block rounded-2xl border border-amber-200 bg-[#FFF9E8] px-4 py-3.5 shadow-[0_6px_18px_rgba(10,31,68,0.05)] transition hover:bg-amber-50"
+              className="mt-3 block rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-[0_6px_18px_rgba(10,31,68,0.05)] transition hover:bg-slate-50"
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -179,14 +179,14 @@ export default async function MotoristaPage({
                     Progresso do dia
                   </h2>
                 </div>
-                <span className="text-lg font-black text-[#DE6C09]">
+                <span className="text-lg font-black text-[#0A1F44]">
                   {progresso}%
                 </span>
               </div>
 
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-amber-100">
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
                 <div
-                  className="h-full rounded-full bg-linear-to-r from-[#F2B22E] to-[#DE6C09] transition-[width]"
+                  className="h-full rounded-full bg-[#F2B22E] transition-[width]"
                   style={{ width: `${progresso}%` }}
                 />
               </div>
@@ -219,7 +219,7 @@ export default async function MotoristaPage({
               </h2>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
               <div className="flex items-center gap-4 border-b border-slate-100 p-5">
                 <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#0A1F44] text-white">
                   <UserRound className="size-7" />
@@ -228,7 +228,7 @@ export default async function MotoristaPage({
                   <p className="truncate text-xl font-black text-[#0A1F44]">
                     {nome}
                   </p>
-                  <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600">
+                  <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-slate-700">
                     <ShieldCheck className="size-4" />
                     Motorista ativo
                   </p>
@@ -245,7 +245,7 @@ export default async function MotoristaPage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-emerald-600">
+                  <p className="text-2xl font-black text-slate-700">
                     {entregues}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -253,7 +253,7 @@ export default async function MotoristaPage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-[#DE6C09]">
+                  <p className="text-2xl font-black text-slate-700">
                     {pendentes}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -266,7 +266,7 @@ export default async function MotoristaPage({
                 <form action={sairMotorista}>
                   <button
                     type="submit"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-100"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-700 transition hover:bg-slate-50"
                   >
                     <LogOut className="size-4" />
                     Sair da conta
