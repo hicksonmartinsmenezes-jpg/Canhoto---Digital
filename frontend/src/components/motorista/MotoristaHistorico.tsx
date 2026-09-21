@@ -36,7 +36,7 @@ export function MotoristaHistorico({
       </div>
 
       {entregas.length === 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center ">
           <span className="mx-auto grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">
             <PackageCheck className="size-6" />
           </span>
@@ -55,14 +55,14 @@ export function MotoristaHistorico({
             return (
               <article
                 key={entrega.id}
-                className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.06)]"
+                className="overflow-hidden rounded-3xl border border-slate-200 bg-white "
               >
-                <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/70 px-5 py-3">
-                  <span className="inline-flex items-center gap-2 text-sm font-extrabold text-emerald-700">
+                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-3">
+                  <span className="inline-flex items-center gap-2 text-sm font-extrabold text-slate-700">
                     <CheckCircle2 className="size-4.5" />
                     Entrega concluída
                   </span>
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
                     {entrega.numero}
                   </span>
                 </div>
@@ -79,7 +79,7 @@ export function MotoristaHistorico({
                     </div>
 
                     {horaEntrega && (
-                      <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-emerald-600">
+                      <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-slate-600">
                         <Clock3 className="size-3.5" />
                         {horaEntrega}
                       </span>
