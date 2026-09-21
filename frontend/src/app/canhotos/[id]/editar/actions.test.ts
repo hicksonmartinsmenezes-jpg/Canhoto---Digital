@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
-vi.mock("@/lib/admin-auth", () => ({
-  obterAdminAutenticado: vi.fn(),
+vi.mock("@/lib/operador-auth", () => ({
+  obterOperadorAutenticado: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({
   getDb: vi.fn(),
@@ -17,12 +17,12 @@ vi.mock("@/lib/db/errors", () => ({
 }));
 
 import { getDb } from "@/lib/db";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
+import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { atualizarEntrega, type AtualizarEntregaInput } from "./actions";
 
 const getDbMock = vi.mocked(getDb);
-const obterAdminAutenticadoMock = vi.mocked(obterAdminAutenticado);
+const obterOperadorAutenticadoMock = vi.mocked(obterOperadorAutenticado);
 const checarRateLimitMock = vi.mocked(checarRateLimit);
 
 const inputBase: AtualizarEntregaInput = {
@@ -81,10 +81,11 @@ function configurarDb(statusAtual: "pendente" | "entregue" | "cancelado") {
 describe("edição administrativa de entrega", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    obterAdminAutenticadoMock.mockResolvedValue({
+    obterOperadorAutenticadoMock.mockResolvedValue({
+      tipo: "admin",
       usuarioAdminId: "admin-1",
       colaboradorId: null,
-      email: "admin@example.com",
+      setorId: null,
     });
     checarRateLimitMock.mockResolvedValue({
       permitido: true,

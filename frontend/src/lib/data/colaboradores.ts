@@ -13,13 +13,16 @@ export interface ColaboradorListItem {
   cargo: string | null;
   papel: PapelColaborador;
   ativo: boolean;
+  // Só relevante pra papel "gestor_setor" — se já tem senha definida (login
+  // liberado em /colaborador/login) ou ainda não.
+  temSenha: boolean;
 }
 
 export async function getColaboradoresList(): Promise<ColaboradorListItem[]> {
   const db = getDb();
   if (!db) return [];
 
-  return db
+  const linhas = await db
     .select({
       id: colaboradores.id,
       nome: colaboradores.nome,
@@ -28,7 +31,13 @@ export async function getColaboradoresList(): Promise<ColaboradorListItem[]> {
       cargo: colaboradores.cargo,
       papel: colaboradores.papel,
       ativo: colaboradores.ativo,
+      senhaHash: colaboradores.senhaHash,
     })
     .from(colaboradores)
     .orderBy(asc(colaboradores.nome));
+
+  return linhas.map(({ senhaHash, ...resto }) => ({
+    ...resto,
+    temSenha: senhaHash !== null,
+  }));
 }

@@ -13,6 +13,7 @@
     "test:e2e": "playwright test",
     "knip": "knip",
     "admin:create": "node scripts/create-admin.mjs",
+    "gestor-setor:create": "node scripts/create-gestor-setor.mjs",
     "clean:next-types": "node -e \"require('fs').rmSync('.next/dev/types',{recursive:true,force:true})\""
   },
   "dependencies": {

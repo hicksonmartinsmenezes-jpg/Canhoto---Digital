@@ -14,11 +14,20 @@ import {
   getEntregasRecentes,
   getMotoristasEmRota,
 } from "@/lib/data/entregas";
+import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
 
 // Renderiza a cada request — o Dashboard é operacional e consulta o PostgreSQL local.
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const sessao = await obterSessaoOperador();
+  const setorId = setorIdParaFiltro(sessao);
+
+  // Alertas, Atividade recente, o gráfico por dia e o mapa de motoristas
+  // ainda não são escopados por setor (Issue seguinte, se for preciso) —
+  // por enquanto eles continuam mostrando a operação inteira mesmo pra um
+  // gestor_setor logado. Só os números principais (StatCards) e a tabela
+  // de entregas recentes já respeitam o setor.
   const [
     stats,
     entregasRecentes,
@@ -27,8 +36,8 @@ export default async function DashboardPage() {
     entregasPorDia,
     motoristasEmRota,
   ] = await Promise.all([
-    getDashboardStats(),
-    getEntregasRecentes(5),
+    getDashboardStats(setorId),
+    getEntregasRecentes(5, setorId),
     getAlertas(),
     getAtividadeRecente(4),
     getEntregasPorDia(90),

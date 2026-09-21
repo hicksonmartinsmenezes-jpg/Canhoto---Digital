@@ -122,7 +122,12 @@ export interface DashboardStats {
   motoristasAtivos: number;
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
+// setorId: undefined = não filtra (Admin, vê tudo). null = gestor_setor
+// sem setor cadastrado, não vê nada. uuid = filtra por esse setor (ver
+// @/lib/sessao-operador).
+export async function getDashboardStats(
+  setorId?: string | null
+): Promise<DashboardStats> {
   const db = getDb();
   if (!db) {
     return {
@@ -133,16 +138,32 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     };
   }
 
+  if (setorId === null) {
+    return { totalEntregas: 0, entregues: 0, pendentes: 0, motoristasAtivos: 0 };
+  }
+
+  const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
+
   const [total, entregues, pendentes, motoristasAtivos] = await Promise.all([
-    db.select({ total: count() }).from(entregas),
+    db.select({ total: count() }).from(entregas).where(filtroSetor),
     db
       .select({ total: count() })
       .from(entregas)
-      .where(eq(entregas.status, "entregue")),
+      .where(
+        filtroSetor
+          ? and(eq(entregas.status, "entregue"), filtroSetor)
+          : eq(entregas.status, "entregue")
+      ),
     db
       .select({ total: count() })
       .from(entregas)
-      .where(eq(entregas.status, "pendente")),
+      .where(
+        filtroSetor
+          ? and(eq(entregas.status, "pendente"), filtroSetor)
+          : eq(entregas.status, "pendente")
+      ),
+    // Motoboys não têm setor no modelo atual — a contagem de motoristas
+    // ativos continua global mesmo pra um gestor_setor logado.
     db
       .select({ total: count() })
       .from(motoboys)
@@ -218,10 +239,12 @@ export interface EntregaRecente {
 }
 
 export async function getEntregasRecentes(
-  limit = 5
+  limit = 5,
+  setorId?: string | null
 ): Promise<EntregaRecente[]> {
   const db = getDb();
   if (!db) return [];
+  if (setorId === null) return [];
 
   const rows = await db
     .select({
@@ -233,6 +256,7 @@ export async function getEntregasRecentes(
       status: entregas.status,
     })
     .from(entregas)
+    .where(setorId ? eq(entregas.setorId, setorId) : undefined)
     .orderBy(desc(entregas.criadoEm))
     .limit(limit);
 
@@ -419,10 +443,17 @@ export interface EntregaListItem {
 }
 
 export async function getEntregas(
-  status?: StatusEntrega
+  status?: StatusEntrega,
+  setorId?: string | null
 ): Promise<EntregaListItem[]> {
   const db = getDb();
   if (!db) return [];
+  if (setorId === null) return [];
+
+  const filtros = [
+    status ? eq(entregas.status, status) : undefined,
+    setorId ? eq(entregas.setorId, setorId) : undefined,
+  ].filter((f): f is NonNullable<typeof f> => f !== undefined);
 
   const rows = await db
     .select({
@@ -441,7 +472,7 @@ export async function getEntregas(
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
     .leftJoin(colaboradores, eq(entregas.caixaId, colaboradores.id))
-    .where(status ? eq(entregas.status, status) : undefined)
+    .where(filtros.length > 0 ? and(...filtros) : undefined)
     .orderBy(desc(entregas.numero));
 
   return rows.map((entrega) => ({

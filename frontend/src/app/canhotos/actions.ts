@@ -3,6 +3,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
+import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
 import { colaboradores, entregaAnexos, entregaHistorico, entregas } from "@/lib/db/schema";
@@ -136,8 +137,8 @@ export async function conferirCaixa(
   entregaId: string,
   colaboradorId: string
 ): Promise<ConferirCaixaResult> {
-  if (!(await exigirAdminAutenticado())) {
-    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  if (!(await obterOperadorAutenticado())) {
+    return { ok: false, error: "Sessão inválida ou expirada." };
   }
 
   const limite = await checarRateLimit("conferirCaixa");

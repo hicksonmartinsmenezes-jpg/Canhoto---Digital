@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
 import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
 import { entregas } from "@/lib/db/schema";
+import { obterSetorPadraoId } from "@/lib/data/setores";
+import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
 import type { FormaPagamento } from "@/types/database";
 
@@ -30,9 +31,9 @@ export interface CriarEntregaResult {
 export async function criarEntrega(
   input: CriarEntregaInput
 ): Promise<CriarEntregaResult> {
-  const admin = await obterAdminAutenticado();
-  if (!admin) {
-    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  const operador = await obterOperadorAutenticado();
+  if (!operador) {
+    return { ok: false, error: "Sessão inválida ou expirada." };
   }
 
   const limite = await checarRateLimit("criarEntrega");
@@ -69,6 +70,14 @@ export async function criarEntrega(
     return { ok: false, error: "Informe um CEP válido com 8 dígitos." };
   }
 
+  // gestor_setor cadastra sempre no próprio setor. Admin não tem setor
+  // próprio, então a entrega cai no setor padrão (única forma de continuar
+  // visível pros gestores de setor) — ver @/lib/data/setores.
+  const setorId =
+    operador.tipo === "gestor_setor"
+      ? operador.setorId
+      : await obterSetorPadraoId();
+
   try {
     await db.insert(entregas).values({
       data: input.data,
@@ -82,10 +91,12 @@ export async function criarEntrega(
       formaPagamento: input.formaPagamento,
       motoboyId: input.motoboyId || null,
       observacoes: input.observacoes.trim() || null,
-      cadastradoPor: admin.colaboradorId,
-      cadastradoPorAdmin: admin.colaboradorId
-        ? null
-        : admin.usuarioAdminId,
+      setorId,
+      cadastradoPor: operador.colaboradorId,
+      cadastradoPorAdmin:
+        operador.tipo === "admin" && !operador.colaboradorId
+          ? operador.usuarioAdminId
+          : null,
     });
   } catch (error) {
     return {

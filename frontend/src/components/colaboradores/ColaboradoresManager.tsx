@@ -101,6 +101,11 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
                     </td>
                     <td className="px-6 py-4 text-slate-500">
                       {PAPEL_LABEL[c.papel]}
+                      {c.papel === "gestor_setor" && (
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {c.temSenha ? "Login ativo" : "Sem senha definida"}
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -216,8 +221,15 @@ function FormModal({
   const [cargo, setCargo] = useState(dadosIniciais.cargo);
   const [papel, setPapel] = useState<PapelColaborador>(dadosIniciais.papel);
   const [ativo, setAtivo] = useState(dadosIniciais.ativo);
+  const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const ehGestorDeSetor = papel === "gestor_setor";
+  // Só true na criação (mostrarAtivo é o mesmo flag que já diferencia
+  // Novo/Editar no componente pai) — na criação de um gestor_setor, a
+  // senha é obrigatória; na edição, campo vazio mantém a senha atual.
+  const senhaObrigatoria = ehGestorDeSetor && !mostrarAtivo;
 
   function salvar() {
     if (!nome.trim()) {
@@ -233,9 +245,25 @@ function FormModal({
       setErro("Informe um celular válido, com DDD.");
       return;
     }
+    if (senhaObrigatoria && !senha.trim()) {
+      setErro("Defina uma senha de acesso pro Gestor de setor.");
+      return;
+    }
+    if (senha.trim() && senha.trim().length < 4) {
+      setErro("A senha deve ter pelo menos 4 caracteres.");
+      return;
+    }
     setErro(null);
     startTransition(async () => {
-      const resultado = await onSalvar({ nome, email, celular, cargo, papel, ativo });
+      const resultado = await onSalvar({
+        nome,
+        email,
+        celular,
+        cargo,
+        papel,
+        ativo,
+        senha: ehGestorDeSetor ? senha : undefined,
+      });
       if (!resultado.ok) {
         setErro(resultado.error ?? "Não foi possível salvar.");
         return;
@@ -322,6 +350,34 @@ function FormModal({
           </option>
         ))}
       </select>
+
+      {ehGestorDeSetor && (
+        <>
+          <label className="mb-1.5 mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">
+            Senha de acesso
+            {mostrarAtivo && (
+              <span className="ml-1 font-medium normal-case text-slate-400">
+                (deixe em branco pra manter a senha atual)
+              </span>
+            )}
+          </label>
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            placeholder="Mínimo 4 caracteres"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
+          />
+          <p className="mt-1.5 text-xs text-slate-400">
+            Dá acesso a{" "}
+            <span className="font-semibold text-slate-500">
+              /colaborador/login
+            </span>
+            , escopado ao setor dele.
+          </p>
+        </>
+      )}
 
       {mostrarAtivo && (
         <label className="mt-4 flex items-center gap-2 text-sm font-medium text-slate-600">

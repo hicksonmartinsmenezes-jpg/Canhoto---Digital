@@ -109,9 +109,31 @@ Depois de aplicar as migrations e configurar `frontend/.env.local`:
 
 A senha é solicitada de forma oculta. O banco recebe somente o hash bcrypt.
 
+## Login de colaborador (gestor de setor)
+
+Além do Admin (acesso total) e do Motorista (só `/motorista`), um colaborador
+com papel `gestor_setor` pode logar em `/colaborador/login` com acesso quase
+igual ao Admin, mas escopado ao setor dele (hoje: Dashboard e lista de
+Entregas — outras telas ainda não são filtradas por setor).
+
+Dá pra dar esse acesso direto pela tela **Colaboradores**: ao criar ou editar
+um colaborador, escolha o papel "Gestor de setor" e defina a senha de acesso
+no próprio formulário (mínimo 4 caracteres). Não precisa de terminal.
+
+Alternativa por script, útil pra automações/onboarding em lote:
+
+```powershell
+.\scripts\criar-gestor-setor.ps1
+```
+
+Tanto pela tela quanto pelo script, o colaborador precisa já existir e ter um
+setor definido.
+
 ## Segurança
 
 O Portal Admin usa e-mail + senha e sessão HttpOnly assinada. Toda Server Action administrativa valida autenticação/autorização no servidor.
+
+O login de colaborador (gestor de setor) usa o mesmo mecanismo, numa sessão própria e separada da do Admin.
 
 A área do motorista usa telefone + PIN, sessão própria assinada e valida a propriedade da entrega no servidor.
 
