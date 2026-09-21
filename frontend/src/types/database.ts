@@ -1,10 +1,6 @@
-// Tipos manuais provisórios, espelhando backend/supabase/migrations/20260818000000_init_schema.sql
-// (schema v2 — entrega ao cliente externo, ver claude/modelo-de-dados-site.md)
-//
-// Quando o projeto Supabase estiver criado, gere os tipos reais com:
-//   npx supabase gen types typescript --project-id <ID_DO_PROJETO> > src/types/database.ts
-// (ou --local, se estiver usando `supabase start` localmente)
-// e substitua este arquivo pelo gerado.
+// Tipos de domínio compartilhados pela interface.
+// O schema persistente oficial é PostgreSQL e está mapeado em
+// @/lib/db/schema.ts com Drizzle ORM.
 
 export type PapelColaborador = "admin" | "gestor_setor" | "colaborador";
 export type StatusEntrega = "pendente" | "entregue" | "cancelado";
@@ -138,7 +134,3 @@ export interface EntregaHistorico {
   observacao: string | null;
 }
 
-// Placeholder mínimo para o generic <Database> esperado pelo @supabase/ssr.
-// Substitua pelo tipo gerado (`supabase gen types typescript`) quando possível.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Database = any;

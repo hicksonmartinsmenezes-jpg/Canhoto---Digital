@@ -47,7 +47,7 @@ Produção do Next.js usa a porta `3003`. Desenvolvimento continua em `3002`.
 - bcrypt para senha do Portal Admin
 - cookies assinados com HMAC-SHA256 para sessões Admin e motorista
 - Cloudflare Tunnel para acesso externo da área do motorista
-- Cloudflare R2 para backup externo do PostgreSQL
+- backup local do PostgreSQL com opção de cópia para pasta sincronizada externa
 
 Não existe um serviço Node/Express separado. O backend da aplicação vive no próprio Next.js através de Server Components, Server Actions e módulos server-only.
 
@@ -127,12 +127,12 @@ A área do motorista continua usando telefone + PIN e sessão própria assinada.
 
 Quando `PUBLIC_MOTORISTA_HOST` estiver configurado, o hostname público do Cloudflare só aceita rotas `/motorista`. O Portal Admin deve continuar sendo acessado pela rede interna da empresa.
 
-Segredos reais ficam somente em arquivos locais ignorados pelo Git. Nunca versionar senhas, chaves do R2 ou segredos de sessão.
+Segredos reais ficam somente em arquivos locais ignorados pelo Git. Nunca versionar senhas, tokens de infraestrutura, dumps, comprovantes ou segredos de sessão.
 
 ## Operação
 
 - `ops/cloudflare/`: exemplo do Cloudflare Tunnel;
-- `ops/backup/`: backup `pg_dump` para R2 e teste de restauração;
+- `ops/backup/`: backup `pg_dump`, cópia opcional para pasta sincronizada e teste de restauração;
 - `ops/windows/`: scripts para inicialização e agendamento no Windows.
 
 Antes de considerar o backup pronto para produção, é obrigatório executar um backup real e restaurá-lo em um banco de teste.
