@@ -1,13 +1,12 @@
 name: CI
 
-# Esteira de qualidade — roda em todo Pull Request contra a main (e também
-# na main depois de um merge, como rede de segurança). Ver AGENTS.md, seção
+# Esteira de qualidade — roda em todo Pull Request, inclusive PRs empilhados,
+# e também na main depois de um merge. Ver AGENTS.md, seção
 # "Esteira de qualidade", para o racional de cada job e como configurar a
 # branch protection pra exigir esses checks antes do merge.
 
 on:
-  pull_request:
-    branches: [main]
+  pull_request: {}
   push:
     branches: [main]
 
@@ -163,7 +162,7 @@ jobs:
     needs: build
     env:
       # Permite que o smoke test exercite as páginas protegidas sem criar
-      # uma conta Admin real. O middleware só aceita o bypass quando CI=true.
+      # uma conta Admin real. O Proxy só aceita o bypass quando CI=true.
       E2E_AUTH_BYPASS: "true"
     steps:
       - uses: actions/checkout@v4

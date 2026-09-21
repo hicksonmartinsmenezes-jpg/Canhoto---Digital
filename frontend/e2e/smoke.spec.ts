@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // Testes de fumaça: cada rota principal carrega, mostra o título certo e
-// não deixa nenhum erro não tratado no console. Não gravam nada no Supabase
+// não deixa nenhum erro não tratado no console. Não gravam nada no banco
 // (ver comentário em playwright.config.ts) — o objetivo aqui é pegar
 // regressões óbvias (página quebrada, import faltando, exceção em runtime),
 // não validar regra de negócio.
@@ -11,6 +11,7 @@ const ROTAS: { path: string; heading: string }[] = [
   { path: "/colaboradores", heading: "Colaboradores" },
   { path: "/motoboys", heading: "Motoristas" },
   { path: "/relatorios", heading: "Relatórios" },
+  { path: "/veiculos", heading: "Gestão de Veículos" },
 ];
 
 for (const rota of ROTAS) {
@@ -70,4 +71,19 @@ test("estado vazio de Motoristas mostra a ação para cadastrar o primeiro motor
   await expect(
     page.getByRole("button", { name: "Novo Motorista" })
   ).toHaveCount(1);
+});
+
+
+test("login do motorista carrega a interface pública sem expor o Portal Admin", async ({ page }) => {
+  const errosDeConsole: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errosDeConsole.push(msg.text());
+  });
+
+  await page.goto("/motorista/login");
+
+  await expect(page.getByPlaceholder("(00) 00000-0000")).toBeVisible();
+  await expect(page.getByPlaceholder("••••")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
+  expect(errosDeConsole).toEqual([]);
 });
