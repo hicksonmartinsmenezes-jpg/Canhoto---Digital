@@ -1,5 +1,7 @@
 # Canhoto Digital — Rildon Eletropeças
 
+[![CI](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/hicksonmartinsmenezes-jpg/Canhoto---Digital)](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/releases/latest)
+
 Sistema interno para registrar, acompanhar e auditar entregas realizadas por motoristas a clientes externos.
 
 ## Arquitetura
@@ -81,6 +83,7 @@ Crie `frontend/.env.local` a partir de `frontend/.env.example` e configure:
 - `DATABASE_URL`;
 - `ADMIN_SESSION_SECRET`;
 - `MOTORISTA_SESSION_SECRET`;
+- `COLABORADOR_SESSION_SECRET`, usado pelo login de Gestor de setor;
 - `PUBLIC_MOTORISTA_HOST`, quando houver hostname público;
 - `CANHOTO_UPLOAD_DIR`, somente se quiser alterar o diretório padrão de comprovantes.
 
