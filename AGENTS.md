@@ -8,7 +8,7 @@ Toda mudança de código segue:
 
 1. Abrir ou localizar uma Issue, com exatamente um label entre `correção`, `melhoria` ou `nova função`.
 2. Implementar em branch própria. Nunca alterar `main` diretamente.
-3. Abrir Pull Request para `main`, referenciando a Issue.
+3. Abrir Pull Request para a branch-base correta. PRs empilhados são permitidos durante sequências de estabilização, desde que a cadeia permaneça explícita.
 4. O PR deve registrar: o que mudou, como foi validado, riscos/limitações e próximos passos.
 5. Fazer merge somente depois de revisão e checks verdes.
 
@@ -79,7 +79,7 @@ Cadastros referenciados por entregas/histórico devem ser desativados em vez de 
 - toda leitura/escrita de entrega valida `motoboy_id` no servidor;
 - um motorista nunca pode acessar ou alterar entrega de outro.
 
-O middleware usa apenas validação criptográfica de cookies. Não fazer consulta PostgreSQL a partir do middleware.
+O Proxy (`frontend/src/proxy.ts`) usa apenas validação criptográfica de cookies. Não fazer consulta PostgreSQL a partir do Proxy.
 
 ## Exposição pela internet
 
@@ -105,7 +105,7 @@ Arquivos `.env.example` contêm somente placeholders.
 
 ## Esteira de qualidade
 
-Todo PR contra `main` executa `.github/workflows/ci.yml`.
+Todo Pull Request executa `.github/workflows/ci.yml`, inclusive PRs empilhados. `main` também executa a esteira após merge.
 
 | Job | Validação |
 |---|---|

@@ -23,7 +23,7 @@ export function resolverArquivoComprovante(
 ): { caminho: string; mime: string } | null {
   if (!arquivoRelativo || arquivoRelativo.includes("\0")) return null;
 
-  const raiz = path.resolve(diretorioRaizUploads());
+  const raiz = path.resolve(/* turbopackIgnore: true */ diretorioRaizUploads());
   const caminho = path.resolve(raiz, arquivoRelativo);
   const relativoNormalizado = path.relative(raiz, caminho);
 

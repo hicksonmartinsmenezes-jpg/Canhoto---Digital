@@ -19,7 +19,7 @@ function hostnameDaRequisicao(request: NextRequest): string {
   return host;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Hostnames públicos dos motoristas (hostname configurado ou Quick Tunnel
