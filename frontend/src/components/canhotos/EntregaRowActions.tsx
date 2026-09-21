@@ -109,7 +109,8 @@ export function EntregaRowActions({ id, numero, cliente }: EntregaRowActionsProp
             </div>
             <p className="text-sm text-slate-500">
               Cliente <span className="font-semibold text-slate-700">{cliente}</span>.
-              Essa ação não pode ser desfeita.
+              A exclusão só é permitida para uma entrega pendente que ainda não
+              foi iniciada e não possui histórico ou comprovantes.
             </p>
             {erro && (
               <div className="mt-4 rounded-xl border border-red-200 px-3.5 py-2.5 text-xs font-semibold text-red-700">

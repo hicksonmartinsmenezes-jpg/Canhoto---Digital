@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
 import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
-import { colaboradores, entregas } from "@/lib/db/schema";
+import { colaboradores, entregaAnexos, entregaHistorico, entregas } from "@/lib/db/schema";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 
 export interface ExcluirEntregaResult {
@@ -36,13 +36,84 @@ export async function excluirEntrega(
   if (!db) return { ok: false, error: ERRO_BANCO };
 
   try {
-    const [excluida] = await db
-      .delete(entregas)
-      .where(eq(entregas.id, id))
-      .returning({ id: entregas.id });
+    const resultado = await db.transaction(async (tx) => {
+      const [atual] = await tx
+        .select({
+          id: entregas.id,
+          status: entregas.status,
+          horaSaida: entregas.horaSaida,
+          clienteAssinouEm: entregas.clienteAssinouEm,
+          caixaConfirmouEm: entregas.caixaConfirmouEm,
+        })
+        .from(entregas)
+        .where(eq(entregas.id, id))
+        .for("update")
+        .limit(1);
 
-    if (!excluida) {
-      return { ok: false, error: "Entrega não encontrada." };
+      if (!atual) {
+        return { ok: false as const, error: "Entrega não encontrada." };
+      }
+
+      if (
+        atual.status !== "pendente" ||
+        atual.horaSaida !== null ||
+        atual.clienteAssinouEm !== null ||
+        atual.caixaConfirmouEm !== null
+      ) {
+        return {
+          ok: false as const,
+          error:
+            "Esta entrega já entrou no fluxo operacional e deve ser preservada. Use cancelamento quando aplicável.",
+        };
+      }
+
+      const [[anexo], [historico]] = await Promise.all([
+        tx
+          .select({ id: entregaAnexos.id })
+          .from(entregaAnexos)
+          .where(eq(entregaAnexos.entregaId, id))
+          .limit(1),
+        tx
+          .select({ id: entregaHistorico.id })
+          .from(entregaHistorico)
+          .where(eq(entregaHistorico.entregaId, id))
+          .limit(1),
+      ]);
+
+      if (anexo || historico) {
+        return {
+          ok: false as const,
+          error:
+            "Esta entrega possui comprovantes ou histórico e não pode ser excluída.",
+        };
+      }
+
+      const [excluida] = await tx
+        .delete(entregas)
+        .where(
+          and(
+            eq(entregas.id, id),
+            eq(entregas.status, "pendente"),
+            isNull(entregas.horaSaida),
+            isNull(entregas.clienteAssinouEm),
+            isNull(entregas.caixaConfirmouEm)
+          )
+        )
+        .returning({ id: entregas.id });
+
+      if (!excluida) {
+        return {
+          ok: false as const,
+          error:
+            "A entrega mudou enquanto era validada e não pode mais ser excluída.",
+        };
+      }
+
+      return { ok: true as const };
+    });
+
+    if (!resultado.ok) {
+      return resultado;
     }
   } catch (error) {
     return {

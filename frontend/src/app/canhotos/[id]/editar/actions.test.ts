@@ -108,7 +108,23 @@ describe("edição administrativa de entrega", () => {
     expect(tx.update).not.toHaveBeenCalled();
   });
 
-  it("permite editar dados de uma entrega que já está entregue", async () => {
+  it("bloqueia regressão de uma entrega já concluída", async () => {
+    const { tx } = configurarDb("entregue");
+
+    const resultado = await atualizarEntrega("entrega-1", {
+      ...inputBase,
+      status: "pendente",
+    });
+
+    expect(resultado).toEqual({
+      ok: false,
+      error:
+        "Uma entrega concluída com comprovante não pode voltar para outro status.",
+    });
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it("permite editar dados de uma entrega que já está entregue mantendo o status", async () => {
     const { tx, insertValues } = configurarDb("entregue");
 
     const resultado = await atualizarEntrega("entrega-1", {

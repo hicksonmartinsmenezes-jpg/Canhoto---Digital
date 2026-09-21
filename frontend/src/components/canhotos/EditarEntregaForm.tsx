@@ -224,12 +224,14 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                 <select
                   className={inputClass}
                   value={form.status}
+                  disabled={entrega.status === "entregue"}
                   onChange={(e) => set("status", e.target.value as StatusEntrega)}
                 >
                   {Object.entries(STATUS_LABEL)
-                    .filter(
-                      ([valor]) =>
-                        valor !== "entregue" || entrega.status === "entregue"
+                    .filter(([valor]) =>
+                      entrega.status === "entregue"
+                        ? valor === "entregue"
+                        : valor !== "entregue"
                     )
                     .map(([valor, rotulo]) => (
                       <option key={valor} value={valor}>
@@ -238,12 +240,11 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                     ))}
                 </select>
               </Field>
-              {entrega.status !== "entregue" && (
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  A conclusão da entrega é feita pelo motorista após registrar
-                  foto e assinatura do cliente.
-                </p>
-              )}
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                {entrega.status === "entregue"
+                  ? "Entrega concluída com comprovante: o status fica preservado."
+                  : "A conclusão da entrega é feita pelo motorista após registrar foto e assinatura do cliente."}
+              </p>
             </div>
           </div>
         </div>
