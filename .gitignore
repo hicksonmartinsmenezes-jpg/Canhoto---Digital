@@ -1,18 +1,21 @@
-# Ver frontend/.gitignore e backend/supabase/.gitignore para regras específicas de cada stack.
 .DS_Store
 *.log
 
-# pastas temporárias criadas durante transferências Claude <-> dispositivo
+# Pastas temporárias
 _to_delete/
 **/_to_delete/
 
-# Segredos e configuração local
+# Configuração local / segredos
 .env
 .env.*
 !.env.example
+**/.env
+**/.env.*
+!**/.env.example
 
-# Dumps locais de backup
+# Dados operacionais locais
 /backups/
-
-# Comprovantes locais de entrega (foto/assinatura)
 /storage/
+
+# Legado removido da arquitetura atual
+/backend/supabase/
