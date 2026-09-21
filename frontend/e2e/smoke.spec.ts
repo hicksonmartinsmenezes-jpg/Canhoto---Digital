@@ -59,12 +59,15 @@ test("wizard Adicionar Entrega avança e volta entre as etapas sem gravar nada",
   await expect(page.getByRole("heading", { name: "Dados do documento" })).toBeVisible();
 });
 
-test("estado vazio de Motoristas mostra o botão de ação quando não há cadastro", async ({ page }) => {
+test("estado vazio de Motoristas mostra a ação para cadastrar o primeiro motorista", async ({ page }) => {
   await page.goto("/motoboys");
-  // Sem Supabase configurado em CI, a lista vem vazia — o EmptyState (com
-  // seu próprio atalho "Novo Motorista") aparece no lugar da tabela, além
-  // do botão "Novo Motorista" que já existe fixo no topo da tela — por
-  // isso são 2 botões com o mesmo nome, não 1.
-  await expect(page.getByText("Nenhum motorista cadastrado ainda")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Novo Motorista" })).toHaveCount(2);
+
+  // O CI roda sem DATABASE_URL, então a camada PostgreSQL devolve o estado
+  // vazio. A tela deve continuar oferecendo uma única ação clara de cadastro.
+  await expect(
+    page.getByText("Nenhum motorista cadastrado ainda")
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Novo Motorista" })
+  ).toHaveCount(1);
 });
