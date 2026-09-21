@@ -19,3 +19,6 @@ _to_delete/
 
 # Legado removido da arquitetura atual
 /backend/supabase/
+
+# Protótipo legado descontinuado
+/romaneio/
