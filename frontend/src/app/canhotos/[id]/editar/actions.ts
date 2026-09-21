@@ -92,6 +92,14 @@ export async function atualizarEntrega(
         };
       }
 
+      if (atual.status === "entregue" && input.status !== "entregue") {
+        return {
+          ok: false as const,
+          error:
+            "Uma entrega concluída com comprovante não pode voltar para outro status.",
+        };
+      }
+
       const [resultado] = await tx
         .update(entregas)
         .set({
