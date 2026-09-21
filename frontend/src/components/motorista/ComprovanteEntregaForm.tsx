@@ -29,16 +29,10 @@ export function ComprovanteEntregaForm({
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!foto) {
-      setFotoUrl(null);
-      return;
-    }
-
-    const url = URL.createObjectURL(foto);
-    setFotoUrl(url);
-
-    return () => URL.revokeObjectURL(url);
-  }, [foto]);
+    return () => {
+      if (fotoUrl) URL.revokeObjectURL(fotoUrl);
+    };
+  }, [fotoUrl]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -138,6 +132,7 @@ export function ComprovanteEntregaForm({
 
     if (!arquivo) {
       setFoto(null);
+      setFotoUrl(null);
       return;
     }
 
@@ -152,6 +147,7 @@ export function ComprovanteEntregaForm({
     }
 
     setFoto(arquivo);
+    setFotoUrl(URL.createObjectURL(arquivo));
   }
 
   function confirmar() {
