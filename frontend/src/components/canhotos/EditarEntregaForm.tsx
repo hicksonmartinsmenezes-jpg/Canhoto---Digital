@@ -124,12 +124,6 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   onChange={(e) => set("numeroNfe", e.target.value)}
                 />
               </Field>
-              {entrega.status !== "entregue" && (
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  A conclusão da entrega é feita pelo motorista após registrar
-                  foto e assinatura do cliente.
-                </p>
-              )}
             </div>
           </div>
 
