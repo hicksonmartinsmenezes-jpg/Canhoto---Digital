@@ -13,8 +13,8 @@ if (!email) {
   console.error("ADMIN_BOOTSTRAP_EMAIL não foi informado.");
   process.exit(1);
 }
-if (!senha || senha.length < 12) {
-  console.error("A senha deve ter pelo menos 12 caracteres.");
+if (!senha || senha.length < 4) {
+  console.error("A senha deve ter pelo menos 4 caracteres.");
   process.exit(1);
 }
 if (Buffer.byteLength(senha, "utf8") > 72) {
