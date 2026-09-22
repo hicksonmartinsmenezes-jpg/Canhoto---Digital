@@ -73,16 +73,52 @@ export async function atualizarEntrega(
     return { ok: false, error: "Informe um CEP válido com 8 dígitos." };
   }
 
+  const [dadosAtuais] = await db
+    .select({
+      endereco: entregas.endereco,
+      cep: entregas.cep,
+      latitude: entregas.latitude,
+      longitude: entregas.longitude,
+    })
+    .from(entregas)
+    .where(eq(entregas.id, id))
+    .limit(1);
+
+  if (!dadosAtuais) {
+    return { ok: false, error: "Entrega não encontrada." };
+  }
+
+  const enderecoNovo = input.endereco.trim();
+  const enderecoMudou =
+    enderecoNovo !== (dadosAtuais.endereco ?? "").trim() ||
+    cep !== (dadosAtuais.cep ?? "");
+
+  const coordenadasExistentes =
+    dadosAtuais.latitude !== null && dadosAtuais.longitude !== null
+      ? {
+          latitude: Number(dadosAtuais.latitude),
+          longitude: Number(dadosAtuais.longitude),
+        }
+      : null;
+
+  const coordenadas =
+    enderecoMudou
+      ? await geocodificarEntregaGratis({
+          endereco: enderecoNovo,
+          cep,
+        })
+      : coordenadasExistentes ??
+        (enderecoNovo
+          ? await geocodificarEntregaGratis({
+              endereco: enderecoNovo,
+              cep,
+            })
+          : null);
+
   try {
     const resultadoTransacao = await db.transaction(async (tx) => {
       const [atual] = await tx
-        .select({
-          status: entregas.status,
-          endereco: entregas.endereco,
-          cep: entregas.cep,
-          latitude: entregas.latitude,
-          longitude: entregas.longitude,
-        })
+        .select({ status: entregas.status })
         .from(entregas)
         .where(eq(entregas.id, id))
         .limit(1);
@@ -106,33 +142,6 @@ export async function atualizarEntrega(
             "Uma entrega concluída com comprovante não pode voltar para outro status.",
         };
       }
-
-      const enderecoNovo = input.endereco.trim();
-      const enderecoMudou =
-        enderecoNovo !== (atual.endereco ?? "").trim() ||
-        cep !== (atual.cep ?? "");
-
-      const coordenadasExistentes =
-        atual.latitude !== null && atual.longitude !== null
-          ? {
-              latitude: Number(atual.latitude),
-              longitude: Number(atual.longitude),
-            }
-          : null;
-
-      const coordenadas =
-        enderecoMudou
-          ? await geocodificarEntregaGratis({
-              endereco: enderecoNovo,
-              cep,
-            })
-          : coordenadasExistentes ??
-            (enderecoNovo
-              ? await geocodificarEntregaGratis({
-                  endereco: enderecoNovo,
-                  cep,
-                })
-              : null);
 
       const [resultado] = await tx
         .update(entregas)
