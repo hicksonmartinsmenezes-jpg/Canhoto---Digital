@@ -33,6 +33,24 @@ const motoristaPodeAcessarEntregaMock = vi.mocked(
   motoristaPodeAcessarEntrega
 );
 
+const ENTREGA_ID = "11111111-1111-4111-8111-111111111111";
+
+function criarComprovantes(): FormData {
+  const pngMinimo = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ]);
+  const formData = new FormData();
+  formData.set(
+    "foto",
+    new File([pngMinimo], "foto.png", { type: "image/png" })
+  );
+  formData.set(
+    "assinatura",
+    new File([pngMinimo], "assinatura.png", { type: "image/png" })
+  );
+  return formData;
+}
+
 function criarUpdate(resultados: Array<Array<{ id: string }>>) {
   const query = {
     set: vi.fn(),
@@ -59,6 +77,13 @@ function configurarDb({
   const updateQuery = criarUpdate(updateResultados);
   const txUpdateQuery = criarUpdate(transacaoResultados);
   const insertValues = vi.fn().mockResolvedValue(undefined);
+  const selectQuery = {
+    from: vi.fn(),
+    where: vi.fn(),
+    limit: vi.fn().mockResolvedValue([{ id: ENTREGA_ID }]),
+  };
+  selectQuery.from.mockReturnValue(selectQuery);
+  selectQuery.where.mockReturnValue(selectQuery);
 
   const tx = {
     update: vi.fn().mockReturnValue(txUpdateQuery),
@@ -69,6 +94,7 @@ function configurarDb({
 
   const db = {
     update: vi.fn().mockReturnValue(updateQuery),
+    select: vi.fn().mockReturnValue(selectQuery),
     transaction: vi.fn(
       async (callback: (trx: typeof tx) => Promise<boolean>) => callback(tx)
     ),
@@ -98,8 +124,8 @@ describe("ações do motorista com PostgreSQL local", () => {
       updateResultados: [[{ id: "entrega-1" }], []],
     });
 
-    await expect(iniciarEntrega("entrega-1")).resolves.toEqual({ ok: true });
-    await expect(iniciarEntrega("entrega-1")).resolves.toEqual({
+    await expect(iniciarEntrega(ENTREGA_ID)).resolves.toEqual({ ok: true });
+    await expect(iniciarEntrega(ENTREGA_ID)).resolves.toEqual({
       ok: false,
       error: "Entrega não encontrada ou já iniciada.",
     });
@@ -108,17 +134,19 @@ describe("ações do motorista com PostgreSQL local", () => {
   it("confirma entrega iniciada e registra o motorista no histórico", async () => {
     const { tx, insertValues } = configurarDb();
 
-    await expect(confirmarEntrega("entrega-1")).resolves.toEqual({
+    await expect(confirmarEntrega(ENTREGA_ID, criarComprovantes())).resolves.toEqual({
       ok: true,
     });
 
     expect(tx.update).toHaveBeenCalledTimes(1);
-    expect(insertValues).toHaveBeenCalledWith({
-      entregaId: "entrega-1",
-      statusAnterior: "pendente",
-      statusNovo: "entregue",
-      alteradoPorMotoboy: "motorista-a",
-    });
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entregaId: ENTREGA_ID,
+        statusAnterior: "pendente",
+        statusNovo: "entregue",
+        alteradoPorMotoboy: "motorista-a",
+      })
+    );
     expect(revalidatePathMock).toHaveBeenCalledWith("/motorista");
   });
 
@@ -127,7 +155,7 @@ describe("ações do motorista com PostgreSQL local", () => {
       transacaoResultados: [[]],
     });
 
-    await expect(confirmarEntrega("entrega-1")).resolves.toEqual({
+    await expect(confirmarEntrega(ENTREGA_ID, criarComprovantes())).resolves.toEqual({
       ok: false,
       error: "Entrega não encontrada ou ainda não iniciada.",
     });
@@ -139,10 +167,10 @@ describe("ações do motorista com PostgreSQL local", () => {
       transacaoResultados: [[{ id: "entrega-1" }], []],
     });
 
-    await expect(confirmarEntrega("entrega-1")).resolves.toEqual({
+    await expect(confirmarEntrega(ENTREGA_ID, criarComprovantes())).resolves.toEqual({
       ok: true,
     });
-    await expect(confirmarEntrega("entrega-1")).resolves.toEqual({
+    await expect(confirmarEntrega(ENTREGA_ID, criarComprovantes())).resolves.toEqual({
       ok: false,
       error: "Entrega não encontrada ou ainda não iniciada.",
     });
