@@ -46,7 +46,10 @@ export function EntregaMotoristaDetalheView({
       Number.isFinite(entrega.latitude) &&
       Number.isFinite(entrega.longitude);
 
-    const params = new URLSearchParams({ navigate: "yes" });
+    const params = new URLSearchParams({
+      navigate: "yes",
+      utm_source: "canhoto_digital",
+    });
 
     if (temCoordenadas) {
       params.set("ll", `${entrega.latitude},${entrega.longitude}`);
