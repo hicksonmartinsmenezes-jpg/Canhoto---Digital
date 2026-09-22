@@ -59,7 +59,7 @@ export function MotoristaBottomNav({
               className={`relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[11px] font-extrabold transition ${
                 selecionado
                   ? "text-[#1768D8]"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-[#0A1F44]"
+                  : "text-[#59708E] hover:bg-slate-50 hover:text-[#0A1F44]"
               }`}
             >
               <span className="relative">
