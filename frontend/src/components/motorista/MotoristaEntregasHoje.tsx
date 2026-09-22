@@ -6,59 +6,28 @@ import { EntregaMotoristaCard } from "@/components/motorista/EntregaMotoristaCar
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { EntregaMotorista } from "@/lib/data/entregas";
 
-type Filtro = "todas" | "pendentes" | "em_rota" | "concluidas";
-
-const FILTROS: Array<{ id: Filtro; label: string }> = [
-  { id: "todas", label: "Todas" },
-  { id: "pendentes", label: "Pendentes" },
-  { id: "em_rota", label: "Em andamento" },
-  { id: "concluidas", label: "Concluídas" },
-];
-
 export function MotoristaEntregasHoje({
   entregas,
 }: {
   entregas: EntregaMotorista[];
 }) {
-  const [filtro, setFiltro] = useState<Filtro>("todas");
   const [busca, setBusca] = useState("");
 
-  const contagens = useMemo(
-    () => ({
-      todas: entregas.length,
-      pendentes: entregas.filter(
+  const pendentes = useMemo(
+    () =>
+      entregas.filter(
         (entrega) =>
           entrega.status === "pendente" && entrega.horaSaida === null
-      ).length,
-      em_rota: entregas.filter(
-        (entrega) =>
-          entrega.status === "pendente" && entrega.horaSaida !== null
-      ).length,
-      concluidas: entregas.filter(
-        (entrega) => entrega.status === "entregue"
-      ).length,
-    }),
+      ),
     [entregas]
   );
 
   const filtradas = useMemo(() => {
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
+    if (!termo) return pendentes;
 
-    return entregas.filter((entrega) => {
-      const passaFiltro =
-        filtro === "todas" ||
-        (filtro === "concluidas" && entrega.status === "entregue") ||
-        (filtro === "pendentes" &&
-          entrega.status === "pendente" &&
-          entrega.horaSaida === null) ||
-        (filtro === "em_rota" &&
-          entrega.status === "pendente" &&
-          entrega.horaSaida !== null);
-
-      if (!passaFiltro) return false;
-      if (!termo) return true;
-
-      return [
+    return pendentes.filter((entrega) =>
+      [
         entrega.numero,
         entrega.clienteNome,
         entrega.endereco,
@@ -66,73 +35,44 @@ export function MotoristaEntregasHoje({
       ]
         .join(" ")
         .toLocaleLowerCase("pt-BR")
-        .includes(termo);
-    });
-  }, [busca, entregas, filtro]);
+        .includes(termo)
+    );
+  }, [busca, pendentes]);
 
   return (
     <section id="entregas-hoje">
-      <div className="overflow-x-auto px-4 pb-1">
-        <div className="flex min-w-max gap-2">
-          {FILTROS.map((item) => {
-            const ativo = filtro === item.id;
-            const quantidade = contagens[item.id];
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setFiltro(item.id)}
-                className={`rounded-full border px-3.5 py-2 text-xs font-black transition ${
-                  ativo
-                    ? "border-[#1768D8] bg-[#1768D8] text-white"
-                    : "border-slate-200 bg-white text-slate-500"
-                }`}
-              >
-                {item.label}
-                <span
-                  className={`ml-1.5 ${
-                    ativo ? "text-white/80" : "text-slate-400"
-                  }`}
-                >
-                  {quantidade}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <label className="mx-4 mt-3 flex items-center gap-2 border-b border-slate-300 bg-transparent px-0 py-2.5 focus-within:border-[#1768D8]">
-        <Search className="size-4 shrink-0 text-slate-400" />
-        <input
-          type="search"
-          value={busca}
-          onChange={(event) => setBusca(event.target.value)}
-          placeholder="Buscar por cliente, endereço ou código..."
-          className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#0A1F44] outline-none placeholder:text-slate-400"
-        />
-      </label>
+      {pendentes.length > 1 && (
+        <label className="mx-4 flex items-center gap-2 border-b border-slate-300 bg-transparent py-2.5 focus-within:border-[#1768D8]">
+          <Search className="size-4 shrink-0 text-slate-400" />
+          <input
+            type="search"
+            value={busca}
+            onChange={(event) => setBusca(event.target.value)}
+            placeholder="Buscar entrega pendente..."
+            className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#0A1F44] outline-none placeholder:text-slate-400"
+          />
+        </label>
+      )}
 
       {filtradas.length === 0 ? (
-        <div className="mt-3 border-y border-slate-200 bg-white">
+        <div className="border-y border-slate-200 bg-white">
           <EmptyState
             compact
             icon={PackageCheck}
             title={
-              entregas.length === 0
-                ? "Nenhuma entrega para hoje"
+              pendentes.length === 0
+                ? "Nenhuma entrega pendente"
                 : "Nenhuma entrega encontrada"
             }
             description={
-              entregas.length === 0
-                ? "Quando uma entrega for atribuída a você, ela aparecerá aqui."
-                : "Tente alterar o filtro ou o termo da busca."
+              pendentes.length === 0
+                ? "As próximas entregas atribuídas a você aparecerão aqui."
+                : "Tente buscar por outro cliente, endereço ou código."
             }
           />
         </div>
       ) : (
-        <div className="mt-3 border-y border-slate-200 bg-white">
+        <div className="border-y border-slate-200 bg-white">
           {filtradas.map((entrega) => (
             <EntregaMotoristaCard key={entrega.id} entrega={entrega} />
           ))}
