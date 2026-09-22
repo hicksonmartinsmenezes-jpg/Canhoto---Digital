@@ -40,7 +40,7 @@ export default async function DashboardPage() {
     getEntregasRecentes(5, setorId),
     getAlertas(),
     getAtividadeRecente(4),
-    getEntregasPorDia(90),
+    getEntregasPorDia(7),
     getMotoristasEmRota(),
   ]);
 
