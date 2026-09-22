@@ -1,10 +1,41 @@
 # Canhoto Digital — Rildon Eletropeças
 
-[![CI](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/hicksonmartinsmenezes-jpg/Canhoto---Digital)](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/releases/latest)
+[![CI](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/hicksonmartinsmenezes-jpg/Canhoto---Digital)](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/releases/latest)
 
 **Versão atual: 2.0.0**
 
-Sistema interno para registrar, acompanhar e auditar entregas realizadas por motoristas a clientes externos.
+Sistema interno da Rildon Eletropeças para registrar, acompanhar e auditar entregas, centralizando a operação administrativa e o fluxo utilizado pelos motoristas.
+
+## Visão geral
+
+O Canhoto Digital reúne em uma única aplicação:
+
+- Dashboard operacional com entregas, alertas, atividade recente e motoristas em rota;
+- cadastro, edição, acompanhamento e histórico de entregas;
+- área mobile para o motorista;
+- abertura de rota no Waze;
+- geocodificação automática de endereço + CEP;
+- comprovante de entrega com foto e assinatura;
+- gestão de colaboradores, motoristas e veículos;
+- relatórios operacionais;
+- central de treinamentos;
+- autenticação separada para Admin, Gestor de setor e Motorista;
+- backup do PostgreSQL junto dos comprovantes físicos.
+
+### Destaques da versão 2.0
+
+A versão 2.0 consolida a nova experiência do motorista e a camada de localização da aplicação:
+
+- painel mobile reorganizado;
+- histórico de entregas com busca e filtros;
+- página de detalhes da entrega;
+- mini mapa do destino;
+- navegação priorizando latitude e longitude;
+- geocoder local com geocodebr + CNEFE/IBGE;
+- Photon/OpenStreetMap como fallback;
+- coordenadas persistidas no PostgreSQL;
+- melhorias visuais e operacionais no Dashboard.
 
 ## Arquitetura
 
@@ -14,67 +45,85 @@ Windows 11 — máquina da loja
 ├── Next.js 16 + React 19
 │   ├── Portal Admin
 │   ├── Área /motorista
-│   ├── Server Components / Server Actions
-│   └── Proxy de proteção de rotas/hostname
+│   ├── Server Components
+│   ├── Server Actions / Route Handlers
+│   └── Proxy de autenticação e isolamento por hostname
 │
 ├── Drizzle ORM
 │
 └── Docker Desktop / WSL2
     ├── PostgreSQL 16
     │   └── volume persistente
+    │
     └── Geocoder local
         └── geocodebr + CNEFE/IBGE
 ```
 
-O PostgreSQL é publicado no host somente em `127.0.0.1:5433`. A porta do banco nunca deve ser exposta pelo Cloudflare Tunnel.
+Não existe um backend Node/Express separado. A camada principal de servidor vive no próprio Next.js, utilizando Server Components, Server Actions, Route Handlers e módulos `server-only`.
 
-Produção do Next.js usa a porta `3003`; desenvolvimento usa `3002`.
+O PostgreSQL é publicado somente em `127.0.0.1:5433` e não deve ser exposto pelo Cloudflare Tunnel.
+
+| Serviço | Porta |
+| --- | ---: |
+| Next.js — desenvolvimento | `3002` |
+| Next.js — produção | `3003` |
+| PostgreSQL | `5433` |
+| Geocoder local | `8001` |
 
 ## Stack
 
-- Next.js 16 (App Router)
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Drizzle ORM
-- PostgreSQL 16
-- postgres.js
-- Docker Compose
-- geocodebr + CNEFE/IBGE para geocodificação local de endereços
-- Photon/OpenStreetMap como fallback de geocodificação
-- bcrypt para senha do Portal Admin
-- HMAC-SHA256 para sessões Admin e motorista
-- Cloudflare Tunnel para acesso externo da área do motorista
-- backup completo de PostgreSQL + comprovantes físicos
+| Camada | Tecnologias |
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
+| Backend da aplicação | Next.js Server Actions, Route Handlers e módulos `server-only` |
+| Banco | PostgreSQL 16, Drizzle ORM, postgres.js |
+| Autenticação | bcrypt, sessões HttpOnly assinadas com HMAC-SHA256 |
+| Mapas | Leaflet, React Leaflet, OpenStreetMap |
+| Geocodificação | geocodebr + CNEFE/IBGE, Photon/OpenStreetMap |
+| Infraestrutura | Docker Compose, Windows 11, WSL2 |
+| Acesso externo | Cloudflare Tunnel somente para a área do motorista |
+| Qualidade | ESLint, TypeScript, Vitest, Playwright, Knip, Lighthouse |
+| Backup | PostgreSQL + comprovantes físicos + manifesto de integridade |
 
-Não existe um serviço Node/Express separado. O backend vive no próprio Next.js através de Server Components, Server Actions, Route Handlers e módulos `server-only`.
-
-## Estrutura relevante
+## Estrutura do projeto
 
 ```text
 Canhoto---Digital/
-├── docker-compose.yml
 ├── backend/
 │   ├── geocoder/
-│   └── postgres/migrations/
+│   └── postgres/
+│       └── migrations/
+│
 ├── frontend/
-│   ├── src/lib/db/
-│   ├── src/lib/data/
-│   ├── src/app/
+│   ├── src/
+│   │   ├── app/
+│   │   ├── components/
+│   │   └── lib/
 │   └── src/proxy.ts
+│
 ├── ops/
 │   ├── backup/
 │   ├── cloudflare/
 │   └── windows/
-└── scripts/
+│
+├── scripts/
+├── docker-compose.yml
+└── README.md
 ```
 
-## Banco local
+## Executando localmente
 
-Na raiz do projeto:
+### 1. Infraestrutura
+
+Na raiz do projeto, crie o arquivo de ambiente:
 
 ```powershell
 Copy-Item .env.example .env
+```
+
+Depois valide e suba os serviços:
+
+```powershell
 docker compose config --quiet
 docker compose up -d postgres
 docker compose build geocoder
@@ -84,21 +133,13 @@ docker compose ps
 
 As migrations ficam em `backend/postgres/migrations` e são aplicadas em ordem numérica.
 
-**Nunca execute `docker compose down -v` em ambiente com dados sem backup validado.**
+> **Importante:** nunca execute `docker compose down -v` em um ambiente com dados sem possuir um backup validado.
 
-## Frontend
+### 2. Frontend
 
-Crie `frontend/.env.local` a partir de `frontend/.env.example` e configure:
+Crie `frontend/.env.local` a partir de `frontend/.env.example` e configure as variáveis do ambiente.
 
-- `DATABASE_URL`;
-- `ADMIN_SESSION_SECRET`;
-- `MOTORISTA_SESSION_SECRET`;
-- `COLABORADOR_SESSION_SECRET`, usado pelo login de Gestor de setor;
-- `PUBLIC_MOTORISTA_HOST`, quando houver hostname público;
-- `CANHOTO_UPLOAD_DIR`, somente se quiser alterar o diretório padrão de comprovantes;
-- `GEOCODER_URL`, endereço interno do geocoder local (por padrão `http://127.0.0.1:8001`).
-
-Desenvolvimento:
+Depois:
 
 ```powershell
 cd frontend
@@ -106,58 +147,160 @@ npm ci
 npm run dev
 ```
 
-Produção:
+A aplicação de desenvolvimento ficará disponível na porta `3002`.
+
+### Produção
 
 ```powershell
+cd frontend
+npm ci
 npm run build
 npm run start
 ```
 
-## Primeiro usuário Admin
+A aplicação de produção utiliza a porta `3003`.
 
-Depois de aplicar as migrations e configurar `frontend/.env.local`:
+## Variáveis de ambiente
+
+### Raiz — `.env`
+
+| Variável | Uso |
+| --- | --- |
+| `CANHOTO_POSTGRES_DB` | nome do banco PostgreSQL |
+| `CANHOTO_POSTGRES_USER` | usuário do banco |
+| `CANHOTO_POSTGRES_PASSWORD` | senha do banco |
+| `CANHOTO_POSTGRES_PORT` | porta local do PostgreSQL |
+| `CANHOTO_GEOCODER_PORT` | porta local do geocoder |
+
+### Frontend — `frontend/.env.local`
+
+| Variável | Uso |
+| --- | --- |
+| `DATABASE_URL` | conexão do Next.js com PostgreSQL |
+| `ADMIN_SESSION_SECRET` | assinatura da sessão do Admin |
+| `MOTORISTA_SESSION_SECRET` | assinatura da sessão do Motorista |
+| `COLABORADOR_SESSION_SECRET` | assinatura da sessão do Gestor de setor |
+| `PUBLIC_MOTORISTA_HOST` | hostname público exclusivo da área do motorista |
+| `CANHOTO_UPLOAD_DIR` | diretório de fotos e assinaturas |
+| `GEOCODER_URL` | endereço interno do geocoder local |
+| `NEXT_PUBLIC_MAP_TILE_URL` | origem dos tiles do mini mapa |
+| `DEV_AUTH_BYPASS` | bypass opcional apenas para desenvolvimento local |
+
+Nunca versione arquivos `.env`, segredos reais, dumps do banco ou comprovantes.
+
+## Perfis de acesso
+
+| Perfil | Acesso |
+| --- | --- |
+| **Admin** | acesso administrativo completo |
+| **Gestor de setor** | acesso operacional com dados escopados ao setor nas áreas já implementadas |
+| **Motorista** | acesso exclusivo à área `/motorista` e às próprias entregas |
+
+### Criar o primeiro Admin
+
+Depois de configurar o banco e `frontend/.env.local`:
 
 ```powershell
 .\scripts\criar-admin.ps1
 ```
 
-A senha é solicitada de forma oculta. O banco recebe somente o hash bcrypt.
+A senha é solicitada de forma oculta e somente o hash bcrypt é persistido.
 
-## Login de colaborador (gestor de setor)
+### Gestor de setor
 
-Além do Admin (acesso total) e do Motorista (só `/motorista`), um colaborador
-com papel `gestor_setor` pode logar em `/colaborador/login` com acesso quase
-igual ao Admin, mas escopado ao setor dele (hoje: Dashboard e lista de
-Entregas — outras telas ainda não são filtradas por setor).
+O acesso pode ser configurado pela tela **Colaboradores**, escolhendo o papel `gestor_setor` e definindo uma senha.
 
-Dá pra dar esse acesso direto pela tela **Colaboradores**: ao criar ou editar
-um colaborador, escolha o papel "Gestor de setor" e defina a senha de acesso
-no próprio formulário (mínimo 4 caracteres). Não precisa de terminal.
-
-Alternativa por script, útil pra automações/onboarding em lote:
+Também existe o script:
 
 ```powershell
 .\scripts\criar-gestor-setor.ps1
 ```
 
-Tanto pela tela quanto pelo script, o colaborador precisa já existir e ter um
-setor definido.
+O colaborador precisa estar ativo e possuir um setor definido.
+
+## Área do motorista
+
+O motorista utiliza telefone + PIN e possui uma sessão independente do Portal Admin.
+
+O fluxo principal é:
+
+```text
+Entrega cadastrada
+      ↓
+Endereço geocodificado
+      ↓
+Entrega atribuída ao motorista
+      ↓
+Motorista inicia a entrega
+      ↓
+Localização registrada
+      ↓
+Rota aberta no Waze
+      ↓
+Foto + assinatura do cliente
+      ↓
+Entrega concluída
+      ↓
+Histórico
+```
+
+A autorização é validada no servidor: uma entrega só pode ser acessada e alterada pelo motorista ao qual ela pertence.
+
+## Geocodificação e mapas
+
+A geocodificação usa duas camadas:
+
+1. **geocodebr + CNEFE/IBGE** — serviço local e fonte principal;
+2. **Photon/OpenStreetMap** — fallback quando o serviço local não retorna um ponto considerado confiável.
+
+Quando existem coordenadas persistidas, o Waze recebe latitude e longitude. Caso contrário, o sistema mantém o fallback por endereço textual.
+
+O mini mapa utiliza Leaflet e OpenStreetMap.
 
 ## Segurança
 
-O Portal Admin usa e-mail + senha e sessão HttpOnly assinada. Toda Server Action administrativa valida autenticação/autorização no servidor.
+- Portal Admin protegido por e-mail, senha e sessão HttpOnly assinada;
+- Gestor de setor possui sessão própria;
+- Motorista possui sessão independente por telefone + PIN;
+- Server Actions administrativas validam autenticação e autorização no servidor;
+- entregas do motorista são filtradas pelo ID derivado da própria sessão;
+- o hostname público do motorista não expõe o Portal Admin;
+- PostgreSQL e geocoder ficam vinculados ao localhost;
+- segredos e arquivos operacionais não devem ser versionados.
 
-O login de colaborador (gestor de setor) usa o mesmo mecanismo, numa sessão própria e separada da do Admin.
+Quando `PUBLIC_MOTORISTA_HOST` está configurado, o hostname público aceita somente rotas `/motorista`. As rotas administrativas permanecem disponíveis apenas pelo acesso interno.
 
-A área do motorista usa telefone + PIN, sessão própria assinada e valida a propriedade da entrega no servidor.
+## Qualidade e CI
 
-Quando `PUBLIC_MOTORISTA_HOST` estiver configurado, o hostname público aceita somente rotas `/motorista`; o Portal Admin permanece para uso interno.
+A esteira de CI executa verificações de banco, código, testes e aplicação:
 
-Segredos reais, dumps e comprovantes nunca devem ser versionados.
+```text
+postgres-schema
+security-audit
+lint
+typecheck
+knip
+unit-tests
+build
+e2e
+lighthouse
+commitlint
+```
+
+Comandos úteis no frontend:
+
+```powershell
+npm run lint
+npm run typecheck
+npm run knip
+npm run test
+npm run build
+npm run test:e2e
+```
 
 ## Backup e recuperação
 
-Cada backup válido reúne banco e arquivos físicos no mesmo pacote:
+Cada backup válido reúne o banco e os comprovantes físicos no mesmo pacote:
 
 ```text
 backups/canhoto/canhoto-AAAAMMDD-HHMMSS/
@@ -166,6 +309,16 @@ backups/canhoto/canhoto-AAAAMMDD-HHMMSS/
 └── manifest.json
 ```
 
-O manifesto guarda SHA-256 e a restauração valida as tabelas, os arquivos e as referências de `entrega_anexos`.
+O `manifest.json` registra hashes SHA-256 e informações de integridade. O processo de restauração valida o banco, os arquivos físicos e as referências existentes em `entrega_anexos`.
 
-Consulte `ops/README.md` para operação, Cloudflare Tunnel e recuperação.
+Para detalhes de operação, agendamento, Cloudflare Tunnel e recuperação, consulte:
+
+```text
+ops/README.md
+```
+
+## Estado do projeto
+
+A versão **2.0.0** representa a consolidação da área do motorista, da geocodificação automática e das melhorias operacionais do Dashboard.
+
+O desenvolvimento continua em ciclos curtos, utilizando branches, Pull Requests e a esteira completa de CI antes de integrar mudanças à `main`.
