@@ -17,6 +17,10 @@ interface PhotonFeature {
     housenumber?: string;
     street?: string;
     name?: string;
+    district?: string;
+    locality?: string;
+    city?: string;
+    state?: string;
   };
 }
 
@@ -48,6 +52,74 @@ function somenteDigitos(valor: string | undefined): string {
 function extrairNumero(endereco: string): string {
   const candidatos = endereco.match(/\b\d+[A-Za-z]?\b/g);
   return candidatos?.at(-1) ?? "";
+}
+
+const TERMOS_GENERICOS = new Set([
+  "RUA",
+  "R",
+  "AV",
+  "AVENIDA",
+  "TRAVESSA",
+  "TV",
+  "ESTRADA",
+  "RODOVIA",
+  "ROD",
+  "LOTEAMENTO",
+  "LOT",
+  "CONJUNTO",
+  "CJ",
+  "RESIDENCIAL",
+  "RES",
+  "BAIRRO",
+  "N",
+  "NUMERO",
+]);
+
+function normalizarTexto(valor: string | undefined): string {
+  return (valor ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim();
+}
+
+function tokensRelevantes(valor: string | undefined): Set<string> {
+  return new Set(
+    normalizarTexto(valor)
+      .split(" ")
+      .filter(
+        (token) =>
+          token &&
+          !TERMOS_GENERICOS.has(token) &&
+          !/^\d+$/.test(token)
+      )
+  );
+}
+
+function contextoPhotonCompativel(
+  endereco: string,
+  props: NonNullable<PhotonFeature["properties"]>
+): boolean {
+  const tokensEndereco = tokensRelevantes(endereco);
+  const tokensRua = tokensRelevantes(props.street || props.name);
+  const extras = [...tokensEndereco].filter(
+    (token) => !tokensRua.has(token)
+  );
+
+  if (extras.length === 0) return true;
+
+  const contexto = [
+    props.district,
+    props.locality,
+    props.city,
+    props.state,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const tokensContexto = tokensRelevantes(contexto);
+  return extras.some((token) => tokensContexto.has(token));
 }
 
 function coordenadasValidas(
@@ -136,6 +208,7 @@ async function consultarCep(cep: string): Promise<BrasilApiCep | null> {
 
 function aceitarResultadoPhoton(
   feature: PhotonFeature,
+  endereco: string,
   numeroInformado: string,
   cep: string
 ): CoordenadasEntrega | null {
@@ -150,6 +223,7 @@ function aceitarResultadoPhoton(
 
   const props = feature.properties;
   if (props?.countrycode?.toUpperCase() !== "BR") return null;
+  if (!props || !contextoPhotonCompativel(endereco, props)) return null;
 
   if (numeroInformado) {
     const numeroResultado = (props?.housenumber ?? "")
@@ -178,6 +252,7 @@ function aceitarResultadoPhoton(
 async function buscarPhoton(
   endpoint: "structured" | "api",
   params: URLSearchParams,
+  endereco: string,
   numeroInformado: string,
   cep: string
 ): Promise<CoordenadasEntrega | null> {
@@ -200,6 +275,7 @@ async function buscarPhoton(
     for (const feature of dados.features ?? []) {
       const coordenadas = aceitarResultadoPhoton(
         feature,
+        endereco,
         numeroInformado,
         cep
       );
@@ -239,6 +315,7 @@ async function geocodificarComPhoton(
   const estruturado = await buscarPhoton(
     "structured",
     params,
+    endereco,
     numero,
     cep
   );
@@ -262,7 +339,7 @@ async function geocodificarComPhoton(
     lang: "pt",
   });
 
-  return buscarPhoton("api", paramsLivres, numero, cep);
+  return buscarPhoton("api", paramsLivres, endereco, numero, cep);
 }
 
 /**
