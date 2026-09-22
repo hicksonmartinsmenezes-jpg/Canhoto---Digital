@@ -64,7 +64,7 @@ export default async function MotoristaPage({
     getMotoboyPerfil(motoboyId),
     getEntregasDoMotorista(motoboyId),
     view === "historico"
-      ? getHistoricoDoMotorista(motoboyId, 20)
+      ? getHistoricoDoMotorista(motoboyId, 100)
       : Promise.resolve([]),
   ]);
 
