@@ -13,6 +13,8 @@ export interface EntregaMotoristaDetalhe {
   clienteTelefone: string;
   endereco: string;
   cep: string;
+  latitude: number | null;
+  longitude: number | null;
   numeroPedido: string;
   numeroNfe: string;
   valor: string;
@@ -38,6 +40,8 @@ export async function getEntregaMotoristaDetalhe(
       clienteTelefone: entregas.clienteTelefone,
       endereco: entregas.endereco,
       cep: entregas.cep,
+      latitude: entregas.latitude,
+      longitude: entregas.longitude,
       numeroPedido: entregas.numeroPedido,
       numeroNfe: entregas.numeroNfe,
       valorPagamento: entregas.valorPagamento,
@@ -65,6 +69,10 @@ export async function getEntregaMotoristaDetalhe(
     clienteTelefone: entrega.clienteTelefone ?? "",
     endereco: entrega.endereco ?? "",
     cep: entrega.cep ? formatCep(entrega.cep) : "",
+    latitude:
+      entrega.latitude === null ? null : Number(entrega.latitude),
+    longitude:
+      entrega.longitude === null ? null : Number(entrega.longitude),
     numeroPedido: entrega.numeroPedido ?? "",
     numeroNfe: entrega.numeroNfe ?? "",
     valor: formatBRL(Number(entrega.valorPagamento)),
