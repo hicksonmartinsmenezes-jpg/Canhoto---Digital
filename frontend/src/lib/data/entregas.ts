@@ -383,11 +383,15 @@ export async function getAtividadeRecente(
   const itens: AtividadeItem[] = [];
 
   for (const entrega of cadastros) {
+    const responsavel =
+      entrega.cadastradoPorNome ??
+      (entrega.cadastradoPorAdminEmail ? "Administrador" : "Alguém");
+
     itens.push({
       id: `cadastro-${entrega.id}`,
       hora: formatHora(entrega.criadoEm),
       titulo: "Entrega registrada",
-      descricao: `${entrega.cadastradoPorNome ?? entrega.cadastradoPorAdminEmail ?? "Alguém"} cadastrou a entrega #${entrega.numero} (${entrega.clienteNome}).`,
+      descricao: `${responsavel} cadastrou a entrega #${entrega.numero} para ${entrega.clienteNome}.`,
       cor: "primary",
       timestamp: entrega.criadoEm,
     });
