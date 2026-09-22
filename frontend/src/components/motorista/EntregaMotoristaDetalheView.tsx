@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
@@ -23,6 +24,19 @@ import {
 import { ComprovanteEntregaForm } from "@/components/motorista/ComprovanteEntregaForm";
 import type { EntregaMotoristaDetalhe } from "@/lib/data/motorista-entregas";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
+
+const MiniMapaEntrega = dynamic(
+  () =>
+    import("@/components/motorista/MiniMapaEntrega").then(
+      (modulo) => modulo.MiniMapaEntrega
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-44 w-full animate-pulse rounded-2xl bg-slate-100" />
+    ),
+  }
+);
 
 export function EntregaMotoristaDetalheView({
   entrega,
@@ -259,6 +273,16 @@ export function EntregaMotoristaDetalheView({
           )}
         </div>
       </section>
+
+      {entrega.latitude !== null && entrega.longitude !== null && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+          <MiniMapaEntrega
+            latitude={entrega.latitude}
+            longitude={entrega.longitude}
+            mostrarMotorista={emRota}
+          />
+        </section>
+      )}
 
       {emRota && (
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
