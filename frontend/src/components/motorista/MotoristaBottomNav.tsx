@@ -1,19 +1,18 @@
 import Link from "next/link";
-import { Clock3, Home, Package, UserRound } from "lucide-react";
+import { Clock3, Package, UserRound } from "lucide-react";
 
-export type MotoristaView = "inicio" | "entregas" | "historico" | "perfil";
+export type MotoristaView = "entregas" | "historico" | "perfil";
 
 const ITENS: Array<{
   id: MotoristaView;
   label: string;
   href: string;
-  icon: typeof Home;
+  icon: typeof Package;
 }> = [
-  { id: "inicio", label: "Início", href: "/motorista", icon: Home },
   {
     id: "entregas",
     label: "Entregas",
-    href: "/motorista?view=entregas",
+    href: "/motorista",
     icon: Package,
   },
   {
@@ -43,7 +42,7 @@ export function MotoristaBottomNav({
       className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-white/95 shadow-[0_-8px_28px_rgba(15,23,42,0.06)] backdrop-blur"
     >
       <div
-        className="grid w-full grid-cols-4 px-1 pt-1"
+        className="grid w-full grid-cols-3 px-1 pt-1"
         style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
       >
         {ITENS.map((item) => {
@@ -72,7 +71,7 @@ export function MotoristaBottomNav({
               </span>
               <span>{item.label}</span>
               {selecionado && (
-                <span className="absolute bottom-0 h-1 w-10 rounded-full bg-[#1768D8]" />
+                <span className="absolute bottom-0 h-1 w-12 rounded-full bg-[#1768D8]" />
               )}
             </Link>
           );
