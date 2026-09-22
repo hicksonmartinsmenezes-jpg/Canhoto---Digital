@@ -332,9 +332,7 @@ export const entregas = pgTable(
     index("idx_entregas_cadastrado_por_admin").on(table.cadastradoPorAdmin),
     check(
       "ck_entregas_cep",
-      sql`${table.cep} is null or ${table.cep} ~ '^[0-9]{8}
-
-`
+      sql`${table.cep} is null or ${table.cep} ~ '^[0-9]{8}$'`
     ),
     check(
       "ck_entregas_latitude",
