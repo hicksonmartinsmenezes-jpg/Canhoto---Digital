@@ -1,10 +1,13 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  BarChart3,
+  CalendarDays,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   LogOut,
-  MoreVertical,
+  MapPin,
+  Navigation,
   Package,
   ShieldCheck,
   UserRound,
@@ -29,10 +32,12 @@ export const dynamic = "force-dynamic";
 
 function formatarDataHoje() {
   const data = new Intl.DateTimeFormat("pt-BR", {
-    weekday: "long",
+    weekday: "short",
     day: "2-digit",
     month: "long",
-  }).format(new Date());
+  })
+    .format(new Date())
+    .replace(".", "");
 
   return data.charAt(0).toUpperCase() + data.slice(1);
 }
@@ -47,6 +52,14 @@ function resolverView(valor: string | undefined): MotoristaView {
   }
 
   return "inicio";
+}
+
+function criarLinkRota(endereco: string, cep: string) {
+  const destino = [endereco, cep ? `CEP ${cep}` : ""]
+    .filter(Boolean)
+    .join(", ");
+
+  return `https://waze.com/ul?q=${encodeURIComponent(destino)}&navigate=yes`;
 }
 
 export default async function MotoristaPage({
@@ -78,140 +91,196 @@ export default async function MotoristaPage({
   const possuiEntregaEmRota = entregas.some(
     (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
   );
+  const proximaEntrega =
+    entregas.find(
+      (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
+    ) ?? entregas.find((entrega) => entrega.status === "pendente");
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F5F7FB]">
       <MotoristaAutoRefresh />
       <MotoristaLocationTracker ativo={possuiEntregaEmRota} />
 
-      <main
-        id="inicio"
-        className="w-full px-2 pb-24 pt-3 sm:px-3"
-      >
-        <header className="mb-3 flex items-center justify-between gap-3 px-1">
+      <header className="relative overflow-hidden bg-gradient-to-br from-[#123E72] via-[#0C3568] to-[#08264F] px-5 pb-10 pt-5 text-white">
+        <div className="pointer-events-none absolute -right-16 -top-16 size-52 rounded-full border border-white/5" />
+        <div className="pointer-events-none absolute right-8 top-16 size-24 rounded-full border border-white/5" />
+
+        <div className="relative mx-auto flex w-full max-w-xl items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+            <p className="flex items-center gap-2 text-[13px] font-semibold text-white/85">
+              <CalendarDays className="size-4" />
               {formatarDataHoje()}
             </p>
-            <h1 className="mt-0.5 text-[23px] font-black leading-tight tracking-tight text-[#0A1F44]">
+            <h1 className="mt-2 truncate text-[32px] font-black leading-none tracking-tight">
               Olá, {nome} <span aria-hidden="true">👋</span>
             </h1>
+            <p className="mt-3 text-base font-medium text-white/80">
+              Hoje você tem {totalHoje} {totalHoje === 1 ? "entrega" : "entregas"}
+            </p>
           </div>
 
-          <details className="group relative shrink-0">
-            <summary
-              aria-label="Abrir menu"
-              className="grid size-10 cursor-pointer list-none place-items-center rounded-full border border-slate-200 bg-white text-[#0A1F44] transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
-            >
-              <MoreVertical className="size-4.5" />
-            </summary>
+          <Link
+            href="/motorista?view=perfil"
+            aria-label="Abrir perfil"
+            className="flex shrink-0 items-center gap-2 text-white"
+          >
+            <span className="grid size-14 place-items-center rounded-full border-2 border-white/90 bg-white text-[#0A2C5A] shadow-lg">
+              <UserRound className="size-7 stroke-[2.25]" />
+            </span>
+            <ChevronRight className="size-5" />
+          </Link>
+        </div>
+      </header>
 
-            <div className="absolute right-0 top-[46px] z-50 w-36 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5">
-              <form action={sairMotorista}>
-                <button
-                  type="submit"
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-                >
-                  <LogOut className="size-4" />
-                  Sair
-                </button>
-              </form>
-            </div>
-          </details>
-        </header>
-
+      <main
+        id="inicio"
+        className="relative mx-auto -mt-5 w-full max-w-xl px-4 pb-28"
+      >
         {view === "inicio" && (
           <>
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              <div className="grid grid-cols-3 divide-x divide-slate-200">
-                <div className="flex items-center gap-2.5 px-3 py-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#0A1F44]/8 text-[#0A1F44]">
-                    <Package className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Entregas
-                    </p>
-                    <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
-                      {totalHoje}
-                    </p>
-                  </div>
-                </div>
+            <section className="grid grid-cols-3 gap-2.5">
+              <div className="rounded-2xl border border-[#CFE2FF] bg-[#EDF5FF] px-3 py-4 shadow-sm">
+                <span className="grid size-10 place-items-center rounded-full bg-[#D7E8FF] text-[#1768D8]">
+                  <Package className="size-5" />
+                </span>
+                <p className="mt-3 text-xs font-extrabold text-[#315A8E]">Total</p>
+                <p className="mt-1 text-3xl font-black leading-none text-[#0A1F44]">
+                  {totalHoje}
+                </p>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  {totalHoje === 1 ? "entrega" : "entregas"}
+                </p>
+              </div>
 
-                <div className="flex items-center gap-2.5 px-3 py-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-700">
-                    <CheckCircle2 className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Concluídas
-                    </p>
-                    <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
-                      {entregues}
-                    </p>
-                  </div>
-                </div>
+              <div className="rounded-2xl border border-[#CEEBDD] bg-[#EEF9F3] px-3 py-4 shadow-sm">
+                <span className="grid size-10 place-items-center rounded-full bg-[#D9F3E5] text-[#15924A]">
+                  <CheckCircle2 className="size-5" />
+                </span>
+                <p className="mt-3 text-xs font-extrabold text-[#237848]">
+                  Concluídas
+                </p>
+                <p className="mt-1 text-3xl font-black leading-none text-[#0A1F44]">
+                  {entregues}
+                </p>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  de {totalHoje}
+                </p>
+              </div>
 
-                <div className="flex items-center gap-2.5 px-3 py-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700">
-                    <Clock3 className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Pendentes
-                    </p>
-                    <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
-                      {pendentes}
-                    </p>
-                  </div>
-                </div>
+              <div className="rounded-2xl border border-[#F5DEC2] bg-[#FFF7ED] px-3 py-4 shadow-sm">
+                <span className="grid size-10 place-items-center rounded-full bg-[#FFE8CC] text-[#F07A12]">
+                  <Clock3 className="size-5" />
+                </span>
+                <p className="mt-3 text-xs font-extrabold text-[#D96B0B]">
+                  Pendentes
+                </p>
+                <p className="mt-1 text-3xl font-black leading-none text-[#0A1F44]">
+                  {pendentes}
+                </p>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  de {totalHoje}
+                </p>
               </div>
             </section>
 
             <a
               href="#entregas-hoje"
-              className="mt-3 block rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-[0_6px_18px_rgba(10,31,68,0.05)] transition hover:bg-slate-50"
+              className="mt-4 block rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
             >
               <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <BarChart3 className="size-5 text-[#0A1F44]" />
-                  <h2 className="text-base font-extrabold text-[#0A1F44]">
-                    Progresso do dia
+                <div>
+                  <h2 className="text-base font-black text-[#0A1F44]">
+                    Seu progresso de hoje
                   </h2>
+                  <p className="mt-1 text-sm font-medium text-slate-500">
+                    {entregues} de {totalHoje}{" "}
+                    {totalHoje === 1 ? "entrega concluída" : "entregas concluídas"}
+                  </p>
                 </div>
-                <span className="text-lg font-black text-[#0A1F44]">
+                <span className="text-2xl font-black text-[#0A1F44]">
                   {progresso}%
                 </span>
               </div>
 
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                 <div
-                  className="h-full rounded-full bg-[#F2B22E] transition-[width]"
+                  className="h-full rounded-full bg-[#1F73F1] transition-[width]"
                   style={{ width: `${progresso}%` }}
                 />
               </div>
-
-              <p className="mt-2.5 text-xs font-semibold text-slate-500">
-                {totalHoje === 0
-                  ? "Nenhuma entrega programada para hoje"
-                  : `${entregues} de ${totalHoje} ${totalHoje === 1 ? "entrega concluída" : "entregas concluídas"}`}
-              </p>
             </a>
+
+            {proximaEntrega && (
+              <section className="relative mt-5 overflow-hidden rounded-[24px] bg-gradient-to-br from-[#123E72] via-[#0D3569] to-[#08264F] p-5 text-white shadow-[0_16px_36px_rgba(8,38,79,0.18)]">
+                <div className="pointer-events-none absolute -right-7 top-10 size-32 rounded-full border border-white/5" />
+                <div className="relative">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-[#FF942E] px-3 py-1.5 text-xs font-black text-white">
+                      <Clock3 className="size-4" />
+                      {proximaEntrega.horaSaida ? "Entrega em rota" : "Próxima entrega"}
+                    </span>
+                    <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-extrabold text-white/90">
+                      Entrega {proximaEntrega.numero}
+                    </span>
+                  </div>
+
+                  <h2 className="mt-5 text-[24px] font-black leading-tight">
+                    {proximaEntrega.clienteNome}
+                  </h2>
+
+                  {proximaEntrega.endereco && (
+                    <p className="mt-3 flex items-start gap-2 text-sm font-medium leading-5 text-white/85">
+                      <MapPin className="mt-0.5 size-4 shrink-0" />
+                      <span>
+                        {proximaEntrega.endereco}
+                        {proximaEntrega.cep ? ` · CEP ${proximaEntrega.cep}` : ""}
+                      </span>
+                    </p>
+                  )}
+
+                  {proximaEntrega.endereco ? (
+                    <a
+                      href={criarLinkRota(
+                        proximaEntrega.endereco,
+                        proximaEntrega.cep
+                      )}
+                      className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1F73F1] px-4 py-3.5 text-sm font-black text-white transition hover:bg-[#1767dc]"
+                    >
+                      <Navigation className="size-4" />
+                      Ver rota
+                      <ChevronRight className="size-4" />
+                    </a>
+                  ) : (
+                    <a
+                      href="#entregas-hoje"
+                      className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1F73F1] px-4 py-3.5 text-sm font-black text-white transition hover:bg-[#1767dc]"
+                    >
+                      Ver detalhes
+                      <ChevronRight className="size-4" />
+                    </a>
+                  )}
+                </div>
+              </section>
+            )}
 
             <MotoristaEntregasHoje entregas={entregas} />
           </>
         )}
 
         {view === "entregas" && (
-          <MotoristaEntregasHoje entregas={entregas} />
+          <div className="pt-8">
+            <MotoristaEntregasHoje entregas={entregas} />
+          </div>
         )}
 
         {view === "historico" && (
-          <MotoristaHistorico entregas={historico} />
+          <div className="pt-8">
+            <MotoristaHistorico entregas={historico} />
+          </div>
         )}
 
         {view === "perfil" && (
-          <section>
+          <section className="pt-8">
             <div className="mb-5">
               <p className="text-sm font-semibold text-slate-500">Perfil</p>
               <h2 className="mt-1 text-2xl font-black tracking-tight text-[#0A1F44]">
@@ -219,9 +288,9 @@ export default async function MotoristaPage({
               </h2>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center gap-4 border-b border-slate-100 p-5">
-                <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#0A1F44] text-white">
+                <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#0A2C5A] text-white">
                   <UserRound className="size-7" />
                 </span>
                 <div className="min-w-0">
@@ -245,7 +314,7 @@ export default async function MotoristaPage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-slate-700">
+                  <p className="text-2xl font-black text-[#15924A]">
                     {entregues}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -253,7 +322,7 @@ export default async function MotoristaPage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-slate-700">
+                  <p className="text-2xl font-black text-[#F07A12]">
                     {pendentes}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -278,7 +347,7 @@ export default async function MotoristaPage({
         )}
       </main>
 
-      <MotoristaBottomNav ativo={view} />
+      <MotoristaBottomNav ativo={view} pendentes={pendentes} />
     </div>
   );
 }
