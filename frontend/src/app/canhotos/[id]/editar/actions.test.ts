@@ -15,6 +15,12 @@ vi.mock("@/lib/rate-limit", () => ({
 vi.mock("@/lib/db/errors", () => ({
   mensagemErroBanco: vi.fn(() => "Erro de banco."),
 }));
+vi.mock("@/lib/geocodificacao-gratis", () => ({
+  geocodificarEntregaGratis: vi.fn().mockResolvedValue({
+    latitude: -10.9472,
+    longitude: -37.0731,
+  }),
+}));
 
 import { getDb } from "@/lib/db";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
@@ -46,7 +52,15 @@ function configurarDb(statusAtual: "pendente" | "entregue" | "cancelado") {
   const selectQuery = {
     from: vi.fn(),
     where: vi.fn(),
-    limit: vi.fn().mockResolvedValue([{ status: statusAtual }]),
+    limit: vi.fn().mockResolvedValue([
+      {
+        status: statusAtual,
+        endereco: inputBase.endereco,
+        cep: inputBase.cep,
+        latitude: String(inputBase.latitude),
+        longitude: String(inputBase.longitude),
+      },
+    ]),
   };
   selectQuery.from.mockReturnValue(selectQuery);
   selectQuery.where.mockReturnValue(selectQuery);
