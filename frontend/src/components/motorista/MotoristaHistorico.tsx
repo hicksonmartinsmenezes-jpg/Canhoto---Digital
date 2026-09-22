@@ -24,7 +24,7 @@ export function MotoristaHistorico({
 }) {
   if (entregas.length === 0) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <div className="border-y border-slate-200 bg-white px-4 py-8 text-center">
         <span className="mx-auto grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">
           <PackageCheck className="size-6" />
         </span>
@@ -39,8 +39,8 @@ export function MotoristaHistorico({
   }
 
   return (
-    <section className="space-y-3">
-      <div className="flex gap-2 overflow-x-auto pb-1">
+    <section>
+      <div className="flex gap-2 overflow-x-auto px-4 pb-3">
         <span className="rounded-full bg-[#1768D8] px-3.5 py-2 text-xs font-black text-white">
           Todas
         </span>
@@ -49,7 +49,7 @@ export function MotoristaHistorico({
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className="border-y border-slate-200 bg-white">
         {entregas.map((entrega) => {
           const horaEntrega = hora(entrega.clienteAssinouEm);
 
@@ -57,7 +57,7 @@ export function MotoristaHistorico({
             <Link
               key={entrega.id}
               href={`/motorista/entregas/${entrega.id}`}
-              className="group block rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_5px_16px_rgba(15,23,42,0.035)]"
+              className="group block border-b border-slate-100 bg-white px-4 py-3 last:border-b-0"
             >
               <div className="flex items-start gap-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#E7F8EF] text-[#169653]">
