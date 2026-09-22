@@ -90,9 +90,47 @@ _TERMOS_GENERICOS = {
     "RESIDENCIAL",
     "RES",
     "BAIRRO",
+    "JARDIM",
+    "VILA",
+    "POVOADO",
     "N",
     "NUMERO",
 }
+
+_MARCADORES_LOCALIDADE = (
+    "LOTEAMENTO",
+    "LOT",
+    "BAIRRO",
+    "CONJUNTO",
+    "CJ",
+    "RESIDENCIAL",
+    "RES",
+    "JARDIM",
+    "VILA",
+    "POVOADO",
+)
+
+
+def _separar_logradouro_localidade(endereco: str) -> tuple[str, str | None]:
+    sem_numero = re.sub(
+        r",\s*\d{1,6}[A-Za-z]?\s*$",
+        "",
+        endereco.strip(),
+        flags=re.IGNORECASE,
+    )
+
+    padrao = r"\b(" + "|".join(_MARCADORES_LOCALIDADE) + r")\b"
+    match = re.search(padrao, sem_numero, flags=re.IGNORECASE)
+    if not match:
+        return sem_numero.strip(" ,-"), None
+
+    logradouro = sem_numero[: match.start()].strip(" ,-")
+    localidade = sem_numero[match.start() :].strip(" ,-")
+
+    return (
+        logradouro or sem_numero.strip(" ,-"),
+        localidade or None,
+    )
 
 
 def _tokens_relevantes(texto: str | None) -> set[str]:
@@ -209,34 +247,51 @@ def _geocodificar(endereco: str, cep: str) -> dict[str, Any]:
         )
     ]
 
-    if not candidatos_contexto:
+    logradouro_informado, localidade_informada = (
+        _separar_logradouro_localidade(endereco)
+    )
+
+    if not candidatos_contexto and not localidade_informada:
         return {"ok": False, "motivo": "localidade_incompativel"}
 
-    escolhido = max(
-        candidatos_contexto,
-        key=lambda item: _score_candidato(
-            endereco,
-            item.get("logradouro"),
-            item.get("localidade"),
-        ),
-    )
+    referencia = candidatos_validos[0]
 
-    score = _score_candidato(
-        endereco,
-        escolhido.get("logradouro"),
-        escolhido.get("localidade"),
-    )
-    if score < 0.52:
-        return {"ok": False, "motivo": "endereco_incompativel"}
+    if localidade_informada:
+        logradouro_busca = logradouro_informado
+        localidade_busca = localidade_informada
+        municipio_busca = referencia["municipio"]
+        estado_busca = referencia["estado"]
+    else:
+        escolhido = max(
+            candidatos_contexto,
+            key=lambda item: _score_candidato(
+                endereco,
+                item.get("logradouro"),
+                item.get("localidade"),
+            ),
+        )
+
+        score = _score_candidato(
+            endereco,
+            escolhido.get("logradouro"),
+            escolhido.get("localidade"),
+        )
+        if score < 0.52:
+            return {"ok": False, "motivo": "endereco_incompativel"}
+
+        logradouro_busca = escolhido["logradouro"]
+        localidade_busca = escolhido.get("localidade") or ""
+        municipio_busca = escolhido["municipio"]
+        estado_busca = escolhido["estado"]
 
     entrada = pl.DataFrame(
         {
-            "logradouro": [escolhido["logradouro"]],
+            "logradouro": [logradouro_busca],
             "numero": [numero],
             "cep": [cep_limpo],
-            "localidade": [escolhido.get("localidade") or ""],
-            "municipio": [escolhido["municipio"]],
-            "estado": [escolhido["estado"]],
+            "localidade": [localidade_busca or ""],
+            "municipio": [municipio_busca],
+            "estado": [estado_busca],
         }
     )
 
@@ -273,6 +328,54 @@ def _geocodificar(endereco: str, cep: str) -> dict[str, Any]:
     tipo_resultado = row.get("tipo_resultado")
     desvio_metros = _to_float(row.get("desvio_metros"))
     endereco_encontrado = row.get("endereco_encontrado")
+    localidade_encontrada = row.get("localidade_encontrada")
+    logradouro_encontrado = row.get("logradouro_encontrado")
+
+    if localidade_informada:
+        tokens_localidade_informada = _tokens_relevantes(
+            localidade_informada
+        )
+        tokens_localidade_encontrada = _tokens_relevantes(
+            localidade_encontrada
+        )
+
+        if (
+            tokens_localidade_informada
+            and not (
+                tokens_localidade_informada
+                & tokens_localidade_encontrada
+            )
+        ):
+            return {
+                "ok": False,
+                "precisao": precisao,
+                "tipo_resultado": tipo_resultado,
+                "desvio_metros": desvio_metros,
+                "endereco_encontrado": endereco_encontrado,
+                "motivo": "localidade_incompativel",
+            }
+
+    tokens_logradouro_informado = _tokens_relevantes(
+        logradouro_informado
+    )
+    tokens_logradouro_encontrado = _tokens_relevantes(
+        logradouro_encontrado
+    )
+    if (
+        tokens_logradouro_informado
+        and not (
+            tokens_logradouro_informado
+            & tokens_logradouro_encontrado
+        )
+    ):
+        return {
+            "ok": False,
+            "precisao": precisao,
+            "tipo_resultado": tipo_resultado,
+            "desvio_metros": desvio_metros,
+            "endereco_encontrado": endereco_encontrado,
+            "motivo": "logradouro_incompativel",
+        }
 
     if latitude is None or longitude is None:
         return {
