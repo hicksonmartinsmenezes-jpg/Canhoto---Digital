@@ -6,7 +6,6 @@ import { mensagemErroBanco } from "@/lib/db/errors";
 import { entregas } from "@/lib/db/schema";
 import { obterSetorPadraoId } from "@/lib/data/setores";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
-import { geocodificarEnderecoEntrega } from "@/lib/geocoding";
 import { checarRateLimit } from "@/lib/rate-limit";
 import type { FormaPagamento } from "@/types/database";
 
@@ -66,16 +65,10 @@ export async function criarEntrega(
     return { ok: false, error: "Selecione a forma de pagamento." };
   }
 
-  const endereco = input.endereco.trim();
   const cep = input.cep.replace(/\D/g, "");
   if (cep && cep.length !== 8) {
     return { ok: false, error: "Informe um CEP válido com 8 dígitos." };
   }
-
-  const geocodificacao = await geocodificarEnderecoEntrega({
-    endereco,
-    cep,
-  });
 
   // gestor_setor cadastra sempre no próprio setor. Admin não tem setor
   // próprio, então a entrega cai no setor padrão (única forma de continuar
@@ -90,12 +83,8 @@ export async function criarEntrega(
       data: input.data,
       clienteNome,
       clienteTelefone: input.clienteTelefone.trim() || null,
-      endereco: endereco || null,
+      endereco: input.endereco.trim() || null,
       cep: cep || null,
-      latitude: geocodificacao?.latitude ?? null,
-      longitude: geocodificacao?.longitude ?? null,
-      geocodificacaoFonte: geocodificacao?.fonte ?? null,
-      geocodificadoEm: geocodificacao ? new Date().toISOString() : null,
       numeroPedido: input.numeroPedido.trim() || null,
       numeroNfe: input.numeroNfe.trim() || null,
       valorPagamento: input.valorPagamento.toFixed(2),
