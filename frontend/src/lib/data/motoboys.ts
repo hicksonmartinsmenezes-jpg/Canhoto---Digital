@@ -118,3 +118,29 @@ export async function getMotoboyNome(id: string): Promise<string | null> {
 
   return motoboy?.nome ?? null;
 }
+
+
+export interface MotoboyPerfil {
+  nome: string;
+  telefone: string | null;
+  ativo: boolean;
+}
+
+export async function getMotoboyPerfil(
+  id: string
+): Promise<MotoboyPerfil | null> {
+  const db = getDb();
+  if (!db) return null;
+
+  const [motoboy] = await db
+    .select({
+      nome: motoboys.nome,
+      telefone: motoboys.telefone,
+      ativo: motoboys.ativo,
+    })
+    .from(motoboys)
+    .where(eq(motoboys.id, id))
+    .limit(1);
+
+  return motoboy ?? null;
+}
