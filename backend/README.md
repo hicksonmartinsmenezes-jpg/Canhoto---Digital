@@ -2,12 +2,16 @@
 
 O backend persistente usa PostgreSQL 16 local. Não existe Supabase nem um serviço Node/Express separado.
 
-A camada de servidor da aplicação vive no Next.js por meio de Server Components, Server Actions e Route Handlers, acessando o banco com Drizzle ORM.
+A camada principal de servidor da aplicação vive no Next.js por meio de Server Components, Server Actions e Route Handlers, acessando o banco com Drizzle ORM. Há um microserviço Python isolado apenas para geocodificação local de endereços brasileiros com geocodebr/CNEFE.
 
 ## Estrutura
 
 ```text
 backend/
+├── geocoder/
+│   ├── Dockerfile
+│   ├── app.py
+│   └── README.md
 └── postgres/
     ├── README.md
     └── migrations/
