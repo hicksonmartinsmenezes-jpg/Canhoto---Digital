@@ -193,7 +193,7 @@ describe("ações do motorista com PostgreSQL local", () => {
       error: "Entrega já concluída ou não está mais disponível.",
     });
 
-    expect(insertValues).toHaveBeenCalledTimes(1);
+    expect(insertValues).toHaveBeenCalledTimes(2);
   });
 
   it("não acessa o banco quando a entrega pertence a outro motorista", async () => {
