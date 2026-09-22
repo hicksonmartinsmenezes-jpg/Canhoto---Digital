@@ -35,21 +35,12 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
     clienteTelefone: entrega.clienteTelefone,
     endereco: entrega.endereco,
     cep: entrega.cep,
-    latitude: entrega.latitude,
-    longitude: entrega.longitude,
     observacoes: entrega.observacoes,
     status: entrega.status as StatusEntrega,
   });
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
-    setForm((f) => ({
-      ...f,
-      [key]: value,
-      ...((key === "endereco" || key === "cep") &&
-      (f.latitude !== null || f.longitude !== null)
-        ? { latitude: null, longitude: null }
-        : {}),
-    }));
+    setForm((f) => ({ ...f, [key]: value }));
   }
 
   function salvar() {
@@ -80,8 +71,6 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
         clienteTelefone: form.clienteTelefone,
         endereco: form.endereco,
         cep: form.cep,
-        latitude: form.latitude,
-        longitude: form.longitude,
         observacoes: form.observacoes,
         status: form.status,
       });
