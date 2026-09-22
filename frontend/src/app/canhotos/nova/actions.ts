@@ -97,6 +97,16 @@ export async function criarEntrega(
     return { ok: false, error: "Localização exata inválida." };
   }
 
+  if (
+    input.endereco.trim() &&
+    (input.latitude === null || input.longitude === null)
+  ) {
+    return {
+      ok: false,
+      error: "Confirme a localização exata da entrega no mapa.",
+    };
+  }
+
   // gestor_setor cadastra sempre no próprio setor. Admin não tem setor
   // próprio, então a entrega cai no setor padrão (única forma de continuar
   // visível pros gestores de setor) — ver @/lib/data/setores.
