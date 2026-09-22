@@ -187,28 +187,14 @@ export function ComprovanteEntregaForm({
   }
 
   return (
-    <div className="border border-slate-200 bg-slate-50 p-4">
-      <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center bg-[#0A1F44] text-white">
-          <CheckCircle2 className="size-5" />
-        </span>
-        <div>
-          <h3 className="text-sm font-bold text-[#0A1F44]">
-            Comprovante da entrega
-          </h3>
-          <p className="mt-0.5 text-xs leading-5 text-slate-500">
-            Foto e assinatura são obrigatórias para concluir.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+    <div className="p-4">
+      <div>
+        <p className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
           Foto do comprovante
         </p>
 
         {fotoUrl && (
-          <div className="mb-3 overflow-hidden border border-slate-200 bg-white">
+          <div className="mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={fotoUrl}
@@ -218,7 +204,7 @@ export function ComprovanteEntregaForm({
           </div>
         )}
 
-        <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 border border-[#0A1F44] bg-white px-4 py-2.5 text-sm font-bold text-[#0A1F44] transition-colors hover:bg-slate-100">
+        <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#1768D8] bg-white px-4 py-3 text-sm font-black text-[#1768D8] transition hover:bg-[#F5F9FF]">
           <Camera className="size-4" />
           {foto ? "Tirar outra foto" : "Tirar foto"}
           <input
@@ -234,23 +220,23 @@ export function ComprovanteEntregaForm({
 
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+          <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
             Assinatura do cliente
           </p>
           <button
             type="button"
             disabled={pending || !temAssinatura}
             onClick={limparAssinatura}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Eraser className="size-3.5" />
             Limpar
           </button>
         </div>
 
-        <div className="relative border border-slate-300 bg-white">
+        <div className="relative overflow-hidden rounded-2xl border border-slate-300 bg-white">
           {!temAssinatura && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-sm text-slate-400">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-slate-400">
               <PenLine className="size-4" />
               Assine aqui
             </div>
@@ -268,7 +254,7 @@ export function ComprovanteEntregaForm({
       </div>
 
       {erro && (
-        <div className="mt-4 border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
           {erro}
         </div>
       )}
@@ -277,7 +263,7 @@ export function ComprovanteEntregaForm({
         type="button"
         disabled={pending}
         onClick={confirmar}
-        className="mt-4 inline-flex w-full items-center justify-center gap-2 bg-[#F2B22E] px-4 py-3 text-sm font-bold text-[#0A1F44] transition-colors hover:bg-[#F7C84A] disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#15924A] px-4 py-3.5 text-sm font-black text-white transition hover:bg-[#117D3F] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? (
           <>
@@ -287,7 +273,7 @@ export function ComprovanteEntregaForm({
         ) : (
           <>
             <CheckCircle2 className="size-4" />
-            Confirmar entrega
+            Finalizar entrega
           </>
         )}
       </button>
