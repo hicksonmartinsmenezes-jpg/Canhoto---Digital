@@ -19,7 +19,7 @@ export function EntregaMotoristaCard({
   return (
     <Link
       href={`/motorista/entregas/${entrega.id}`}
-      className="group block rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_5px_16px_rgba(15,23,42,0.035)] transition active:scale-[0.995]"
+      className="group block border-b border-slate-100 bg-white px-4 py-3 transition last:border-b-0 active:bg-slate-50"
     >
       <div className="flex items-start gap-3">
         <span
