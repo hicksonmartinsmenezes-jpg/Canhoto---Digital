@@ -40,12 +40,16 @@ export function EntregaMotoristaDetalheView({
     entrega.status === "pendente" && entrega.horaSaida === null;
 
   function abrirRota() {
-    if (!entrega.enderecoRoteavel) return;
-
     const params = new URLSearchParams({
-      q: entrega.enderecoRoteavel,
       navigate: "yes",
     });
+
+    if (entrega.latitude !== null && entrega.longitude !== null) {
+      params.set("ll", `${entrega.latitude},${entrega.longitude}`);
+    } else {
+      if (!entrega.enderecoRoteavel) return;
+      params.set("q", entrega.enderecoRoteavel);
+    }
 
     window.location.assign(`https://waze.com/ul?${params.toString()}`);
   }
