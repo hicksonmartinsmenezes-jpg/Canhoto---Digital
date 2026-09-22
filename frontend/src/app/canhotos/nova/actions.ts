@@ -7,6 +7,7 @@ import { entregas } from "@/lib/db/schema";
 import { obterSetorPadraoId } from "@/lib/data/setores";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
+import { geocodificarEntregaGratis } from "@/lib/geocodificacao-gratis";
 import type { FormaPagamento } from "@/types/database";
 
 export interface CriarEntregaInput {
@@ -97,15 +98,16 @@ export async function criarEntrega(
     return { ok: false, error: "Localização exata inválida." };
   }
 
-  if (
-    input.endereco.trim() &&
-    (input.latitude === null || input.longitude === null)
-  ) {
-    return {
-      ok: false,
-      error: "Confirme a localização exata da entrega no mapa.",
-    };
-  }
+  const coordenadas =
+    input.latitude !== null && input.longitude !== null
+      ? {
+          latitude: input.latitude,
+          longitude: input.longitude,
+        }
+      : await geocodificarEntregaGratis({
+          endereco: input.endereco,
+          cep,
+        });
 
   // gestor_setor cadastra sempre no próprio setor. Admin não tem setor
   // próprio, então a entrega cai no setor padrão (única forma de continuar
@@ -123,9 +125,9 @@ export async function criarEntrega(
       endereco: input.endereco.trim() || null,
       cep: cep || null,
       latitude:
-        input.latitude === null ? null : input.latitude.toFixed(6),
+        coordenadas === null ? null : coordenadas.latitude.toFixed(6),
       longitude:
-        input.longitude === null ? null : input.longitude.toFixed(6),
+        coordenadas === null ? null : coordenadas.longitude.toFixed(6),
       numeroPedido: input.numeroPedido.trim() || null,
       numeroNfe: input.numeroNfe.trim() || null,
       valorPagamento: input.valorPagamento.toFixed(2),
