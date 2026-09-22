@@ -118,13 +118,14 @@ function aceitarResultado(
 }
 
 async function buscarPhoton(
+  endpoint: "structured" | "api",
   params: URLSearchParams,
   numeroInformado: string,
   cep: string
 ): Promise<CoordenadasEntrega | null> {
   try {
     const resposta = await fetch(
-      `https://photon.komoot.io/structured?${params.toString()}`,
+      `https://photon.komoot.io/${endpoint}?${params.toString()}`,
       {
         headers: {
           "User-Agent": "Canhoto-Digital/1.0",
@@ -192,5 +193,31 @@ export async function geocodificarEntregaGratis(input: {
   if (cepInfo?.city) params.set("city", cepInfo.city);
   if (cepInfo?.state) params.set("state", cepInfo.state);
 
-  return buscarPhoton(params, numero, cep);
+  const estruturado = await buscarPhoton(
+    "structured",
+    params,
+    numero,
+    cep
+  );
+  if (estruturado) return estruturado;
+
+  const consultaLivre = [
+    endereco,
+    cepInfo?.neighborhood,
+    cepInfo?.city,
+    cepInfo?.state,
+    cep ? `CEP ${cep}` : "",
+    "Brasil",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const paramsLivres = new URLSearchParams({
+    q: consultaLivre,
+    countrycode: "BR",
+    limit: "5",
+    lang: "pt",
+  });
+
+  return buscarPhoton("api", paramsLivres, numero, cep);
 }
