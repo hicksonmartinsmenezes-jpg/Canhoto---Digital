@@ -97,28 +97,20 @@ export default async function MotoristaPage({
           <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full border border-white/5" />
 
           <div className="relative w-full">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-[12px] font-semibold text-white/75">
-                  <CalendarDays className="size-4" />
-                  {formatarDataHoje()}
-                </p>
-                <h1 className="mt-2 truncate text-[30px] font-black leading-none tracking-tight">
-                  Olá, {nome} <span aria-hidden="true">👋</span>
-                </h1>
-                <p className="mt-2 text-sm font-medium text-white/75">
-                  Hoje você tem {totalHoje}{" "}
-                  {totalHoje === 1 ? "entrega" : "entregas"}
-                </p>
-              </div>
+            <div>
+              <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
+                <CalendarDays className="size-4" />
+                {formatarDataHoje()}
+              </p>
 
-              <Link
-                href="/motorista?view=perfil"
-                aria-label="Abrir perfil"
-                className="grid size-12 shrink-0 place-items-center rounded-full border-2 border-white/80 bg-white text-[#0A2C5A] shadow-lg"
-              >
-                <UserRound className="size-6" />
-              </Link>
+              <h1 className="mt-2 text-[24px] font-black leading-tight tracking-tight text-white">
+                Olá, {nome} <span aria-hidden="true">👋</span>
+              </h1>
+
+              <p className="mt-1.5 text-[13px] font-medium text-white/70">
+                Hoje você tem {totalHoje}{" "}
+                {totalHoje === 1 ? "entrega" : "entregas"}
+              </p>
             </div>
 
             {proximaEntrega ? (
