@@ -42,15 +42,11 @@ function formatarDataHoje() {
 }
 
 function resolverView(valor: string | undefined): MotoristaView {
-  if (
-    valor === "entregas" ||
-    valor === "historico" ||
-    valor === "perfil"
-  ) {
+  if (valor === "historico" || valor === "perfil") {
     return valor;
   }
 
-  return "inicio";
+  return "entregas";
 }
 
 export default async function MotoristaPage({
@@ -95,8 +91,8 @@ export default async function MotoristaPage({
       <MotoristaAutoRefresh />
       <MotoristaLocationTracker ativo={possuiEntregaEmRota} />
 
-      {view === "inicio" && (
-        <header className="relative overflow-hidden bg-gradient-to-br from-[#0C3568] to-[#08264F] px-4 pb-5 pt-5 text-white">
+      {view === "entregas" && (
+        <header className="relative overflow-hidden bg-gradient-to-br from-[#0C3568] to-[#08264F] px-4 pb-4 pt-5 text-white">
           <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full border border-white/5" />
 
           <div className="relative w-full">
@@ -185,21 +181,9 @@ export default async function MotoristaPage({
         </header>
       )}
 
-      {view !== "inicio" && (
+      {view !== "entregas" && (
         <header className="bg-[#082B57] text-white">
           <div className="w-full px-4 py-4">
-            {view === "entregas" && (
-              <>
-                <h1 className="text-[25px] font-black tracking-tight">
-                  Entregas
-                </h1>
-                <p className="mt-1 text-sm font-medium text-white/70">
-                  {pendentes}{" "}
-                  {pendentes === 1 ? "entrega pendente" : "entregas pendentes"}
-                </p>
-              </>
-            )}
-
             {view === "historico" && (
               <>
                 <h1 className="text-[25px] font-black tracking-tight">
@@ -232,41 +216,51 @@ export default async function MotoristaPage({
         </header>
       )}
 
-      <main className={`w-full pb-28 ${view === "inicio" ? "" : "pt-4"}`}>
-        {view === "inicio" && (
-          <section className="border-b border-slate-200 bg-white px-4 py-3.5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-sm font-black text-[#0A1F44]">
-                  Seu progresso de hoje
-                </h2>
-                <p className="mt-0.5 text-xs font-medium text-slate-500">
-                  {entregues} de {totalHoje}{" "}
-                  {totalHoje === 1
-                    ? "entrega concluída"
-                    : "entregas concluídas"}
-                </p>
-              </div>
-              <span className="text-lg font-black text-[#0A1F44]">
-                {progresso}%
-              </span>
-            </div>
-
-            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-[#1F73F1] transition-[width]"
-                style={{ width: `${progresso}%` }}
-              />
-            </div>
-          </section>
-        )}
-
+      <main className="w-full pb-28">
         {view === "entregas" && (
-          <MotoristaEntregasHoje entregas={entregas} />
+          <>
+            <section className="border-b border-slate-200 bg-white px-4 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-black text-[#0A1F44]">
+                    Seu progresso de hoje
+                  </h2>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500">
+                    {entregues} de {totalHoje}{" "}
+                    {totalHoje === 1
+                      ? "entrega concluída"
+                      : "entregas concluídas"}
+                  </p>
+                </div>
+                <span className="text-lg font-black text-[#0A1F44]">
+                  {progresso}%
+                </span>
+              </div>
+
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-[#1F73F1] transition-[width]"
+                  style={{ width: `${progresso}%` }}
+                />
+              </div>
+            </section>
+
+            <div className="border-b border-slate-200 bg-[#F5F7FB] px-4 py-3">
+              <h2 className="text-[17px] font-black text-[#0A1F44]">
+                Entregas de hoje
+              </h2>
+            </div>
+
+            <div className="pt-3">
+              <MotoristaEntregasHoje entregas={entregas} />
+            </div>
+          </>
         )}
 
         {view === "historico" && (
-          <MotoristaHistorico entregas={historico} />
+          <div className="pt-4">
+            <MotoristaHistorico entregas={historico} />
+          </div>
         )}
 
         {view === "perfil" && (
