@@ -281,13 +281,6 @@ export const entregas = pgTable(
     clienteTelefone: text("cliente_telefone"),
     endereco: text("endereco"),
     cep: text("cep"),
-    latitude: numeric("latitude", { precision: 9, scale: 6 }),
-    longitude: numeric("longitude", { precision: 9, scale: 6 }),
-    geocodificacaoFonte: text("geocodificacao_fonte"),
-    geocodificadoEm: timestamp("geocodificado_em", {
-      withTimezone: true,
-      mode: "string",
-    }),
     numeroPedido: text("numero_pedido"),
     numeroNfe: text("numero_nfe"),
     valorPagamento: numeric("valor_pagamento", {
@@ -338,18 +331,6 @@ export const entregas = pgTable(
     check(
       "ck_entregas_cep",
       sql`${table.cep} is null or ${table.cep} ~ '^[0-9]{8}$'`
-    ),
-    check(
-      "ck_entregas_latitude",
-      sql`${table.latitude} is null or ${table.latitude} between -90 and 90`
-    ),
-    check(
-      "ck_entregas_longitude",
-      sql`${table.longitude} is null or ${table.longitude} between -180 and 180`
-    ),
-    check(
-      "ck_entregas_coordenadas_completas",
-      sql`(${table.latitude} is null) = (${table.longitude} is null)`
     ),
   ]
 );
