@@ -77,10 +77,8 @@ export default async function DashboardPage() {
           />
         </div>
 
-        {/* Alertas e Atividade recente (Issue #44) — movidos pra cima do
-            gráfico "Entregas por dia" a pedido do Hickson, ficando logo
-            depois dos StatCards. Split 8/4, mesma proporção usada mais
-            abaixo entre Entregas recentes e Motoristas em tempo real. */}
+        {/* Alertas e Atividade recente (Issue #44) — ficam logo depois
+            dos StatCards, antes do gráfico operacional. */}
         <div className="col-span-12 xl:col-span-8">
           <AlertsPanel alertas={alertas} />
         </div>
@@ -89,10 +87,7 @@ export default async function DashboardPage() {
           <ActivityTimeline atividades={atividade} />
         </div>
 
-        {/* Gráfico de tendência (Issue #25) — o Dashboard ficou sem
-            nenhuma visão ao longo do tempo depois que o donut de status
-            virou o mapa de motoristas. Linha própria, largura cheia, entre
-            os StatCards e as duas linhas de cards que já existiam. */}
+        {/* Gráfico de tendência operacional em largura total. */}
         <div className="col-span-12">
           <EntregasPorDiaChart dados={entregasPorDia} />
         </div>
