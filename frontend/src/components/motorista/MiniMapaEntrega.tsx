@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type LngLat = [number, number];
 
@@ -148,7 +148,10 @@ export function MiniMapaEntrega({
   const [motorista, setMotorista] = useState<LngLat | null>(null);
   const [erroMapa, setErroMapa] = useState(false);
 
-  const destino: LngLat = [longitude, latitude];
+  const destino = useMemo<LngLat>(
+    () => [longitude, latitude],
+    [latitude, longitude]
+  );
   motoristaAtualRef.current = motorista;
 
   useEffect(() => {
@@ -237,7 +240,7 @@ export function MiniMapaEntrega({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [latitude, longitude]);
+  }, [destino]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -268,7 +271,7 @@ export function MiniMapaEntrega({
       maxZoom: 16,
       duration: 500,
     });
-  }, [latitude, longitude, motorista]);
+  }, [destino, motorista]);
 
   if (erroMapa) {
     return (
