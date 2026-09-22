@@ -20,6 +20,14 @@ export type TipoAnexoEntrega =
   | "assinatura_cliente"
   | "foto";
 
+export type TipoGastoVeiculo =
+  | "combustivel"
+  | "manutencao"
+  | "multa"
+  | "lava_jato"
+  | "pedagio"
+  | "outro";
+
 export interface Setor {
   id: string;
   nome: string;
@@ -83,6 +91,29 @@ export interface EntregaAnexo {
   arquivo_url: string;
   capturado_em: string;
   capturado_por: string | null;
+}
+
+export interface Veiculo {
+  id: string;
+  placa: string;
+  marca: string;
+  modelo: string;
+  ano: number | null;
+  ativo: boolean;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+export interface VeiculoGasto {
+  id: string;
+  veiculo_id: string;
+  tipo: TipoGastoVeiculo;
+  data: string;
+  valor: number;
+  quilometragem: number | null;
+  observacao: string | null;
+  cadastrado_por_admin: string | null;
+  criado_em: string;
 }
 
 export interface EntregaHistorico {

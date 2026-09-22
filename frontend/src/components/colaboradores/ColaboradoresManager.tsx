@@ -64,11 +64,6 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
           <EmptyState
             icon={Users}
             title="Nenhum colaborador cadastrado ainda"
-            description="Cadastre o primeiro colaborador da empresa pra dar acesso ao sistema."
-            action={{
-              label: "Novo Colaborador",
-              onClick: () => setModal({ tipo: "novo" }),
-            }}
           />
         ) : (
           <div className="overflow-x-auto">

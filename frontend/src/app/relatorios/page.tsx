@@ -65,9 +65,6 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
     <div>
       <div className="mb-7">
         <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Consulte e exporte as entregas registradas por período, situação e forma de pagamento.
-        </p>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -76,18 +73,21 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
           value={String(totais.quantidade)}
           sub={`${dataInicio.split("-").reverse().join("/")} a ${dataFim.split("-").reverse().join("/")}`}
           icon={<Package className="size-5" strokeWidth={2} />}
+          iconBare
         />
         <StatCard
           label="Valor total"
           value={totais.valorTotal}
-          sub="Soma do valor de pagamento das entregas filtradas"
+          sub=""
           icon={<Wallet className="size-5" strokeWidth={2} />}
+          iconBare
         />
         <StatCard
           label="Ticket médio"
           value={totais.ticketMedio}
-          sub="Valor total dividido pela quantidade de entregas"
+          sub=""
           icon={<FileBarChart className="size-5" strokeWidth={2} />}
+          iconBare
         />
       </div>
 
@@ -195,7 +195,6 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
           <EmptyState
             icon={Package}
             title="Nenhuma entrega encontrada"
-            description="Ajuste o período ou os filtros acima e tente novamente."
           />
         ) : (
           <div className="overflow-x-auto">

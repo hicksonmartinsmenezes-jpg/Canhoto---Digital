@@ -86,24 +86,30 @@ export function MotoboyMapCard({
               <h2 className="text-[17px] font-bold text-[#0A1F44]">
                 Motoristas em rota
               </h2>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Entregas iniciadas e última localização compartilhada.
-              </p>
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700">
+          <span
+            className="inline-flex items-center gap-1.5 px-1 py-1.5 text-xs font-bold text-amber-700"
+            style={{ background: "transparent", border: 0, boxShadow: "none" }}
+          >
             <Radio className="size-3.5" />
             {motoristas.length} em rota
           </span>
-          <span className="inline-flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700">
+          <span
+            className="inline-flex items-center gap-1.5 px-1 py-1.5 text-xs font-bold text-emerald-700"
+            style={{ background: "transparent", border: 0, boxShadow: "none" }}
+          >
             <MapPin className="size-3.5" />
             {comLocalizacao} com localização
           </span>
           {semLocalizacao > 0 && (
-            <span className="inline-flex items-center border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-600">
+            <span
+              className="inline-flex items-center px-1 py-1.5 text-xs font-bold text-slate-600"
+              style={{ background: "transparent", border: 0, boxShadow: "none" }}
+            >
               {semLocalizacao} sem localização
             </span>
           )}
@@ -125,9 +131,6 @@ export function MotoboyMapCard({
               </span>
               <p className="mt-3 text-sm font-bold text-slate-700">
                 Ninguém em rota
-              </p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Quando uma entrega for iniciada, o motorista aparecerá aqui.
               </p>
             </div>
           ) : (
@@ -245,12 +248,6 @@ export function MotoboyMapCard({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-6 py-3 text-[11px] text-slate-500">
-        <span>Atualização automática a cada 15 segundos.</span>
-        <span>
-          Clique em um motorista para localizá-lo no mapa.
-        </span>
-      </div>
     </Card>
   );
 }
