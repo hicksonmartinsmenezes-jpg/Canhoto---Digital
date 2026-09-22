@@ -72,7 +72,7 @@ export function MotoristaEntregasHoje({
 
   return (
     <section id="entregas-hoje">
-      <div className="-mx-4 overflow-x-auto px-4 pb-1">
+      <div className="overflow-x-auto px-4 pb-1">
         <div className="flex min-w-max gap-2">
           {FILTROS.map((item) => {
             const ativo = filtro === item.id;
@@ -103,7 +103,7 @@ export function MotoristaEntregasHoje({
         </div>
       </div>
 
-      <label className="mt-4 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm focus-within:border-[#1768D8]">
+      <label className="mx-4 mt-3 flex items-center gap-2 border-b border-slate-300 bg-transparent px-0 py-2.5 focus-within:border-[#1768D8]">
         <Search className="size-4 shrink-0 text-slate-400" />
         <input
           type="search"
@@ -115,7 +115,7 @@ export function MotoristaEntregasHoje({
       </label>
 
       {filtradas.length === 0 ? (
-        <div className="mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="mt-3 border-y border-slate-200 bg-white">
           <EmptyState
             compact
             icon={PackageCheck}
@@ -132,7 +132,7 @@ export function MotoristaEntregasHoje({
           />
         </div>
       ) : (
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="mt-3 border-y border-slate-200 bg-white">
           {filtradas.map((entrega) => (
             <EntregaMotoristaCard key={entrega.id} entrega={entrega} />
           ))}
