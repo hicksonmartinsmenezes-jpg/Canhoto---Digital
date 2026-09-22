@@ -3,7 +3,7 @@ import "server-only";
 export interface CoordenadasEntrega {
   latitude: string;
   longitude: string;
-  fonte: "google" | "brasilapi_cep";
+  fonte: "google";
 }
 
 interface GoogleGeocodeResponse {
@@ -11,6 +11,11 @@ interface GoogleGeocodeResponse {
   results?: Array<{
     partial_match?: boolean;
     geometry?: {
+      location_type?:
+        | "ROOFTOP"
+        | "RANGE_INTERPOLATED"
+        | "GEOMETRIC_CENTER"
+        | "APPROXIMATE";
       location?: {
         lat?: number;
         lng?: number;
@@ -21,15 +26,6 @@ interface GoogleGeocodeResponse {
       types?: string[];
     }>;
   }>;
-}
-
-interface BrasilApiCepResponse {
-  location?: {
-    coordinates?: {
-      latitude?: string | number;
-      longitude?: string | number;
-    };
-  };
 }
 
 function coordenadaValida(
@@ -48,21 +44,33 @@ function coordenadaValida(
 
 function formatarCoordenadas(
   latitude: number,
-  longitude: number,
-  fonte: CoordenadasEntrega["fonte"]
+  longitude: number
 ): CoordenadasEntrega {
   return {
     latitude: latitude.toFixed(6),
     longitude: longitude.toFixed(6),
-    fonte,
+    fonte: "google",
   };
 }
 
-async function geocodificarComGoogle(
-  endereco: string,
-  cep: string
-): Promise<CoordenadasEntrega | null> {
+/**
+ * Geocodifica o endereço completo somente no servidor.
+ *
+ * Para não mandar o motorista para um ponto aproximado incorreto, só são
+ * persistidos resultados completos do Brasil com precisão ROOFTOP ou
+ * RANGE_INTERPOLATED. Resultados aproximados continuam usando o endereço
+ * textual no Waze.
+ *
+ * A ausência da chave ou uma falha do provedor nunca bloqueia o cadastro.
+ */
+export async function geocodificarEnderecoEntrega(input: {
+  endereco: string;
+  cep: string;
+}): Promise<CoordenadasEntrega | null> {
   const apiKey = process.env.GOOGLE_MAPS_GEOCODING_API_KEY?.trim();
+  const endereco = input.endereco.trim();
+  const cep = input.cep.replace(/\D/g, "");
+
   if (!apiKey || !endereco) return null;
 
   try {
@@ -90,8 +98,7 @@ async function geocodificarComGoogle(
     if (dados.status !== "OK") return null;
 
     const resultado = dados.results?.[0];
-    const localizacao = resultado?.geometry?.location;
-    if (!localizacao) return null;
+    if (!resultado || resultado.partial_match) return null;
 
     const pais = resultado.address_components
       ?.find((componente) => componente.types?.includes("country"))
@@ -99,67 +106,21 @@ async function geocodificarComGoogle(
 
     if (pais && pais !== "BR") return null;
 
-    const latitude = Number(localizacao.lat);
-    const longitude = Number(localizacao.lng);
-    if (!coordenadaValida(latitude, longitude)) return null;
+    const tipoPrecisao = resultado.geometry?.location_type;
+    if (
+      tipoPrecisao !== "ROOFTOP" &&
+      tipoPrecisao !== "RANGE_INTERPOLATED"
+    ) {
+      return null;
+    }
 
-    return formatarCoordenadas(latitude, longitude, "google");
-  } catch {
-    return null;
-  }
-}
-
-async function geocodificarComBrasilApi(
-  cep: string
-): Promise<CoordenadasEntrega | null> {
-  if (!/^\d{8}$/.test(cep)) return null;
-
-  try {
-    const resposta = await fetch(
-      `https://brasilapi.com.br/api/cep/v2/${cep}`,
-      {
-        cache: "no-store",
-        signal: AbortSignal.timeout(5_000),
-      }
-    );
-
-    if (!resposta.ok) return null;
-
-    const dados = (await resposta.json()) as BrasilApiCepResponse;
-    const latitude = Number(dados.location?.coordinates?.latitude);
-    const longitude = Number(dados.location?.coordinates?.longitude);
+    const latitude = Number(resultado.geometry?.location?.lat);
+    const longitude = Number(resultado.geometry?.location?.lng);
 
     if (!coordenadaValida(latitude, longitude)) return null;
 
-    return formatarCoordenadas(latitude, longitude, "brasilapi_cep");
+    return formatarCoordenadas(latitude, longitude);
   } catch {
     return null;
   }
-}
-
-/**
- * Resolve o endereço uma única vez no cadastro/edição e persiste o ponto.
- *
- * Prioridade:
- * 1. Google Geocoding, quando GOOGLE_MAPS_GEOCODING_API_KEY estiver definida,
- *    pois considera o endereço completo e tende a resolver número/logradouro.
- * 2. BrasilAPI CEP v2 como fallback gratuito; suas coordenadas representam o
- *    CEP e podem ser menos precisas que o número informado.
- *
- * Falhas externas nunca impedem o cadastro da entrega. Nesse caso, a UI do
- * motorista continua usando o endereço textual como fallback no Waze.
- */
-export async function geocodificarEnderecoEntrega(input: {
-  endereco: string;
-  cep: string;
-}): Promise<CoordenadasEntrega | null> {
-  const endereco = input.endereco.trim();
-  const cep = input.cep.replace(/\D/g, "");
-
-  if (!endereco && !cep) return null;
-
-  const google = await geocodificarComGoogle(endereco, cep);
-  if (google) return google;
-
-  return geocodificarComBrasilApi(cep);
 }
