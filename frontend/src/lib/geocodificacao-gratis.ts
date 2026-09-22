@@ -24,6 +24,18 @@ interface PhotonResponse {
   features?: PhotonFeature[];
 }
 
+interface GeocodebrResponse {
+  ok?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+  precisao?: string | null;
+  tipo_resultado?: string | null;
+  desvio_metros?: number | null;
+  endereco_encontrado?: string | null;
+  motivo?: string | null;
+  fonte?: string;
+}
+
 export interface CoordenadasEntrega {
   latitude: number;
   longitude: number;
@@ -52,6 +64,52 @@ function coordenadasValidas(
   );
 }
 
+async function geocodificarComGeocodebr(
+  endereco: string,
+  cep: string
+): Promise<CoordenadasEntrega | null> {
+  if (!endereco || !/^\d{8}$/.test(cep)) return null;
+
+  const baseUrl = (
+    process.env.GEOCODER_URL?.trim() || "http://127.0.0.1:8001"
+  ).replace(/\/$/, "");
+
+  try {
+    const resposta = await fetch(`${baseUrl}/geocode`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        endereco,
+        cep,
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+
+    if (!resposta.ok) return null;
+
+    const dados = (await resposta.json()) as GeocodebrResponse;
+    const latitude = Number(dados.latitude);
+    const longitude = Number(dados.longitude);
+
+    if (
+      dados.ok !== true ||
+      !coordenadasValidas(latitude, longitude)
+    ) {
+      return null;
+    }
+
+    return {
+      latitude: Number(latitude.toFixed(6)),
+      longitude: Number(longitude.toFixed(6)),
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function consultarCep(cep: string): Promise<BrasilApiCep | null> {
   if (!/^\d{8}$/.test(cep)) return null;
 
@@ -76,7 +134,7 @@ async function consultarCep(cep: string): Promise<BrasilApiCep | null> {
   }
 }
 
-function aceitarResultado(
+function aceitarResultadoPhoton(
   feature: PhotonFeature,
   numeroInformado: string,
   cep: string
@@ -140,7 +198,7 @@ async function buscarPhoton(
 
     const dados = (await resposta.json()) as PhotonResponse;
     for (const feature of dados.features ?? []) {
-      const coordenadas = aceitarResultado(
+      const coordenadas = aceitarResultadoPhoton(
         feature,
         numeroInformado,
         cep
@@ -154,25 +212,10 @@ async function buscarPhoton(
   }
 }
 
-/**
- * Geocodificação automática e sem chave paga.
- *
- * Usa BrasilAPI para decompor o CEP e Photon/OSM para localizar o endereço.
- * Só aceita coordenadas quando país, número e CEP (quando presentes no
- * resultado) são compatíveis com o que o operador digitou.
- *
- * Se não houver resultado confiável, retorna null e o motorista continua
- * com o fallback textual do Waze — nunca salvamos uma coordenada duvidosa.
- */
-export async function geocodificarEntregaGratis(input: {
-  endereco: string;
-  cep: string;
-}): Promise<CoordenadasEntrega | null> {
-  const endereco = input.endereco.trim();
-  const cep = somenteDigitos(input.cep);
-
-  if (!endereco) return null;
-
+async function geocodificarComPhoton(
+  endereco: string,
+  cep: string
+): Promise<CoordenadasEntrega | null> {
   const numero = extrairNumero(endereco);
   const cepInfo = await consultarCep(cep);
 
@@ -220,4 +263,30 @@ export async function geocodificarEntregaGratis(input: {
   });
 
   return buscarPhoton("api", paramsLivres, numero, cep);
+}
+
+/**
+ * Geocodificação automática sem API paga.
+ *
+ * 1. geocodebr/CNEFE local: fonte principal, específica para endereços
+ *    brasileiros e executada no nosso próprio Docker.
+ * 2. Photon/OpenStreetMap: fallback quando o resultado local não atingir
+ *    o nível de confiança exigido ou o serviço estiver indisponível.
+ *
+ * Se nenhuma fonte retornar um ponto confiável, a entrega continua sem
+ * coordenadas e o motorista usa o endereço textual no Waze.
+ */
+export async function geocodificarEntregaGratis(input: {
+  endereco: string;
+  cep: string;
+}): Promise<CoordenadasEntrega | null> {
+  const endereco = input.endereco.trim();
+  const cep = somenteDigitos(input.cep);
+
+  if (!endereco) return null;
+
+  const local = await geocodificarComGeocodebr(endereco, cep);
+  if (local) return local;
+
+  return geocodificarComPhoton(endereco, cep);
 }
