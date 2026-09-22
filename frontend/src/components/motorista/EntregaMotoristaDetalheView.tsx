@@ -40,30 +40,19 @@ export function EntregaMotoristaDetalheView({
     entrega.status === "pendente" && entrega.horaSaida === null;
 
   function abrirRota() {
-    const temCoordenadas =
-      entrega.latitude !== null &&
-      entrega.longitude !== null &&
-      Number.isFinite(entrega.latitude) &&
-      Number.isFinite(entrega.longitude);
+    if (!entrega.endereco) return;
+
+    const destino = [
+      entrega.endereco,
+      entrega.cep ? `CEP ${entrega.cep}` : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
 
     const params = new URLSearchParams({
+      q: destino,
       navigate: "yes",
-      utm_source: "canhoto_digital",
     });
-
-    if (temCoordenadas) {
-      params.set("ll", `${entrega.latitude},${entrega.longitude}`);
-    } else {
-      const destino = [
-        entrega.endereco,
-        entrega.cep ? `CEP ${entrega.cep}` : "",
-      ]
-        .filter(Boolean)
-        .join(", ");
-
-      if (!destino) return;
-      params.set("q", destino);
-    }
 
     window.location.assign(`https://waze.com/ul?${params.toString()}`);
   }
@@ -319,7 +308,7 @@ export function EntregaMotoristaDetalheView({
         </div>
       )}
 
-      {!entregue && (entrega.endereco || entrega.latitude !== null) && (
+      {!entregue && entrega.endereco && (
         <button
           type="button"
           onClick={abrirRota}
