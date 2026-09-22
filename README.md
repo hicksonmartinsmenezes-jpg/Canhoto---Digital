@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/hicksonmartinsmenezes-jpg/Canhoto---Digital)](https://github.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/releases/latest)
 
+**Versão atual: 2.0.0**
+
 Sistema interno para registrar, acompanhar e auditar entregas realizadas por motoristas a clientes externos.
 
 ## Arquitetura
