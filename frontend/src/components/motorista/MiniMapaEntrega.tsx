@@ -144,10 +144,12 @@ export function MiniMapaEntrega({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const marcadorMotoristaRef = useRef<MapLibreMarker | null>(null);
+  const motoristaAtualRef = useRef<LngLat | null>(null);
   const [motorista, setMotorista] = useState<LngLat | null>(null);
   const [erroMapa, setErroMapa] = useState(false);
 
   const destino: LngLat = [longitude, latitude];
+  motoristaAtualRef.current = motorista;
 
   useEffect(() => {
     if (!mostrarMotorista || !("geolocation" in navigator)) {
@@ -202,6 +204,22 @@ export function MiniMapaEntrega({
         })
           .setLngLat(destino)
           .addTo(map);
+
+        const motoristaAtual = motoristaAtualRef.current;
+        if (motoristaAtual) {
+          marcadorMotoristaRef.current = new maplibre.Marker({
+            element: criarMarcador("motorista"),
+            anchor: "center",
+          })
+            .setLngLat(motoristaAtual)
+            .addTo(map);
+
+          map.fitBounds([destino, motoristaAtual], {
+            padding: 44,
+            maxZoom: 16,
+            duration: 0,
+          });
+        }
 
         requestAnimationFrame(() => map.resize());
       } catch {
