@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, MoreVertical } from "lucide-react";
 import { EntregaMotoristaDetalheView } from "@/components/motorista/EntregaMotoristaDetalheView";
-import { MotoristaAutoRefresh } from "@/components/motorista/MotoristaAutoRefresh";
 import { MotoristaLocationTracker } from "@/components/motorista/MotoristaLocationTracker";
 import { getEntregaMotoristaDetalhe } from "@/lib/data/motorista-entregas";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
@@ -27,7 +26,6 @@ export default async function MotoristaEntregaPage({
 
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
-      <MotoristaAutoRefresh />
       <MotoristaLocationTracker ativo={emRota} />
 
       <header className="bg-[#082B57] text-white">
