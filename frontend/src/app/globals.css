@@ -34,3 +34,25 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Mini mapa do motorista: mantém o Leaflet local e suaviza o mapa-base
+   para combinar com a interface clara do Canhoto. */
+.canhoto-mini-map .leaflet-tile-pane {
+  filter: grayscale(0.82) saturate(0.35) brightness(1.08) contrast(0.9);
+}
+
+.canhoto-mini-map .leaflet-control-attribution {
+  margin: 0 !important;
+  border-top-left-radius: 8px;
+  background: rgb(255 255 255 / 0.82) !important;
+  padding: 2px 5px !important;
+  font-size: 8px !important;
+  line-height: 1.25 !important;
+  color: #64748b !important;
+  backdrop-filter: blur(6px);
+}
+
+.canhoto-mini-map .leaflet-control-attribution a {
+  color: #475569 !important;
+}

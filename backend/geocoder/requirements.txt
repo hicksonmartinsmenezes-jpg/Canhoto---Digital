@@ -1,0 +1,3 @@
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+geocodebr @ git+https://github.com/ipea/geocodebr.git@416f006d7cbf33f159e239153048642dea9ec29b#subdirectory=python-package

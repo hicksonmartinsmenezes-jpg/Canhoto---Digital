@@ -1,19 +1,18 @@
 import Link from "next/link";
-import { Clock3, Home, Package, UserRound } from "lucide-react";
+import { Clock3, Package, UserRound } from "lucide-react";
 
-export type MotoristaView = "inicio" | "entregas" | "historico" | "perfil";
+export type MotoristaView = "entregas" | "historico" | "perfil";
 
 const ITENS: Array<{
   id: MotoristaView;
   label: string;
   href: string;
-  icon: typeof Home;
+  icon: typeof Package;
 }> = [
-  { id: "inicio", label: "Início", href: "/motorista", icon: Home },
   {
     id: "entregas",
     label: "Entregas",
-    href: "/motorista?view=entregas",
+    href: "/motorista",
     icon: Package,
   },
   {
@@ -32,37 +31,47 @@ const ITENS: Array<{
 
 export function MotoristaBottomNav({
   ativo,
+  pendentes = 0,
 }: {
   ativo: MotoristaView;
+  pendentes?: number;
 }) {
   return (
     <nav
       aria-label="Navegação do motorista"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 shadow-[0_-10px_30px_rgba(15,23,42,0.06)] backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-white/95 shadow-[0_-8px_28px_rgba(15,23,42,0.06)] backdrop-blur"
     >
       <div
-        className="mx-auto grid max-w-xl grid-cols-4 px-2 pt-1.5"
+        className="grid w-full grid-cols-3 px-1 pt-1"
         style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
       >
         {ITENS.map((item) => {
           const Icon = item.icon;
           const selecionado = ativo === item.id;
+          const mostrarBadge = item.id === "entregas" && pendentes > 0;
 
           return (
             <Link
               key={item.id}
               href={item.href}
               aria-current={selecionado ? "page" : undefined}
-              className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-bold transition ${
+              className={`relative flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] font-extrabold transition ${
                 selecionado
-                  ? "text-[#0A1F44]"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-[#0A1F44]"
+                  ? "text-[#1768D8]"
+                  : "text-[#59708E] hover:bg-slate-50 hover:text-[#0A1F44]"
               }`}
             >
-              <Icon className="size-4.5 stroke-2" />
+              <span className="relative">
+                <Icon className="size-5 stroke-[2.2]" />
+                {mostrarBadge && (
+                  <span className="absolute -right-3 -top-2 grid min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-black leading-5 text-white">
+                    {pendentes > 9 ? "9+" : pendentes}
+                  </span>
+                )}
+              </span>
               <span>{item.label}</span>
               {selecionado && (
-                <span className="absolute bottom-0 h-0.5 w-7 rounded-full bg-[#FFD200]" />
+                <span className="absolute bottom-0 h-1 w-12 rounded-full bg-[#1768D8]" />
               )}
             </Link>
           );

@@ -38,14 +38,8 @@ interface AlertsPanelProps {
 export function AlertsPanel({ alertas }: AlertsPanelProps) {
   return (
     <Card className="p-7">
-      <div className="mb-[22px] flex items-center justify-between">
+      <div className="mb-[22px]">
         <h2 className="text-[17px] font-bold">Alertas e pendências</h2>
-        {alertas.length > 0 && (
-          <span className="relative size-2.5">
-            <span className="absolute inset-0 animate-ping rounded-full bg-red-600/60" />
-            <span className="absolute inset-0 rounded-full bg-red-600" />
-          </span>
-        )}
       </div>
 
       {/* Estado vazio padronizado com o mesmo componente que "Atividade

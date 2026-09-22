@@ -18,8 +18,10 @@ Windows 11 — máquina da loja
 ├── Drizzle ORM
 │
 └── Docker Desktop / WSL2
-    └── PostgreSQL 16
-        └── volume persistente
+    ├── PostgreSQL 16
+    │   └── volume persistente
+    └── Geocoder local
+        └── geocodebr + CNEFE/IBGE
 ```
 
 O PostgreSQL é publicado no host somente em `127.0.0.1:5433`. A porta do banco nunca deve ser exposta pelo Cloudflare Tunnel.
@@ -36,6 +38,8 @@ Produção do Next.js usa a porta `3003`; desenvolvimento usa `3002`.
 - PostgreSQL 16
 - postgres.js
 - Docker Compose
+- geocodebr + CNEFE/IBGE para geocodificação local de endereços
+- Photon/OpenStreetMap como fallback de geocodificação
 - bcrypt para senha do Portal Admin
 - HMAC-SHA256 para sessões Admin e motorista
 - Cloudflare Tunnel para acesso externo da área do motorista
@@ -48,7 +52,9 @@ Não existe um serviço Node/Express separado. O backend vive no próprio Next.j
 ```text
 Canhoto---Digital/
 ├── docker-compose.yml
-├── backend/postgres/migrations/
+├── backend/
+│   ├── geocoder/
+│   └── postgres/migrations/
 ├── frontend/
 │   ├── src/lib/db/
 │   ├── src/lib/data/
@@ -69,6 +75,8 @@ Na raiz do projeto:
 Copy-Item .env.example .env
 docker compose config --quiet
 docker compose up -d postgres
+docker compose build geocoder
+docker compose up -d geocoder
 docker compose ps
 ```
 
@@ -85,7 +93,8 @@ Crie `frontend/.env.local` a partir de `frontend/.env.example` e configure:
 - `MOTORISTA_SESSION_SECRET`;
 - `COLABORADOR_SESSION_SECRET`, usado pelo login de Gestor de setor;
 - `PUBLIC_MOTORISTA_HOST`, quando houver hostname público;
-- `CANHOTO_UPLOAD_DIR`, somente se quiser alterar o diretório padrão de comprovantes.
+- `CANHOTO_UPLOAD_DIR`, somente se quiser alterar o diretório padrão de comprovantes;
+- `GEOCODER_URL`, endereço interno do geocoder local (por padrão `http://127.0.0.1:8001`).
 
 Desenvolvimento:
 

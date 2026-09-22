@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
 import { entregaHistorico, entregas } from "@/lib/db/schema";
 import { checarRateLimit } from "@/lib/rate-limit";
+import { geocodificarEntregaGratis } from "@/lib/geocodificacao-gratis";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 export interface AtualizarEntregaInput {
@@ -72,6 +73,48 @@ export async function atualizarEntrega(
     return { ok: false, error: "Informe um CEP válido com 8 dígitos." };
   }
 
+  const [dadosAtuais] = await db
+    .select({
+      endereco: entregas.endereco,
+      cep: entregas.cep,
+      latitude: entregas.latitude,
+      longitude: entregas.longitude,
+    })
+    .from(entregas)
+    .where(eq(entregas.id, id))
+    .limit(1);
+
+  if (!dadosAtuais) {
+    return { ok: false, error: "Entrega não encontrada." };
+  }
+
+  const enderecoNovo = input.endereco.trim();
+  const enderecoMudou =
+    enderecoNovo !== (dadosAtuais.endereco ?? "").trim() ||
+    cep !== (dadosAtuais.cep ?? "");
+
+  const coordenadasExistentes =
+    dadosAtuais.latitude !== null && dadosAtuais.longitude !== null
+      ? {
+          latitude: Number(dadosAtuais.latitude),
+          longitude: Number(dadosAtuais.longitude),
+        }
+      : null;
+
+  const coordenadas =
+    enderecoMudou
+      ? await geocodificarEntregaGratis({
+          endereco: enderecoNovo,
+          cep,
+        })
+      : coordenadasExistentes ??
+        (enderecoNovo
+          ? await geocodificarEntregaGratis({
+              endereco: enderecoNovo,
+              cep,
+            })
+          : null);
+
   try {
     const resultadoTransacao = await db.transaction(async (tx) => {
       const [atual] = await tx
@@ -106,8 +149,12 @@ export async function atualizarEntrega(
           data: input.data,
           clienteNome,
           clienteTelefone: input.clienteTelefone.trim() || null,
-          endereco: input.endereco.trim() || null,
+          endereco: enderecoNovo || null,
           cep: cep || null,
+          latitude:
+            coordenadas === null ? null : coordenadas.latitude.toFixed(6),
+          longitude:
+            coordenadas === null ? null : coordenadas.longitude.toFixed(6),
           numeroPedido: input.numeroPedido.trim() || null,
           numeroNfe: input.numeroNfe.trim() || null,
           valorPagamento: input.valorPagamento.toFixed(2),

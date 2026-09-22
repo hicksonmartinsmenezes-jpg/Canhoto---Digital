@@ -15,6 +15,12 @@ vi.mock("@/lib/rate-limit", () => ({
 vi.mock("@/lib/db/errors", () => ({
   mensagemErroBanco: vi.fn(() => "Erro de banco."),
 }));
+vi.mock("@/lib/geocodificacao-gratis", () => ({
+  geocodificarEntregaGratis: vi.fn().mockResolvedValue({
+    latitude: -10.9472,
+    longitude: -37.0731,
+  }),
+}));
 
 import { getDb } from "@/lib/db";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
@@ -41,13 +47,28 @@ const inputBase: AtualizarEntregaInput = {
 };
 
 function configurarDb(statusAtual: "pendente" | "entregue" | "cancelado") {
-  const selectQuery = {
+  const dadosAtuaisQuery = {
+    from: vi.fn(),
+    where: vi.fn(),
+    limit: vi.fn().mockResolvedValue([
+      {
+        endereco: inputBase.endereco,
+        cep: inputBase.cep,
+        latitude: "-10.947200",
+        longitude: "-37.073100",
+      },
+    ]),
+  };
+  dadosAtuaisQuery.from.mockReturnValue(dadosAtuaisQuery);
+  dadosAtuaisQuery.where.mockReturnValue(dadosAtuaisQuery);
+
+  const statusQuery = {
     from: vi.fn(),
     where: vi.fn(),
     limit: vi.fn().mockResolvedValue([{ status: statusAtual }]),
   };
-  selectQuery.from.mockReturnValue(selectQuery);
-  selectQuery.where.mockReturnValue(selectQuery);
+  statusQuery.from.mockReturnValue(statusQuery);
+  statusQuery.where.mockReturnValue(statusQuery);
 
   const updateQuery = {
     set: vi.fn(),
@@ -60,12 +81,13 @@ function configurarDb(statusAtual: "pendente" | "entregue" | "cancelado") {
   const insertValues = vi.fn().mockResolvedValue(undefined);
 
   const tx = {
-    select: vi.fn().mockReturnValue(selectQuery),
+    select: vi.fn().mockReturnValue(statusQuery),
     update: vi.fn().mockReturnValue(updateQuery),
     insert: vi.fn().mockReturnValue({ values: insertValues }),
   };
 
   const db = {
+    select: vi.fn().mockReturnValue(dadosAtuaisQuery),
     transaction: vi.fn(
       async (callback: (trx: typeof tx) => Promise<unknown>) => callback(tx)
     ),

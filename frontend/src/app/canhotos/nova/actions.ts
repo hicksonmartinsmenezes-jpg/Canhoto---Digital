@@ -7,6 +7,7 @@ import { entregas } from "@/lib/db/schema";
 import { obterSetorPadraoId } from "@/lib/data/setores";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
+import { geocodificarEntregaGratis } from "@/lib/geocodificacao-gratis";
 import type { FormaPagamento } from "@/types/database";
 
 export interface CriarEntregaInput {
@@ -70,6 +71,11 @@ export async function criarEntrega(
     return { ok: false, error: "Informe um CEP válido com 8 dígitos." };
   }
 
+  const coordenadas = await geocodificarEntregaGratis({
+    endereco: input.endereco,
+    cep,
+  });
+
   // gestor_setor cadastra sempre no próprio setor. Admin não tem setor
   // próprio, então a entrega cai no setor padrão (única forma de continuar
   // visível pros gestores de setor) — ver @/lib/data/setores.
@@ -85,6 +91,10 @@ export async function criarEntrega(
       clienteTelefone: input.clienteTelefone.trim() || null,
       endereco: input.endereco.trim() || null,
       cep: cep || null,
+      latitude:
+        coordenadas === null ? null : coordenadas.latitude.toFixed(6),
+      longitude:
+        coordenadas === null ? null : coordenadas.longitude.toFixed(6),
       numeroPedido: input.numeroPedido.trim() || null,
       numeroNfe: input.numeroNfe.trim() || null,
       valorPagamento: input.valorPagamento.toFixed(2),

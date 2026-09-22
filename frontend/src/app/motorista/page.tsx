@@ -1,12 +1,14 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  BarChart3,
+  CalendarDays,
   CheckCircle2,
-  Clock3,
+  ChevronRight,
   LogOut,
-  MoreVertical,
+  MapPin,
+  Navigation,
   Package,
-  ShieldCheck,
+  Phone,
   UserRound,
 } from "lucide-react";
 import {
@@ -21,7 +23,7 @@ import {
   getEntregasDoMotorista,
   getHistoricoDoMotorista,
 } from "@/lib/data/entregas";
-import { getMotoboyNome } from "@/lib/data/motoboys";
+import { getMotoboyPerfil } from "@/lib/data/motoboys";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 import { sairMotorista } from "./actions";
 
@@ -29,24 +31,22 @@ export const dynamic = "force-dynamic";
 
 function formatarDataHoje() {
   const data = new Intl.DateTimeFormat("pt-BR", {
-    weekday: "long",
+    weekday: "short",
     day: "2-digit",
     month: "long",
-  }).format(new Date());
+  })
+    .format(new Date())
+    .replace(".", "");
 
   return data.charAt(0).toUpperCase() + data.slice(1);
 }
 
 function resolverView(valor: string | undefined): MotoristaView {
-  if (
-    valor === "entregas" ||
-    valor === "historico" ||
-    valor === "perfil"
-  ) {
+  if (valor === "historico" || valor === "perfil") {
     return valor;
   }
 
-  return "inicio";
+  return "entregas";
 }
 
 export default async function MotoristaPage({
@@ -60,225 +60,244 @@ export default async function MotoristaPage({
   const motoboyId = await obterMotoristaAutorizado();
   if (!motoboyId) redirect("/motorista/login");
 
-  const [nome, entregas, historico] = await Promise.all([
-    getMotoboyNome(motoboyId).then((n) => n ?? "Motorista"),
+  const [perfil, entregas, historico] = await Promise.all([
+    getMotoboyPerfil(motoboyId),
     getEntregasDoMotorista(motoboyId),
     view === "historico"
-      ? getHistoricoDoMotorista(motoboyId, 20)
+      ? getHistoricoDoMotorista(motoboyId, 100)
       : Promise.resolve([]),
   ]);
 
+  const nome = perfil?.nome ?? "Motorista";
   const totalHoje = entregas.length;
   const entregues = entregas.filter(
     (entrega) => entrega.status === "entregue"
   ).length;
-  const pendentes = totalHoje - entregues;
+  const pendentes = entregas.filter(
+    (entrega) =>
+      entrega.status === "pendente" && entrega.horaSaida === null
+  ).length;
   const progresso =
     totalHoje > 0 ? Math.round((entregues / totalHoje) * 100) : 0;
   const possuiEntregaEmRota = entregas.some(
     (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
   );
+  const proximaEntrega =
+    entregas.find(
+      (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
+    ) ?? entregas.find((entrega) => entrega.status === "pendente");
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F5F7FB]">
       <MotoristaAutoRefresh />
       <MotoristaLocationTracker ativo={possuiEntregaEmRota} />
 
-      <main
-        id="inicio"
-        className="w-full px-2 pb-24 pt-3 sm:px-3"
-      >
-        <header className="mb-3 flex items-center justify-between gap-3 px-1">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-              {formatarDataHoje()}
-            </p>
-            <h1 className="mt-0.5 text-[23px] font-black leading-tight tracking-tight text-[#0A1F44]">
-              Olá, {nome} <span aria-hidden="true">👋</span>
-            </h1>
+      {view === "entregas" && (
+        <header className="relative overflow-hidden bg-gradient-to-br from-[#0C3568] to-[#08264F] px-4 pb-4 pt-5 text-white">
+          <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full border border-white/5" />
+
+          <div className="relative w-full">
+            <div>
+              <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
+                <CalendarDays className="size-4" />
+                {formatarDataHoje()}
+              </p>
+
+            </div>
+
+            {proximaEntrega ? (
+              <section className="mt-4 border-t border-white/15 pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-9 place-items-center rounded-full bg-[#1F73F1] text-white">
+                      {proximaEntrega.horaSaida ? (
+                        <Navigation className="size-4" />
+                      ) : (
+                        <Package className="size-4" />
+                      )}
+                    </span>
+                    <span className="text-xs font-black">
+                      {proximaEntrega.horaSaida
+                        ? "Entrega em andamento"
+                        : "Próxima entrega"}
+                    </span>
+                  </div>
+
+                  <span className="rounded-full bg-[#FF942E] px-2.5 py-1 text-[10px] font-black text-white">
+                    {proximaEntrega.horaSaida ? "Em rota" : "Pendente"}
+                  </span>
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-lg font-black">
+                    {proximaEntrega.clienteNome}
+                  </p>
+                  {proximaEntrega.endereco && (
+                    <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium leading-5 text-white/75">
+                      <MapPin className="mt-0.5 size-3.5 shrink-0" />
+                      <span className="line-clamp-1">
+                        {proximaEntrega.endereco}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <Link
+                  href={`/motorista/entregas/${proximaEntrega.id}`}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1F73F1] px-4 py-3 text-sm font-black text-white transition hover:bg-[#1767dc]"
+                >
+                  <Navigation className="size-4" />
+                  Ver entrega
+                  <ChevronRight className="size-4" />
+                </Link>
+              </section>
+            ) : (
+              <section className="mt-4 flex items-center gap-3 border-t border-white/15 pt-4">
+                <CheckCircle2 className="size-6 shrink-0 text-white/85" />
+                <div>
+                  <p className="text-sm font-black">Nenhuma entrega pendente</p>
+                  <p className="mt-0.5 text-xs font-medium text-white/65">
+                    Você está em dia com as entregas de hoje.
+                  </p>
+                </div>
+              </section>
+            )}
           </div>
+        </header>
+      )}
 
-          <details className="group relative shrink-0">
-            <summary
-              aria-label="Abrir menu"
-              className="grid size-10 cursor-pointer list-none place-items-center rounded-full border border-slate-200 bg-white text-[#0A1F44] shadow-sm transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
-            >
-              <MoreVertical className="size-4.5" />
-            </summary>
+      {view === "perfil" && (
+        <header className="bg-[#082B57] text-white">
+          <div className="w-full px-4 py-4">
+            {view === "perfil" && (
+              <div className="flex items-center gap-4 py-1">
+                <span className="grid size-16 shrink-0 place-items-center rounded-full border-2 border-white/70 bg-white text-[#0A2C5A]">
+                  <UserRound className="size-8" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate text-[24px] font-black">{nome}</h1>
+                  <p className="mt-0.5 text-sm font-medium text-white/65">
+                    Motorista
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#15924A] px-2.5 py-1 text-[10px] font-black">
+                  <CheckCircle2 className="size-3" />
+                  Ativo
+                </span>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
 
-            <div className="absolute right-0 top-[46px] z-50 w-36 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+      <main className="w-full pb-28">
+        {view === "entregas" && (
+          <>
+            <section className="border-b border-slate-200 bg-white px-4 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-black text-[#0A1F44]">
+                    Seu progresso de hoje
+                  </h2>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500">
+                    {entregues} de {totalHoje}{" "}
+                    {totalHoje === 1
+                      ? "entrega concluída"
+                      : "entregas concluídas"}
+                  </p>
+                </div>
+                <span className="text-lg font-black text-[#0A1F44]">
+                  {progresso}%
+                </span>
+              </div>
+
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-[#1F73F1] transition-[width]"
+                  style={{ width: `${progresso}%` }}
+                />
+              </div>
+            </section>
+
+            <div className="border-b border-slate-200 bg-[#F5F7FB] px-4 py-3">
+              <h2 className="text-[17px] font-black text-[#0A1F44]">
+                Entregas de hoje
+              </h2>
+            </div>
+
+            <div className="pt-3">
+              <MotoristaEntregasHoje entregas={entregas} />
+            </div>
+          </>
+        )}
+
+        {view === "historico" && (
+          <div className="pt-4">
+            <MotoristaHistorico entregas={historico} />
+          </div>
+        )}
+
+        {view === "perfil" && (
+          <section className="bg-white">
+            <div className="border-b border-slate-200 px-4 py-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                Nome
+              </p>
+              <p className="mt-1 text-base font-black text-[#0A1F44]">
+                {nome}
+              </p>
+            </div>
+
+            <div className="border-b border-slate-200 px-4 py-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                Função
+              </p>
+              <p className="mt-1 text-sm font-bold text-[#0A1F44]">
+                Motorista
+              </p>
+            </div>
+
+            {perfil?.telefone && (
+              <div className="border-b border-slate-200 px-4 py-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                  Telefone
+                </p>
+                <a
+                  href={`tel:${perfil.telefone.replace(/\D/g, "")}`}
+                  className="mt-1 inline-flex items-center gap-2 text-sm font-bold text-[#0A1F44]"
+                >
+                  <Phone className="size-4 text-[#315A8E]" />
+                  {perfil.telefone}
+                </a>
+              </div>
+            )}
+
+            <div className="border-b border-slate-200 px-4 py-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                Status
+              </p>
+              <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#15924A]">
+                <CheckCircle2 className="size-4" />
+                Ativo
+              </p>
+            </div>
+
+            <div className="px-4 py-5">
               <form action={sairMotorista}>
                 <button
                   type="submit"
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                  className="inline-flex w-full items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
                 >
                   <LogOut className="size-4" />
                   Sair
                 </button>
               </form>
             </div>
-          </details>
-        </header>
-
-        {view === "inicio" && (
-          <>
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
-              <div className="grid grid-cols-3 divide-x divide-slate-200">
-                <div className="flex items-center gap-2.5 px-3 py-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#0A1F44]/8 text-[#0A1F44]">
-                    <Package className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Entregas
-                    </p>
-                    <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
-                      {totalHoje}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2.5 px-3 py-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600">
-                    <CheckCircle2 className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Concluídas
-                    </p>
-                    <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
-                      {entregues}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2.5 px-3 py-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#DE6C09]/10 text-[#DE6C09]">
-                    <Clock3 className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Pendentes
-                    </p>
-                    <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
-                      {pendentes}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <a
-              href="#entregas-hoje"
-              className="mt-3 block rounded-2xl border border-amber-200 bg-[#FFF9E8] px-4 py-3.5 shadow-[0_6px_18px_rgba(10,31,68,0.05)] transition hover:bg-amber-50"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <BarChart3 className="size-5 text-[#0A1F44]" />
-                  <h2 className="text-base font-extrabold text-[#0A1F44]">
-                    Progresso do dia
-                  </h2>
-                </div>
-                <span className="text-lg font-black text-[#DE6C09]">
-                  {progresso}%
-                </span>
-              </div>
-
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-amber-100">
-                <div
-                  className="h-full rounded-full bg-linear-to-r from-[#F2B22E] to-[#DE6C09] transition-[width]"
-                  style={{ width: `${progresso}%` }}
-                />
-              </div>
-
-              <p className="mt-2.5 text-xs font-semibold text-slate-500">
-                {totalHoje === 0
-                  ? "Nenhuma entrega programada para hoje"
-                  : `${entregues} de ${totalHoje} ${totalHoje === 1 ? "entrega concluída" : "entregas concluídas"}`}
-              </p>
-            </a>
-
-            <MotoristaEntregasHoje entregas={entregas} />
-          </>
-        )}
-
-        {view === "entregas" && (
-          <MotoristaEntregasHoje entregas={entregas} />
-        )}
-
-        {view === "historico" && (
-          <MotoristaHistorico entregas={historico} />
-        )}
-
-        {view === "perfil" && (
-          <section>
-            <div className="mb-5">
-              <p className="text-sm font-semibold text-slate-500">Perfil</p>
-              <h2 className="mt-1 text-2xl font-black tracking-tight text-[#0A1F44]">
-                Minha conta
-              </h2>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
-              <div className="flex items-center gap-4 border-b border-slate-100 p-5">
-                <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#0A1F44] text-white">
-                  <UserRound className="size-7" />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-xl font-black text-[#0A1F44]">
-                    {nome}
-                  </p>
-                  <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600">
-                    <ShieldCheck className="size-4" />
-                    Motorista ativo
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 divide-x divide-slate-100 px-2 py-5 text-center">
-                <div>
-                  <p className="text-2xl font-black text-[#0A1F44]">
-                    {totalHoje}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Hoje
-                  </p>
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-emerald-600">
-                    {entregues}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Concluídas
-                  </p>
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-[#DE6C09]">
-                    {pendentes}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Pendentes
-                  </p>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-100 p-4">
-                <form action={sairMotorista}>
-                  <button
-                    type="submit"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-100"
-                  >
-                    <LogOut className="size-4" />
-                    Sair da conta
-                  </button>
-                </form>
-              </div>
-            </div>
           </section>
         )}
       </main>
 
-      <MotoristaBottomNav ativo={view} />
+      <MotoristaBottomNav ativo={view} pendentes={pendentes} />
     </div>
   );
 }

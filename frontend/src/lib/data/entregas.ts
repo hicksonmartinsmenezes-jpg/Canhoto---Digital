@@ -191,7 +191,7 @@ function paraChaveDiaLocal(d: Date): string {
   return `${ano}-${mes}-${dia}`;
 }
 
-export async function getEntregasPorDia(dias = 14): Promise<EntregaPorDia[]> {
+export async function getEntregasPorDia(dias = 7): Promise<EntregaPorDia[]> {
   const hoje = new Date();
   const inicio = new Date(hoje);
   inicio.setDate(inicio.getDate() - (dias - 1));
@@ -227,47 +227,6 @@ export async function getEntregasPorDia(dias = 14): Promise<EntregaPorDia[]> {
     const [, mes, dia] = dataIso.split("-");
     return { dataIso, dataFormatada: `${dia}/${mes}`, total };
   });
-}
-
-export interface EntregaRecente {
-  numero: string;
-  cliente: string;
-  valor: string;
-  formaPagamento: FormaPagamento;
-  data: string;
-  status: StatusEntrega;
-}
-
-export async function getEntregasRecentes(
-  limit = 5,
-  setorId?: string | null
-): Promise<EntregaRecente[]> {
-  const db = getDb();
-  if (!db) return [];
-  if (setorId === null) return [];
-
-  const rows = await db
-    .select({
-      numero: entregas.numero,
-      clienteNome: entregas.clienteNome,
-      valorPagamento: entregas.valorPagamento,
-      formaPagamento: entregas.formaPagamento,
-      data: entregas.data,
-      status: entregas.status,
-    })
-    .from(entregas)
-    .where(setorId ? eq(entregas.setorId, setorId) : undefined)
-    .orderBy(desc(entregas.criadoEm))
-    .limit(limit);
-
-  return rows.map((entrega) => ({
-    numero: `#${entrega.numero}`,
-    cliente: entrega.clienteNome,
-    valor: formatBRL(Number(entrega.valorPagamento)),
-    formaPagamento: entrega.formaPagamento,
-    data: formatDateBR(entrega.data),
-    status: entrega.status,
-  }));
 }
 
 export interface Alerta {
@@ -383,11 +342,15 @@ export async function getAtividadeRecente(
   const itens: AtividadeItem[] = [];
 
   for (const entrega of cadastros) {
+    const responsavel =
+      entrega.cadastradoPorNome ??
+      (entrega.cadastradoPorAdminEmail ? "Administrador" : "Alguém");
+
     itens.push({
       id: `cadastro-${entrega.id}`,
       hora: formatHora(entrega.criadoEm),
       titulo: "Entrega registrada",
-      descricao: `${entrega.cadastradoPorNome ?? entrega.cadastradoPorAdminEmail ?? "Alguém"} cadastrou a entrega #${entrega.numero} (${entrega.clienteNome}).`,
+      descricao: `${responsavel} cadastrou a entrega #${entrega.numero} para ${entrega.clienteNome}.`,
       cor: "primary",
       timestamp: entrega.criadoEm,
     });
@@ -637,6 +600,8 @@ export interface EntregaDetalhe {
   clienteTelefone: string;
   endereco: string;
   cep: string;
+  latitude: number | null;
+  longitude: number | null;
   numeroPedido: string;
   numeroNfe: string;
   valorPagamento: string;
@@ -662,6 +627,8 @@ export async function getEntregaById(
       clienteTelefone: entregas.clienteTelefone,
       endereco: entregas.endereco,
       cep: entregas.cep,
+      latitude: entregas.latitude,
+      longitude: entregas.longitude,
       numeroPedido: entregas.numeroPedido,
       numeroNfe: entregas.numeroNfe,
       valorPagamento: entregas.valorPagamento,
@@ -686,6 +653,10 @@ export async function getEntregaById(
     clienteTelefone: entrega.clienteTelefone ?? "",
     endereco: entrega.endereco ?? "",
     cep: entrega.cep ? formatCep(entrega.cep) : "",
+    latitude:
+      entrega.latitude === null ? null : Number(entrega.latitude),
+    longitude:
+      entrega.longitude === null ? null : Number(entrega.longitude),
     numeroPedido: entrega.numeroPedido ?? "",
     numeroNfe: entrega.numeroNfe ?? "",
     valorPagamento: String(entrega.valorPagamento),

@@ -389,6 +389,7 @@ export function AdicionarEntregaWizard({
                 />
               </Field>
             </div>
+
             <Field label="Observações" optional>
               <textarea
                 rows={3}
