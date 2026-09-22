@@ -54,7 +54,6 @@ export function MiniMapaEntrega({
 
   useEffect(() => {
     if (!mostrarMotorista || !("geolocation" in navigator)) {
-      setMotorista(null);
       return;
     }
 
@@ -75,6 +74,8 @@ export function MiniMapaEntrega({
 
     return () => navigator.geolocation.clearWatch(watchId);
   }, [mostrarMotorista]);
+
+  const motoristaVisivel = mostrarMotorista ? motorista : null;
 
   const tileUrl =
     process.env.NEXT_PUBLIC_MAP_TILE_URL?.trim() ||
@@ -125,10 +126,10 @@ export function MiniMapaEntrega({
           }}
         />
 
-        {motorista && (
+        {motoristaVisivel && (
           <>
             <CircleMarker
-              center={motorista}
+              center={motoristaVisivel}
               radius={9}
               pathOptions={{
                 color: "#ffffff",
@@ -138,7 +139,7 @@ export function MiniMapaEntrega({
               }}
             />
             <CircleMarker
-              center={motorista}
+              center={motoristaVisivel}
               radius={3}
               pathOptions={{
                 color: "#ffffff",
@@ -150,7 +151,7 @@ export function MiniMapaEntrega({
           </>
         )}
 
-        <AjustarMapa destino={destino} motorista={motorista} />
+        <AjustarMapa destino={destino} motorista={motoristaVisivel} />
       </MapContainer>
 
       <div className="pointer-events-none absolute inset-0 z-[400] bg-gradient-to-b from-white/5 via-transparent to-white/10" />
@@ -162,7 +163,7 @@ export function MiniMapaEntrega({
         </span>
       </div>
 
-      {motorista && (
+      {motoristaVisivel && (
         <div className="pointer-events-none absolute right-3 top-3 z-[500] flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur">
           <span className="size-2 rounded-full bg-[#1768D8]" />
           <span className="text-[11px] font-black text-[#0A1F44]">
