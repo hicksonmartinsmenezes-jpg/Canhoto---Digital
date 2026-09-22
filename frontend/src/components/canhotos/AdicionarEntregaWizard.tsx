@@ -155,6 +155,13 @@ export function AdicionarEntregaWizard({
       setErro("Selecione a forma de pagamento.");
       return;
     }
+    if (
+      form.endereco.trim() &&
+      (form.latitude === null || form.longitude === null)
+    ) {
+      setErro("Confirme a localização exata da entrega no mapa.");
+      return;
+    }
     setErro(null);
     irPara(3);
   }
