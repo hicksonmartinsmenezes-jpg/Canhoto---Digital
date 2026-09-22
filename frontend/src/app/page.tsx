@@ -44,11 +44,6 @@ export default async function DashboardPage() {
     getMotoristasEmRota(),
   ]);
 
-  const eficiencia =
-    stats.totalEntregas > 0
-      ? ((stats.entregues / stats.totalEntregas) * 100).toFixed(1).replace(".", ",")
-      : "0,0";
-
   return (
     <div>
       <PageHeader title="Dashboard" beta alertas={alertas} />
@@ -68,7 +63,6 @@ export default async function DashboardPage() {
             label="Entregues"
             value={stats.entregues.toLocaleString("pt-BR")}
             sub=""
-            mini={{ label: "Eficiência", value: `${eficiencia}%` }}
           />
         </div>
 
