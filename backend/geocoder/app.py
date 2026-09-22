@@ -73,18 +73,72 @@ def _extrair_numero(endereco: str) -> int | None:
     return int(numeros[-1])
 
 
-def _score_logradouro(endereco: str, logradouro: str | None) -> float:
+_TERMOS_GENERICOS = {
+    "RUA",
+    "R",
+    "AV",
+    "AVENIDA",
+    "TRAVESSA",
+    "TV",
+    "ESTRADA",
+    "RODOVIA",
+    "ROD",
+    "LOTEAMENTO",
+    "LOT",
+    "CONJUNTO",
+    "CJ",
+    "RESIDENCIAL",
+    "RES",
+    "BAIRRO",
+    "N",
+    "NUMERO",
+}
+
+
+def _tokens_relevantes(texto: str | None) -> set[str]:
+    return {
+        token
+        for token in _normalizar(texto).split()
+        if token not in _TERMOS_GENERICOS and not token.isdigit()
+    }
+
+
+def _contexto_compativel(
+    endereco: str,
+    logradouro: str | None,
+    localidade: str | None,
+) -> bool:
+    tokens_endereco = _tokens_relevantes(endereco)
+    tokens_logradouro = _tokens_relevantes(logradouro)
+    extras = tokens_endereco - tokens_logradouro
+
+    # Se o operador não informou contexto além do próprio logradouro e número,
+    # não inventamos uma exigência de bairro/localidade.
+    if not extras:
+        return True
+
+    tokens_localidade = _tokens_relevantes(localidade)
+    return bool(extras & tokens_localidade)
+
+
+def _score_candidato(
+    endereco: str,
+    logradouro: str | None,
+    localidade: str | None,
+) -> float:
     alvo = _normalizar(endereco)
-    candidato = _normalizar(logradouro)
+    candidato = _normalizar(
+        " ".join(
+            parte
+            for parte in [logradouro, localidade]
+            if parte
+        )
+    )
 
     if not alvo or not candidato:
         return 0.0
 
-    score = SequenceMatcher(None, alvo, candidato).ratio()
-    if candidato in alvo:
-        score += 0.45
-
-    return score
+    return SequenceMatcher(None, alvo, candidato).ratio()
 
 
 def _to_float(valor: Any) -> float | None:
@@ -145,17 +199,35 @@ def _geocodificar(endereco: str, cep: str) -> dict[str, Any]:
     if not candidatos_validos:
         return {"ok": False, "motivo": "cep_sem_logradouro"}
 
-    escolhido = max(
-        candidatos_validos,
-        key=lambda item: _score_logradouro(
+    candidatos_contexto = [
+        item
+        for item in candidatos_validos
+        if _contexto_compativel(
             endereco,
             item.get("logradouro"),
+            item.get("localidade"),
+        )
+    ]
+
+    if not candidatos_contexto:
+        return {"ok": False, "motivo": "localidade_incompativel"}
+
+    escolhido = max(
+        candidatos_contexto,
+        key=lambda item: _score_candidato(
+            endereco,
+            item.get("logradouro"),
+            item.get("localidade"),
         ),
     )
 
-    score = _score_logradouro(endereco, escolhido.get("logradouro"))
-    if score < 0.62:
-        return {"ok": False, "motivo": "logradouro_incompativel"}
+    score = _score_candidato(
+        endereco,
+        escolhido.get("logradouro"),
+        escolhido.get("localidade"),
+    )
+    if score < 0.52:
+        return {"ok": False, "motivo": "endereco_incompativel"}
 
     entrada = pl.DataFrame(
         {
