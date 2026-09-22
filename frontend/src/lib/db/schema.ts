@@ -281,6 +281,13 @@ export const entregas = pgTable(
     clienteTelefone: text("cliente_telefone"),
     endereco: text("endereco"),
     cep: text("cep"),
+    latitude: numeric("latitude", { precision: 9, scale: 6 }),
+    longitude: numeric("longitude", { precision: 9, scale: 6 }),
+    geocodificacaoFonte: text("geocodificacao_fonte"),
+    geocodificadoEm: timestamp("geocodificado_em", {
+      withTimezone: true,
+      mode: "string",
+    }),
     numeroPedido: text("numero_pedido"),
     numeroNfe: text("numero_nfe"),
     valorPagamento: numeric("valor_pagamento", {
@@ -330,7 +337,88 @@ export const entregas = pgTable(
     index("idx_entregas_cadastrado_por_admin").on(table.cadastradoPorAdmin),
     check(
       "ck_entregas_cep",
-      sql`${table.cep} is null or ${table.cep} ~ '^[0-9]{8}$'`
+      sql`${table.cep} is null or ${table.cep} ~ '^[0-9]{8}
+  ]
+);
+
+export const entregaAnexos = pgTable(
+  "entrega_anexos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entregaId: uuid("entrega_id")
+      .notNull()
+      .references(() => entregas.id, { onDelete: "cascade" }),
+    tipo: tipoAnexoEntregaEnum("tipo").notNull(),
+    arquivoUrl: text("arquivo_url").notNull(),
+    capturadoEm: timestamp("capturado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+    capturadoPor: uuid("capturado_por").references(() => colaboradores.id),
+    capturadoPorMotoboy: uuid("capturado_por_motoboy").references(
+      () => motoboys.id
+    ),
+  },
+  (table) => [
+    index("idx_entrega_anexos_entrega").on(table.entregaId),
+    index("idx_entrega_anexos_motoboy").on(table.capturadoPorMotoboy),
+    check(
+      "ck_entrega_anexos_um_ator",
+      sql`num_nonnulls(${table.capturadoPor}, ${table.capturadoPorMotoboy}) <= 1`
+    ),
+  ]
+);
+
+export const entregaHistorico = pgTable(
+  "entrega_historico",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entregaId: uuid("entrega_id")
+      .notNull()
+      .references(() => entregas.id, { onDelete: "cascade" }),
+    statusAnterior: statusEntregaEnum("status_anterior"),
+    statusNovo: statusEntregaEnum("status_novo").notNull(),
+    alteradoPor: uuid("alterado_por").references(() => colaboradores.id),
+    alteradoPorMotoboy: uuid("alterado_por_motoboy").references(
+      () => motoboys.id
+    ),
+    alteradoPorAdmin: uuid("alterado_por_admin").references(
+      () => usuariosAdmin.id
+    ),
+    alteradoEm: timestamp("alterado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+    observacao: text("observacao"),
+  },
+  (table) => [
+    index("idx_entrega_historico_entrega").on(table.entregaId),
+    index("idx_entrega_historico_colaborador").on(table.alteradoPor),
+    index("idx_entrega_historico_motoboy").on(table.alteradoPorMotoboy),
+    index("idx_entrega_historico_admin").on(table.alteradoPorAdmin),
+    check(
+      "ck_historico_um_ator",
+      sql`num_nonnulls(${table.alteradoPor}, ${table.alteradoPorMotoboy}, ${table.alteradoPorAdmin}) <= 1`
+    ),
+  ]
+);
+`
+    ),
+    check(
+      "ck_entregas_latitude",
+      sql`${table.latitude} is null or ${table.latitude} between -90 and 90`
+    ),
+    check(
+      "ck_entregas_longitude",
+      sql`${table.longitude} is null or ${table.longitude} between -180 and 180`
+    ),
+    check(
+      "ck_entregas_coordenadas_completas",
+      sql`(${table.latitude} is null) = (${table.longitude} is null)`
     ),
   ]
 );
