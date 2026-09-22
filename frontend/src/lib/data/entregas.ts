@@ -191,7 +191,7 @@ function paraChaveDiaLocal(d: Date): string {
   return `${ano}-${mes}-${dia}`;
 }
 
-export async function getEntregasPorDia(dias = 14): Promise<EntregaPorDia[]> {
+export async function getEntregasPorDia(dias = 7): Promise<EntregaPorDia[]> {
   const hoje = new Date();
   const inicio = new Date(hoje);
   inicio.setDate(inicio.getDate() - (dias - 1));
