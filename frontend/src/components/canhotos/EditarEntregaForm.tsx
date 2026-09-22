@@ -67,6 +67,14 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
       setErro("Selecione a forma de pagamento.");
       return;
     }
+    if (
+      entrega.status !== "entregue" &&
+      form.endereco.trim() &&
+      (form.latitude === null || form.longitude === null)
+    ) {
+      setErro("Confirme a localização exata da entrega no mapa.");
+      return;
+    }
 
     setErro(null);
     startTransition(async () => {
