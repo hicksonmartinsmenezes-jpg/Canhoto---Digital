@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/canhotos/form-fields";
-import { EntregaLocalizacaoPicker } from "@/components/canhotos/EntregaLocalizacaoPicker";
 import { FORMA_PAGAMENTO_LABEL, STATUS_LABEL } from "@/lib/status";
 import { maskCepInput, maskCurrencyInput, maskPhoneInput, parseCurrencyInput } from "@/lib/format";
 import { atualizarEntrega } from "@/app/canhotos/[id]/editar/actions";
@@ -65,14 +64,6 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
     }
     if (!form.formaPagamento) {
       setErro("Selecione a forma de pagamento.");
-      return;
-    }
-    if (
-      entrega.status !== "entregue" &&
-      form.endereco.trim() &&
-      (form.latitude === null || form.longitude === null)
-    ) {
-      setErro("Confirme a localização exata da entrega no mapa.");
       return;
     }
 
@@ -224,17 +215,6 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   onChange={(e) => set("cep", maskCepInput(e.target.value))}
                 />
               </Field>
-            </div>
-
-            <div className="mt-5">
-              <EntregaLocalizacaoPicker
-                cep={form.cep}
-                latitude={form.latitude}
-                longitude={form.longitude}
-                onChange={({ latitude, longitude }) =>
-                  setForm((f) => ({ ...f, latitude, longitude }))
-                }
-              />
             </div>
 
             <div className="mt-5">
