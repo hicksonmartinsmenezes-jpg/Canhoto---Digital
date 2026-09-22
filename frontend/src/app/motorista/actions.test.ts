@@ -6,6 +6,14 @@ vi.mock("next/cache", () => ({
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
 }));
+vi.mock("node:fs/promises", () => ({
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  rm: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/lib/comprovantes-storage", () => ({
+  diretorioRaizUploads: () => "/tmp/canhoto-digital-test",
+}));
 vi.mock("@/lib/rate-limit", () => ({
   checarRateLimit: vi.fn(),
 }));
@@ -68,11 +76,13 @@ function criarUpdate(resultados: Array<Array<{ id: string }>>) {
 }
 
 function configurarDb({
-  updateResultados = [[{ id: "entrega-1" }]],
-  transacaoResultados = [[{ id: "entrega-1" }]],
+  updateResultados = [[{ id: ENTREGA_ID }]],
+  transacaoResultados = [[{ id: ENTREGA_ID }]],
+  selectResultado = [{ id: ENTREGA_ID }],
 }: {
   updateResultados?: Array<Array<{ id: string }>>;
   transacaoResultados?: Array<Array<{ id: string }>>;
+  selectResultado?: Array<{ id: string }>;
 } = {}) {
   const updateQuery = criarUpdate(updateResultados);
   const txUpdateQuery = criarUpdate(transacaoResultados);
@@ -80,7 +90,7 @@ function configurarDb({
   const selectQuery = {
     from: vi.fn(),
     where: vi.fn(),
-    limit: vi.fn().mockResolvedValue([{ id: ENTREGA_ID }]),
+    limit: vi.fn().mockResolvedValue(selectResultado),
   };
   selectQuery.from.mockReturnValue(selectQuery);
   selectQuery.where.mockReturnValue(selectQuery);
@@ -121,7 +131,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("inicia a entrega somente uma vez", async () => {
     configurarDb({
-      updateResultados: [[{ id: "entrega-1" }], []],
+      updateResultados: [[{ id: ENTREGA_ID }], []],
     });
 
     await expect(iniciarEntrega(ENTREGA_ID)).resolves.toEqual({ ok: true });
@@ -134,7 +144,9 @@ describe("ações do motorista com PostgreSQL local", () => {
   it("confirma entrega iniciada e registra o motorista no histórico", async () => {
     const { tx, insertValues } = configurarDb();
 
-    await expect(confirmarEntrega(ENTREGA_ID, criarComprovantes())).resolves.toEqual({
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarComprovantes())
+    ).resolves.toEqual({
       ok: true,
     });
 
@@ -152,27 +164,33 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("não confirma entrega ainda não iniciada", async () => {
     const { insertValues } = configurarDb({
-      transacaoResultados: [[]],
+      selectResultado: [],
     });
 
-    await expect(confirmarEntrega(ENTREGA_ID, criarComprovantes())).resolves.toEqual({
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarComprovantes())
+    ).resolves.toEqual({
       ok: false,
-      error: "Entrega não encontrada ou ainda não iniciada.",
+      error: "Entrega não encontrada, já concluída ou ainda não iniciada.",
     });
     expect(insertValues).not.toHaveBeenCalled();
   });
 
   it("não confirma a mesma entrega duas vezes", async () => {
     const { insertValues } = configurarDb({
-      transacaoResultados: [[{ id: "entrega-1" }], []],
+      transacaoResultados: [[{ id: ENTREGA_ID }], []],
     });
 
-    await expect(confirmarEntrega(ENTREGA_ID, criarComprovantes())).resolves.toEqual({
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarComprovantes())
+    ).resolves.toEqual({
       ok: true,
     });
-    await expect(confirmarEntrega(ENTREGA_ID, criarComprovantes())).resolves.toEqual({
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarComprovantes())
+    ).resolves.toEqual({
       ok: false,
-      error: "Entrega não encontrada ou ainda não iniciada.",
+      error: "Entrega já concluída ou não está mais disponível.",
     });
 
     expect(insertValues).toHaveBeenCalledTimes(1);
