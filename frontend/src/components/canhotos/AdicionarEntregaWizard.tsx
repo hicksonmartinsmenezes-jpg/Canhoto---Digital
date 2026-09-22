@@ -29,8 +29,6 @@ interface FormState {
   clienteTelefone: string;
   endereco: string;
   cep: string;
-  latitude: number | null;
-  longitude: number | null;
   observacoes: string;
 }
 
@@ -91,8 +89,6 @@ export function AdicionarEntregaWizard({
     clienteTelefone: "",
     endereco: "",
     cep: "",
-    latitude: null,
-    longitude: null,
     observacoes: "",
   });
 
@@ -112,14 +108,7 @@ export function AdicionarEntregaWizard({
   }, []);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((f) => ({
-      ...f,
-      [key]: value,
-      ...((key === "endereco" || key === "cep") &&
-      (f.latitude !== null || f.longitude !== null)
-        ? { latitude: null, longitude: null }
-        : {}),
-    }));
+    setForm((f) => ({ ...f, [key]: value }));
   }
 
   function irPara(novoStep: 1 | 2 | 3) {
@@ -172,8 +161,6 @@ export function AdicionarEntregaWizard({
         clienteTelefone: form.clienteTelefone,
         endereco: form.endereco,
         cep: form.cep,
-        latitude: form.latitude,
-        longitude: form.longitude,
         observacoes: form.observacoes,
       });
 
