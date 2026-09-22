@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { BarChart3 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -9,10 +10,13 @@ interface EntregasPorDiaChartProps {
   dados: EntregaPorDia[];
 }
 
-// O Dashboard usa sempre os últimos 7 dias. A série já chega pronta do
-// servidor, incluindo dias sem entrega com total zero.
+const PERIODOS = [7, 15, 30, 90] as const;
+type Periodo = (typeof PERIODOS)[number];
+
 export function EntregasPorDiaChart({ dados }: EntregasPorDiaChartProps) {
-  const dadosFiltrados = dados.slice(-7);
+  const [periodo, setPeriodo] = useState<Periodo>(7);
+
+  const dadosFiltrados = dados.slice(-periodo);
   const total = dadosFiltrados.reduce((soma, d) => soma + d.total, 0);
   const maximo = Math.max(...dadosFiltrados.map((d) => d.total), 1);
 
@@ -20,16 +24,29 @@ export function EntregasPorDiaChart({ dados }: EntregasPorDiaChartProps) {
     <Card className="p-7">
       <div className="mb-[22px] flex items-center justify-between gap-4">
         <h2 className="text-[17px] font-bold">Entregas por dia</h2>
-        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-          Últimos 7 dias
-        </span>
+
+        <select
+          value={periodo}
+          onChange={(e) => setPeriodo(Number(e.target.value) as Periodo)}
+          aria-label="Período do gráfico"
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500 outline-none transition-colors focus:border-[#0A1F44]"
+        >
+          {PERIODOS.map((p) => (
+            <option key={p} value={p}>
+              Últimos {p} dias
+            </option>
+          ))}
+        </select>
       </div>
 
       {total === 0 ? (
         <EmptyState compact icon={BarChart3} title="Nenhuma entrega no período" />
       ) : (
         <div className="overflow-x-auto pt-8">
-          <div className="flex h-[160px] min-w-[320px] items-end gap-1.5 sm:gap-2">
+          <div
+            className="flex h-[160px] items-end gap-1.5 sm:gap-2"
+            style={{ minWidth: `${Math.max(periodo * 6, 320)}px` }}
+          >
             {dadosFiltrados.map((d) => {
               const alturaPct =
                 d.total === 0 ? 2 : Math.max((d.total / maximo) * 100, 6);
