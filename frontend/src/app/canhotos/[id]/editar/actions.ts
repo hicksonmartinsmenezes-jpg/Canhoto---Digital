@@ -99,16 +99,6 @@ export async function atualizarEntrega(
     return { ok: false, error: "Localização exata inválida." };
   }
 
-  if (
-    input.endereco.trim() &&
-    (input.latitude === null || input.longitude === null)
-  ) {
-    return {
-      ok: false,
-      error: "Confirme a localização exata da entrega no mapa.",
-    };
-  }
-
   try {
     const resultadoTransacao = await db.transaction(async (tx) => {
       const [atual] = await tx
@@ -134,6 +124,17 @@ export async function atualizarEntrega(
           ok: false as const,
           error:
             "Uma entrega concluída com comprovante não pode voltar para outro status.",
+        };
+      }
+
+      if (
+        atual.status !== "entregue" &&
+        input.endereco.trim() &&
+        (input.latitude === null || input.longitude === null)
+      ) {
+        return {
+          ok: false as const,
+          error: "Confirme a localização exata da entrega no mapa.",
         };
       }
 
