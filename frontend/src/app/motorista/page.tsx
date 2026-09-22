@@ -74,7 +74,8 @@ export default async function MotoristaPage({
     (entrega) => entrega.status === "entregue"
   ).length;
   const pendentes = entregas.filter(
-    (entrega) => entrega.status === "pendente"
+    (entrega) =>
+      entrega.status === "pendente" && entrega.horaSaida === null
   ).length;
   const progresso =
     totalHoje > 0 ? Math.round((entregues / totalHoje) * 100) : 0;
