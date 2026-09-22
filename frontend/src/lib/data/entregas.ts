@@ -229,47 +229,6 @@ export async function getEntregasPorDia(dias = 7): Promise<EntregaPorDia[]> {
   });
 }
 
-export interface EntregaRecente {
-  numero: string;
-  cliente: string;
-  valor: string;
-  formaPagamento: FormaPagamento;
-  data: string;
-  status: StatusEntrega;
-}
-
-export async function getEntregasRecentes(
-  limit = 5,
-  setorId?: string | null
-): Promise<EntregaRecente[]> {
-  const db = getDb();
-  if (!db) return [];
-  if (setorId === null) return [];
-
-  const rows = await db
-    .select({
-      numero: entregas.numero,
-      clienteNome: entregas.clienteNome,
-      valorPagamento: entregas.valorPagamento,
-      formaPagamento: entregas.formaPagamento,
-      data: entregas.data,
-      status: entregas.status,
-    })
-    .from(entregas)
-    .where(setorId ? eq(entregas.setorId, setorId) : undefined)
-    .orderBy(desc(entregas.criadoEm))
-    .limit(limit);
-
-  return rows.map((entrega) => ({
-    numero: `#${entrega.numero}`,
-    cliente: entrega.clienteNome,
-    valor: formatBRL(Number(entrega.valorPagamento)),
-    formaPagamento: entrega.formaPagamento,
-    data: formatDateBR(entrega.data),
-    status: entrega.status,
-  }));
-}
-
 export interface Alerta {
   id: string;
   tag: string;
