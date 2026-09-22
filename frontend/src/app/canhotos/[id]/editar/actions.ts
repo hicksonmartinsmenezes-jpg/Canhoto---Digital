@@ -15,6 +15,8 @@ export interface AtualizarEntregaInput {
   clienteTelefone: string;
   endereco: string;
   cep: string;
+  latitude: number | null;
+  longitude: number | null;
   numeroPedido: string;
   numeroNfe: string;
   valorPagamento: number;
@@ -72,6 +74,31 @@ export async function atualizarEntrega(
     return { ok: false, error: "Informe um CEP válido com 8 dígitos." };
   }
 
+  const temLatitude = input.latitude !== null;
+  const temLongitude = input.longitude !== null;
+
+  if (temLatitude !== temLongitude) {
+    return {
+      ok: false,
+      error: "Selecione latitude e longitude juntas para o ponto exato.",
+    };
+  }
+
+  if (
+    input.latitude !== null &&
+    input.longitude !== null &&
+    (
+      !Number.isFinite(input.latitude) ||
+      !Number.isFinite(input.longitude) ||
+      input.latitude < -90 ||
+      input.latitude > 90 ||
+      input.longitude < -180 ||
+      input.longitude > 180
+    )
+  ) {
+    return { ok: false, error: "Localização exata inválida." };
+  }
+
   try {
     const resultadoTransacao = await db.transaction(async (tx) => {
       const [atual] = await tx
@@ -108,6 +135,10 @@ export async function atualizarEntrega(
           clienteTelefone: input.clienteTelefone.trim() || null,
           endereco: input.endereco.trim() || null,
           cep: cep || null,
+          latitude:
+            input.latitude === null ? null : input.latitude.toFixed(6),
+          longitude:
+            input.longitude === null ? null : input.longitude.toFixed(6),
           numeroPedido: input.numeroPedido.trim() || null,
           numeroNfe: input.numeroNfe.trim() || null,
           valorPagamento: input.valorPagamento.toFixed(2),
