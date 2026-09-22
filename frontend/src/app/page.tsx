@@ -1,6 +1,5 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { RecentCanhotosTable } from "@/components/dashboard/RecentCanhotosTable";
 import { MotoboyMapCard } from "@/components/dashboard/MotoboyMapCard";
 import { MotoristasStatCard } from "@/components/dashboard/MotoristasStatCard";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
@@ -11,7 +10,6 @@ import {
   getAtividadeRecente,
   getDashboardStats,
   getEntregasPorDia,
-  getEntregasRecentes,
   getMotoristasEmRota,
 } from "@/lib/data/entregas";
 import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
@@ -26,18 +24,16 @@ export default async function DashboardPage() {
   // Alertas, Atividade recente, o gráfico por dia e o mapa de motoristas
   // ainda não são escopados por setor (Issue seguinte, se for preciso) —
   // por enquanto eles continuam mostrando a operação inteira mesmo pra um
-  // gestor_setor logado. Só os números principais (StatCards) e a tabela
-  // de entregas recentes já respeitam o setor.
+  // gestor_setor logado. Por enquanto, só os números principais
+  // (StatCards) já respeitam o setor.
   const [
     stats,
-    entregasRecentes,
     alertas,
     atividade,
     entregasPorDia,
     motoristasEmRota,
   ] = await Promise.all([
     getDashboardStats(setorId),
-    getEntregasRecentes(5, setorId),
     getAlertas(),
     getAtividadeRecente(4),
     getEntregasPorDia(7),
@@ -99,10 +95,6 @@ export default async function DashboardPage() {
             os StatCards e as duas linhas de cards que já existiam. */}
         <div className="col-span-12">
           <EntregasPorDiaChart dados={entregasPorDia} />
-        </div>
-
-        <div className="col-span-12">
-          <RecentCanhotosTable entregas={entregasRecentes} />
         </div>
 
         <div className="col-span-12">
