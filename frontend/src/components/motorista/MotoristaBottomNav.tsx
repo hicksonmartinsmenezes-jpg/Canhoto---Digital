@@ -43,7 +43,7 @@ export function MotoristaBottomNav({
       className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-white/95 shadow-[0_-8px_28px_rgba(15,23,42,0.06)] backdrop-blur"
     >
       <div
-        className="mx-auto grid max-w-xl grid-cols-4 px-3 pt-1.5"
+        className="grid w-full grid-cols-4 px-1 pt-1"
         style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
       >
         {ITENS.map((item) => {
@@ -56,7 +56,7 @@ export function MotoristaBottomNav({
               key={item.id}
               href={item.href}
               aria-current={selecionado ? "page" : undefined}
-              className={`relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[11px] font-extrabold transition ${
+              className={`relative flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] font-extrabold transition ${
                 selecionado
                   ? "text-[#1768D8]"
                   : "text-[#59708E] hover:bg-slate-50 hover:text-[#0A1F44]"
