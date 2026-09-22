@@ -1,135 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  CircleMarker,
+  MapContainer,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
 
-type LngLat = [number, number];
+type Coordenada = [number, number];
 
-interface MapLibreMap {
-  remove(): void;
-  resize(): void;
-  jumpTo(options: {
-    center: LngLat;
-    zoom: number;
-  }): void;
-  fitBounds(
-    bounds: [LngLat, LngLat],
-    options: {
-      padding: number;
-      maxZoom: number;
-      duration: number;
-    }
-  ): void;
-}
+function AjustarMapa({
+  destino,
+  motorista,
+}: {
+  destino: Coordenada;
+  motorista: Coordenada | null;
+}) {
+  const map = useMap();
 
-interface MapLibreMarker {
-  setLngLat(coordenada: LngLat): MapLibreMarker;
-  addTo(map: MapLibreMap): MapLibreMarker;
-  remove(): void;
-}
-
-interface MapLibreNamespace {
-  Map: new (options: {
-    container: HTMLElement;
-    style: string;
-    center: LngLat;
-    zoom: number;
-    interactive: boolean;
-    attributionControl: boolean;
-    renderWorldCopies: boolean;
-  }) => MapLibreMap;
-  Marker: new (options: {
-    element: HTMLElement;
-    anchor: "center";
-  }) => MapLibreMarker;
-}
-
-declare global {
-  interface Window {
-    maplibregl?: MapLibreNamespace;
-  }
-}
-
-const MAPLIBRE_VERSION = "5.24.0";
-const MAPLIBRE_SCRIPT_ID = "canhoto-maplibre-js";
-const MAPLIBRE_STYLE_ID = "canhoto-maplibre-css";
-const MAPLIBRE_SCRIPT_URL =
-  `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.js`;
-const MAPLIBRE_CSS_URL =
-  `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`;
-
-let carregamentoMapLibre: Promise<MapLibreNamespace> | null = null;
-
-function carregarMapLibre(): Promise<MapLibreNamespace> {
-  if (window.maplibregl) {
-    return Promise.resolve(window.maplibregl);
-  }
-
-  if (carregamentoMapLibre) return carregamentoMapLibre;
-
-  carregamentoMapLibre = new Promise((resolve, reject) => {
-    if (!document.getElementById(MAPLIBRE_STYLE_ID)) {
-      const link = document.createElement("link");
-      link.id = MAPLIBRE_STYLE_ID;
-      link.rel = "stylesheet";
-      link.href = MAPLIBRE_CSS_URL;
-      document.head.appendChild(link);
-    }
-
-    const resolver = () => {
-      if (window.maplibregl) {
-        resolve(window.maplibregl);
-        return;
-      }
-
-      reject(new Error("MapLibre não ficou disponível."));
-    };
-
-    const existente = document.getElementById(
-      MAPLIBRE_SCRIPT_ID
-    ) as HTMLScriptElement | null;
-
-    if (existente) {
-      existente.addEventListener("load", resolver, { once: true });
-      existente.addEventListener(
-        "error",
-        () => reject(new Error("Falha ao carregar MapLibre.")),
-        { once: true }
-      );
+  useEffect(() => {
+    if (motorista) {
+      map.fitBounds([destino, motorista], {
+        padding: [38, 38],
+        maxZoom: 16,
+        animate: false,
+      });
       return;
     }
 
-    const script = document.createElement("script");
-    script.id = MAPLIBRE_SCRIPT_ID;
-    script.src = MAPLIBRE_SCRIPT_URL;
-    script.async = true;
-    script.onload = resolver;
-    script.onerror = () =>
-      reject(new Error("Falha ao carregar MapLibre."));
-    document.head.appendChild(script);
-  });
+    map.setView(destino, 16, {
+      animate: false,
+    });
+  }, [destino, map, motorista]);
 
-  return carregamentoMapLibre;
-}
-
-function criarMarcador(tipo: "destino" | "motorista"): HTMLElement {
-  const elemento = document.createElement("div");
-  const nucleo = document.createElement("span");
-
-  elemento.className =
-    "grid size-8 place-items-center rounded-full border-[3px] border-white shadow-[0_4px_14px_rgba(15,23,42,0.28)]";
-
-  nucleo.className = "block size-2.5 rounded-full bg-white";
-
-  if (tipo === "destino") {
-    elemento.classList.add("bg-[#0A2C5A]");
-    elemento.setAttribute("aria-label", "Destino da entrega");
-  } else {
-    elemento.classList.add("bg-[#1768D8]");
-    elemento.setAttribute("aria-label", "Sua localização");
-  }
-
-  elemento.appendChild(nucleo);
-  return elemento;
+  return null;
 }
 
 export function MiniMapaEntrega({
@@ -141,18 +46,11 @@ export function MiniMapaEntrega({
   longitude: number;
   mostrarMotorista: boolean;
 }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<MapLibreMap | null>(null);
-  const marcadorMotoristaRef = useRef<MapLibreMarker | null>(null);
-  const motoristaAtualRef = useRef<LngLat | null>(null);
-  const [motorista, setMotorista] = useState<LngLat | null>(null);
-  const [erroMapa, setErroMapa] = useState(false);
-
-  const destino = useMemo<LngLat>(
-    () => [longitude, latitude],
+  const destino = useMemo<Coordenada>(
+    () => [latitude, longitude],
     [latitude, longitude]
   );
-  motoristaAtualRef.current = motorista;
+  const [motorista, setMotorista] = useState<Coordenada | null>(null);
 
   useEffect(() => {
     if (!mostrarMotorista || !("geolocation" in navigator)) {
@@ -160,134 +58,104 @@ export function MiniMapaEntrega({
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
+    const watchId = navigator.geolocation.watchPosition(
       (posicao) => {
         setMotorista([
-          posicao.coords.longitude,
           posicao.coords.latitude,
+          posicao.coords.longitude,
         ]);
       },
       () => setMotorista(null),
       {
         enableHighAccuracy: true,
         maximumAge: 10_000,
-        timeout: 10_000,
+        timeout: 15_000,
       }
     );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, [mostrarMotorista]);
 
-  useEffect(() => {
-    let cancelado = false;
-    let marcadorDestino: MapLibreMarker | null = null;
-
-    async function montarMapa() {
-      try {
-        const maplibre = await carregarMapLibre();
-        if (cancelado || !containerRef.current) return;
-
-        const style =
-          process.env.NEXT_PUBLIC_MAP_STYLE_URL?.trim() ||
-          "https://tiles.openfreemap.org/styles/positron";
-
-        const map = new maplibre.Map({
-          container: containerRef.current,
-          style,
-          center: destino,
-          zoom: 16,
-          interactive: false,
-          attributionControl: true,
-          renderWorldCopies: false,
-        });
-
-        mapRef.current = map;
-
-        marcadorDestino = new maplibre.Marker({
-          element: criarMarcador("destino"),
-          anchor: "center",
-        })
-          .setLngLat(destino)
-          .addTo(map);
-
-        const motoristaAtual = motoristaAtualRef.current;
-        if (motoristaAtual) {
-          marcadorMotoristaRef.current = new maplibre.Marker({
-            element: criarMarcador("motorista"),
-            anchor: "center",
-          })
-            .setLngLat(motoristaAtual)
-            .addTo(map);
-
-          map.fitBounds([destino, motoristaAtual], {
-            padding: 44,
-            maxZoom: 16,
-            duration: 0,
-          });
-        }
-
-        requestAnimationFrame(() => map.resize());
-      } catch {
-        if (!cancelado) setErroMapa(true);
-      }
-    }
-
-    void montarMapa();
-
-    return () => {
-      cancelado = true;
-      marcadorDestino?.remove();
-      marcadorMotoristaRef.current?.remove();
-      marcadorMotoristaRef.current = null;
-      mapRef.current?.remove();
-      mapRef.current = null;
-    };
-  }, [destino]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    const maplibre = window.maplibregl;
-
-    marcadorMotoristaRef.current?.remove();
-    marcadorMotoristaRef.current = null;
-
-    if (!map) return;
-
-    if (!motorista || !maplibre) {
-      map.jumpTo({
-        center: destino,
-        zoom: 16,
-      });
-      return;
-    }
-
-    marcadorMotoristaRef.current = new maplibre.Marker({
-      element: criarMarcador("motorista"),
-      anchor: "center",
-    })
-      .setLngLat(motorista)
-      .addTo(map);
-
-    map.fitBounds([destino, motorista], {
-      padding: 44,
-      maxZoom: 16,
-      duration: 500,
-    });
-  }, [destino, motorista]);
-
-  if (erroMapa) {
-    return (
-      <div className="grid h-48 place-items-center rounded-[24px] bg-slate-100 px-6 text-center">
-        <p className="text-xs font-bold text-slate-500">
-          Não foi possível carregar o mapa agora.
-        </p>
-      </div>
-    );
-  }
+  const tileUrl =
+    process.env.NEXT_PUBLIC_MAP_TILE_URL?.trim() ||
+    "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
   return (
-    <div className="relative h-48 w-full overflow-hidden rounded-[24px] bg-[#EEF2F6]">
-      <div ref={containerRef} className="absolute inset-0" />
+    <div
+      className="canhoto-mini-map relative h-48 w-full overflow-hidden rounded-[24px] bg-[#EEF2F6]"
+      aria-label="Mapa do destino da entrega"
+    >
+      <MapContainer
+        center={destino}
+        zoom={16}
+        zoomControl={false}
+        scrollWheelZoom={false}
+        doubleClickZoom={false}
+        boxZoom={false}
+        keyboard={false}
+        dragging={false}
+        touchZoom={false}
+        attributionControl
+        className="h-full w-full"
+      >
+        <TileLayer
+          url={tileUrl}
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
 
-      <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur">
+        <CircleMarker
+          center={destino}
+          radius={10}
+          pathOptions={{
+            color: "#ffffff",
+            weight: 4,
+            fillColor: "#0A2C5A",
+            fillOpacity: 1,
+          }}
+        />
+
+        <CircleMarker
+          center={destino}
+          radius={3}
+          pathOptions={{
+            color: "#ffffff",
+            weight: 0,
+            fillColor: "#ffffff",
+            fillOpacity: 1,
+          }}
+        />
+
+        {motorista && (
+          <>
+            <CircleMarker
+              center={motorista}
+              radius={9}
+              pathOptions={{
+                color: "#ffffff",
+                weight: 4,
+                fillColor: "#1768D8",
+                fillOpacity: 1,
+              }}
+            />
+            <CircleMarker
+              center={motorista}
+              radius={3}
+              pathOptions={{
+                color: "#ffffff",
+                weight: 0,
+                fillColor: "#ffffff",
+                fillOpacity: 1,
+              }}
+            />
+          </>
+        )}
+
+        <AjustarMapa destino={destino} motorista={motorista} />
+      </MapContainer>
+
+      <div className="pointer-events-none absolute inset-0 z-[400] bg-gradient-to-b from-white/5 via-transparent to-white/10" />
+
+      <div className="pointer-events-none absolute left-3 top-3 z-[500] flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur">
         <span className="size-2 rounded-full bg-[#0A2C5A]" />
         <span className="text-[11px] font-black text-[#0A1F44]">
           Destino
@@ -295,15 +163,13 @@ export function MiniMapaEntrega({
       </div>
 
       {motorista && (
-        <div className="pointer-events-none absolute right-3 top-3 z-10 flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur">
+        <div className="pointer-events-none absolute right-3 top-3 z-[500] flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur">
           <span className="size-2 rounded-full bg-[#1768D8]" />
           <span className="text-[11px] font-black text-[#0A1F44]">
             Você
           </span>
         </div>
       )}
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-10 bg-gradient-to-t from-white/20 to-transparent" />
     </div>
   );
 }
