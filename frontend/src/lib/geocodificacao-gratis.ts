@@ -85,7 +85,7 @@ async function geocodificarComGeocodebr(
         cep,
       }),
       cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!resposta.ok) return null;
