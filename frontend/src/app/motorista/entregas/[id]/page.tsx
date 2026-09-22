@@ -31,7 +31,7 @@ export default async function MotoristaEntregaPage({
       <header className="bg-[#082B57] text-white">
         <div className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 py-4">
           <Link
-            href="/motorista?view=entregas"
+            href="/motorista"
             aria-label="Voltar para entregas"
             className="grid size-10 place-items-center rounded-full bg-white/8 transition hover:bg-white/12"
           >
