@@ -29,7 +29,7 @@ export default async function MotoristaEntregaPage({
       <MotoristaLocationTracker ativo={emRota} />
 
       <header className="bg-[#082B57] text-white">
-        <div className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 py-4">
+        <div className="flex w-full items-center justify-between gap-3 px-4 py-4">
           <Link
             href="/motorista"
             aria-label="Voltar para entregas"
@@ -56,7 +56,7 @@ export default async function MotoristaEntregaPage({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-xl px-4 py-5 pb-10">
+      <main className="w-full px-4 py-4 pb-10">
         <EntregaMotoristaDetalheView entrega={entrega} />
       </main>
     </div>
