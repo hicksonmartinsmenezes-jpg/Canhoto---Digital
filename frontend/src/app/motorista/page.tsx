@@ -71,8 +71,8 @@ export default async function MotoristaPage({
       ? getHistoricoDoMotorista(motoboyId, 20)
       : Promise.resolve([]),
   ]);
-  const nome = perfil?.nome ?? "Motorista";
 
+  const nome = perfil?.nome ?? "Motorista";
   const totalHoje = entregas.length;
   const entregues = entregas.filter(
     (entrega) => entrega.status === "entregue"
@@ -212,6 +212,64 @@ export default async function MotoristaPage({
             )}
 
             {view === "perfil" && (
+              <div className="flex items-center gap-4 py-1">
+                <span className="grid size-16 shrink-0 place-items-center rounded-full border-2 border-white/70 bg-white text-[#0A2C5A]">
+                  <UserRound className="size-8" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate text-[24px] font-black">{nome}</h1>
+                  <p className="mt-0.5 text-sm font-medium text-white/65">
+                    Motorista
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#15924A] px-2.5 py-1 text-[10px] font-black">
+                  <CheckCircle2 className="size-3" />
+                  Ativo
+                </span>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
+
+      <main className={`w-full pb-28 ${view === "inicio" ? "" : "pt-4"}`}>
+        {view === "inicio" && (
+          <section className="border-b border-slate-200 bg-white px-4 py-3.5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-black text-[#0A1F44]">
+                  Seu progresso de hoje
+                </h2>
+                <p className="mt-0.5 text-xs font-medium text-slate-500">
+                  {entregues} de {totalHoje}{" "}
+                  {totalHoje === 1
+                    ? "entrega concluída"
+                    : "entregas concluídas"}
+                </p>
+              </div>
+              <span className="text-lg font-black text-[#0A1F44]">
+                {progresso}%
+              </span>
+            </div>
+
+            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-[#1F73F1] transition-[width]"
+                style={{ width: `${progresso}%` }}
+              />
+            </div>
+          </section>
+        )}
+
+        {view === "entregas" && (
+          <MotoristaEntregasHoje entregas={entregas} />
+        )}
+
+        {view === "historico" && (
+          <MotoristaHistorico entregas={historico} />
+        )}
+
+        {view === "perfil" && (
           <section className="bg-white">
             <div className="border-b border-slate-200 px-4 py-4">
               <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
@@ -252,7 +310,7 @@ export default async function MotoristaPage({
               </p>
               <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#15924A]">
                 <CheckCircle2 className="size-4" />
-                {perfil?.ativo === false ? "Inativo" : "Ativo"}
+                Ativo
               </p>
             </div>
 
@@ -261,114 +319,6 @@ export default async function MotoristaPage({
                 <button
                   type="submit"
                   className="inline-flex w-full items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
-                >
-                  <LogOut className="size-4" />
-                  Sair
-                </button>
-              </form>
-            </div>
-          </section>
-        )}          </div>
-        </header>
-      )}
-
-      <main className={`w-full pb-28 ${view === "inicio" ? "" : "pt-4"}`}>
-        {view === "inicio" && (
-          <>
-            <section className="border-b border-slate-200 bg-white px-4 py-3.5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-sm font-black text-[#0A1F44]">
-                    Seu progresso de hoje
-                  </h2>
-                  <p className="mt-0.5 text-xs font-medium text-slate-500">
-                    {entregues} de {totalHoje}{" "}
-                    {totalHoje === 1
-                      ? "entrega concluída"
-                      : "entregas concluídas"}
-                  </p>
-                </div>
-                <span className="text-lg font-black text-[#0A1F44]">
-                  {progresso}%
-                </span>
-              </div>
-
-              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-[#1F73F1] transition-[width]"
-                  style={{ width: `${progresso}%` }}
-                />
-              </div>
-            </section>
-
-
-          </>
-        )}
-
-        {view === "entregas" && (
-          <MotoristaEntregasHoje entregas={entregas} />
-        )}
-
-        {view === "historico" && (
-          <MotoristaHistorico entregas={historico} />
-        )}
-
-        {view === "perfil" && (
-          <section className="space-y-4 px-4">
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <UserRound className="size-5 text-[#315A8E]" />
-                  <div>
-                    <p className="text-sm font-black text-[#0A1F44]">
-                      Dados da conta
-                    </p>
-                    <p className="mt-0.5 text-xs font-medium text-slate-500">
-                      Perfil do motorista
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="size-4 text-slate-400" />
-              </div>
-
-              <div className="grid grid-cols-3 divide-x divide-slate-100 px-2 py-5 text-center">
-                <div>
-                  <p className="text-2xl font-black text-[#0A1F44]">
-                    {totalHoje}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Hoje
-                  </p>
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-[#15924A]">
-                    {entregues}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Concluídas
-                  </p>
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-[#F07A12]">
-                    {pendentes}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Pendentes
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-600">
-                <ShieldCheck className="size-4 text-[#15924A]" />
-                Sessão protegida
-              </div>
-
-              <form action={sairMotorista}>
-                <button
-                  type="submit"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
                 >
                   <LogOut className="size-4" />
                   Sair
