@@ -31,6 +31,8 @@ const inputBase: AtualizarEntregaInput = {
   clienteTelefone: "",
   endereco: "Rua Teste",
   cep: "49000000",
+  latitude: null,
+  longitude: null,
   numeroPedido: "123",
   numeroNfe: "456",
   valorPagamento: 100,
