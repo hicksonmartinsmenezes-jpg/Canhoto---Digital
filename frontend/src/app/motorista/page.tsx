@@ -103,14 +103,6 @@ export default async function MotoristaPage({
                 {formatarDataHoje()}
               </p>
 
-              <h1 className="mt-2 text-[24px] font-black leading-tight tracking-tight text-white">
-                Olá, {nome} <span aria-hidden="true">👋</span>
-              </h1>
-
-              <p className="mt-1.5 text-[13px] font-medium text-white/70">
-                Hoje você tem {totalHoje}{" "}
-                {totalHoje === 1 ? "entrega" : "entregas"}
-              </p>
             </div>
 
             {proximaEntrega ? (
@@ -174,20 +166,9 @@ export default async function MotoristaPage({
         </header>
       )}
 
-      {view !== "entregas" && (
+      {view === "perfil" && (
         <header className="bg-[#082B57] text-white">
           <div className="w-full px-4 py-4">
-            {view === "historico" && (
-              <>
-                <h1 className="text-[25px] font-black tracking-tight">
-                  Histórico
-                </h1>
-                <p className="mt-1 text-sm font-medium text-white/70">
-                  Suas entregas anteriores
-                </p>
-              </>
-            )}
-
             {view === "perfil" && (
               <div className="flex items-center gap-4 py-1">
                 <span className="grid size-16 shrink-0 place-items-center rounded-full border-2 border-white/70 bg-white text-[#0A2C5A]">
