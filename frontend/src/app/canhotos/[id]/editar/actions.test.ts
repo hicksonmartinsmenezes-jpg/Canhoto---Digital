@@ -15,6 +15,9 @@ vi.mock("@/lib/rate-limit", () => ({
 vi.mock("@/lib/db/errors", () => ({
   mensagemErroBanco: vi.fn(() => "Erro de banco."),
 }));
+vi.mock("@/lib/geocoding", () => ({
+  geocodificarEnderecoEntrega: vi.fn().mockResolvedValue(null),
+}));
 
 import { getDb } from "@/lib/db";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
@@ -41,6 +44,21 @@ const inputBase: AtualizarEntregaInput = {
 };
 
 function configurarDb(statusAtual: "pendente" | "entregue" | "cancelado") {
+  const enderecoQuery = {
+    from: vi.fn(),
+    where: vi.fn(),
+    limit: vi.fn().mockResolvedValue([
+      {
+        endereco: inputBase.endereco,
+        cep: inputBase.cep,
+        latitude: "-10.000000",
+        longitude: "-37.000000",
+      },
+    ]),
+  };
+  enderecoQuery.from.mockReturnValue(enderecoQuery);
+  enderecoQuery.where.mockReturnValue(enderecoQuery);
+
   const selectQuery = {
     from: vi.fn(),
     where: vi.fn(),
@@ -66,6 +84,7 @@ function configurarDb(statusAtual: "pendente" | "entregue" | "cancelado") {
   };
 
   const db = {
+    select: vi.fn().mockReturnValue(enderecoQuery),
     transaction: vi.fn(
       async (callback: (trx: typeof tx) => Promise<unknown>) => callback(tx)
     ),
