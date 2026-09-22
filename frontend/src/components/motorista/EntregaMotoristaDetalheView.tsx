@@ -40,17 +40,10 @@ export function EntregaMotoristaDetalheView({
     entrega.status === "pendente" && entrega.horaSaida === null;
 
   function abrirRota() {
-    if (!entrega.endereco) return;
-
-    const destino = [
-      entrega.endereco,
-      entrega.cep ? `CEP ${entrega.cep}` : "",
-    ]
-      .filter(Boolean)
-      .join(", ");
+    if (!entrega.enderecoRoteavel) return;
 
     const params = new URLSearchParams({
-      q: destino,
+      q: entrega.enderecoRoteavel,
       navigate: "yes",
     });
 
