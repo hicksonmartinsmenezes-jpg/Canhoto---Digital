@@ -7,7 +7,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/canhotos/form-fields";
-import { EntregaLocalizacaoPicker } from "@/components/canhotos/EntregaLocalizacaoPicker";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 import { maskCepInput, maskCurrencyInput, maskPhoneInput, parseCurrencyInput } from "@/lib/format";
 import { criarEntrega } from "@/app/canhotos/nova/actions";
@@ -153,13 +152,6 @@ export function AdicionarEntregaWizard({
     }
     if (!form.formaPagamento) {
       setErro("Selecione a forma de pagamento.");
-      return;
-    }
-    if (
-      form.endereco.trim() &&
-      (form.latitude === null || form.longitude === null)
-    ) {
-      setErro("Confirme a localização exata da entrega no mapa.");
       return;
     }
     setErro(null);
@@ -411,15 +403,6 @@ export function AdicionarEntregaWizard({
               </Field>
             </div>
 
-            <EntregaLocalizacaoPicker
-              cep={form.cep}
-              latitude={form.latitude}
-              longitude={form.longitude}
-              onChange={({ latitude, longitude }) =>
-                setForm((f) => ({ ...f, latitude, longitude }))
-              }
-            />
-
             <Field label="Observações" optional>
               <textarea
                 rows={3}
@@ -486,14 +469,6 @@ export function AdicionarEntregaWizard({
                 <Resumo label="Telefone" value={form.clienteTelefone || null} />
                 <Resumo label="Endereço" value={form.endereco || null} />
                 <Resumo label="CEP" value={form.cep || null} />
-                <Resumo
-                  label="Ponto exato"
-                  value={
-                    form.latitude !== null && form.longitude !== null
-                      ? "Confirmado"
-                      : null
-                  }
-                />
               </dl>
               {form.observacoes && (
                 <p className="mt-3 text-sm text-slate-500">
