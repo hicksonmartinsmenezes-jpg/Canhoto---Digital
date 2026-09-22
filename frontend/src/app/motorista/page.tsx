@@ -4,12 +4,11 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  Clock3,
   LogOut,
   MapPin,
   Navigation,
   Package,
-  ShieldCheck,
+  Phone,
   UserRound,
 } from "lucide-react";
 import {
@@ -24,7 +23,7 @@ import {
   getEntregasDoMotorista,
   getHistoricoDoMotorista,
 } from "@/lib/data/entregas";
-import { getMotoboyNome } from "@/lib/data/motoboys";
+import { getMotoboyPerfil } from "@/lib/data/motoboys";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 import { sairMotorista } from "./actions";
 
@@ -65,13 +64,14 @@ export default async function MotoristaPage({
   const motoboyId = await obterMotoristaAutorizado();
   if (!motoboyId) redirect("/motorista/login");
 
-  const [nome, entregas, historico] = await Promise.all([
-    getMotoboyNome(motoboyId).then((n) => n ?? "Motorista"),
+  const [perfil, entregas, historico] = await Promise.all([
+    getMotoboyPerfil(motoboyId),
     getEntregasDoMotorista(motoboyId),
     view === "historico"
       ? getHistoricoDoMotorista(motoboyId, 20)
       : Promise.resolve([]),
   ]);
+  const nome = perfil?.nome ?? "Motorista";
 
   const totalHoje = entregas.length;
   const entregues = entregas.filter(
@@ -212,76 +212,69 @@ export default async function MotoristaPage({
             )}
 
             {view === "perfil" && (
-              <div className="flex items-center gap-4 py-1">
-                <span className="grid size-16 shrink-0 place-items-center rounded-full border-2 border-white/70 bg-white text-[#0A2C5A]">
-                  <UserRound className="size-8" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h1 className="truncate text-[24px] font-black">{nome}</h1>
-                  <p className="mt-0.5 text-sm font-medium text-white/65">
-                    Motorista
-                  </p>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#15924A] px-2.5 py-1 text-[10px] font-black">
-                  <CheckCircle2 className="size-3" />
-                  Ativo
-                </span>
+          <section className="bg-white">
+            <div className="border-b border-slate-200 px-4 py-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                Nome
+              </p>
+              <p className="mt-1 text-base font-black text-[#0A1F44]">
+                {nome}
+              </p>
+            </div>
+
+            <div className="border-b border-slate-200 px-4 py-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                Função
+              </p>
+              <p className="mt-1 text-sm font-bold text-[#0A1F44]">
+                Motorista
+              </p>
+            </div>
+
+            {perfil?.telefone && (
+              <div className="border-b border-slate-200 px-4 py-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                  Telefone
+                </p>
+                <a
+                  href={`tel:${perfil.telefone.replace(/\D/g, "")}`}
+                  className="mt-1 inline-flex items-center gap-2 text-sm font-bold text-[#0A1F44]"
+                >
+                  <Phone className="size-4 text-[#315A8E]" />
+                  {perfil.telefone}
+                </a>
               </div>
             )}
-          </div>
+
+            <div className="border-b border-slate-200 px-4 py-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                Status
+              </p>
+              <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#15924A]">
+                <CheckCircle2 className="size-4" />
+                {perfil?.ativo === false ? "Inativo" : "Ativo"}
+              </p>
+            </div>
+
+            <div className="px-4 py-5">
+              <form action={sairMotorista}>
+                <button
+                  type="submit"
+                  className="inline-flex w-full items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                >
+                  <LogOut className="size-4" />
+                  Sair
+                </button>
+              </form>
+            </div>
+          </section>
+        )}          </div>
         </header>
       )}
 
       <main className={`w-full pb-28 ${view === "inicio" ? "" : "pt-4"}`}>
         {view === "inicio" && (
           <>
-            <section className="grid grid-cols-3 divide-x divide-slate-200 border-b border-slate-200 bg-white">
-              <div className="px-4 py-3">
-                <span className="grid size-8 place-items-center rounded-full bg-[#E7F1FF] text-[#1768D8]">
-                  <Package className="size-4" />
-                </span>
-                <p className="mt-2 text-[11px] font-extrabold text-[#315A8E]">
-                  Total
-                </p>
-                <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
-                  {totalHoje}
-                </p>
-                <p className="mt-1 text-[10px] font-medium text-slate-500">
-                  {totalHoje === 1 ? "entrega" : "entregas"}
-                </p>
-              </div>
-
-              <div className="px-4 py-3">
-                <span className="grid size-8 place-items-center rounded-full bg-[#E5F6ED] text-[#15924A]">
-                  <CheckCircle2 className="size-4" />
-                </span>
-                <p className="mt-2 text-[11px] font-extrabold text-[#237848]">
-                  Concluídas
-                </p>
-                <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
-                  {entregues}
-                </p>
-                <p className="mt-1 text-[10px] font-medium text-slate-500">
-                  de {totalHoje}
-                </p>
-              </div>
-
-              <div className="px-4 py-3">
-                <span className="grid size-8 place-items-center rounded-full bg-[#FFF0DE] text-[#F07A12]">
-                  <Clock3 className="size-4" />
-                </span>
-                <p className="mt-2 text-[11px] font-extrabold text-[#D96B0B]">
-                  Pendentes
-                </p>
-                <p className="mt-0.5 text-2xl font-black leading-none text-[#0A1F44]">
-                  {pendentes}
-                </p>
-                <p className="mt-1 text-[10px] font-medium text-slate-500">
-                  de {totalHoje}
-                </p>
-              </div>
-            </section>
-
             <section className="border-b border-slate-200 bg-white px-4 py-3.5">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -308,21 +301,7 @@ export default async function MotoristaPage({
               </div>
             </section>
 
-            <section className="flex items-center gap-3 border-b border-slate-200 bg-[#F7FAFE] px-4 py-3.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#E2EEFF] text-[#1768D8]">
-                <Navigation className="size-4.5" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="text-sm font-black text-[#0A1F44]">
-                  Bora pra cima!
-                </h2>
-                <p className="mt-0.5 text-xs font-medium leading-5 text-slate-500">
-                  {pendentes > 0
-                    ? `Você tem ${pendentes} ${pendentes === 1 ? "entrega pendente" : "entregas pendentes"} hoje.`
-                    : "Todas as entregas de hoje foram concluídas."}
-                </p>
-              </div>
-            </section>
+
           </>
         )}
 
