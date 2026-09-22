@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
 import { entregaHistorico, entregas } from "@/lib/db/schema";
 import { checarRateLimit } from "@/lib/rate-limit";
+import { geocodificarEntregaGratis } from "@/lib/geocodificacao-gratis";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 export interface AtualizarEntregaInput {
@@ -102,7 +103,13 @@ export async function atualizarEntrega(
   try {
     const resultadoTransacao = await db.transaction(async (tx) => {
       const [atual] = await tx
-        .select({ status: entregas.status })
+        .select({
+          status: entregas.status,
+          endereco: entregas.endereco,
+          cep: entregas.cep,
+          latitude: entregas.latitude,
+          longitude: entregas.longitude,
+        })
         .from(entregas)
         .where(eq(entregas.id, id))
         .limit(1);
@@ -127,16 +134,37 @@ export async function atualizarEntrega(
         };
       }
 
-      if (
-        atual.status !== "entregue" &&
-        input.endereco.trim() &&
-        (input.latitude === null || input.longitude === null)
-      ) {
-        return {
-          ok: false as const,
-          error: "Confirme a localização exata da entrega no mapa.",
-        };
-      }
+      const enderecoNovo = input.endereco.trim();
+      const enderecoMudou =
+        enderecoNovo !== (atual.endereco ?? "").trim() ||
+        cep !== (atual.cep ?? "");
+
+      const coordenadasExistentes =
+        atual.latitude !== null && atual.longitude !== null
+          ? {
+              latitude: Number(atual.latitude),
+              longitude: Number(atual.longitude),
+            }
+          : null;
+
+      const coordenadas =
+        enderecoMudou
+          ? await geocodificarEntregaGratis({
+              endereco: enderecoNovo,
+              cep,
+            })
+          : input.latitude !== null && input.longitude !== null
+            ? {
+                latitude: input.latitude,
+                longitude: input.longitude,
+              }
+            : coordenadasExistentes ??
+              (enderecoNovo
+                ? await geocodificarEntregaGratis({
+                    endereco: enderecoNovo,
+                    cep,
+                  })
+                : null);
 
       const [resultado] = await tx
         .update(entregas)
@@ -144,12 +172,12 @@ export async function atualizarEntrega(
           data: input.data,
           clienteNome,
           clienteTelefone: input.clienteTelefone.trim() || null,
-          endereco: input.endereco.trim() || null,
+          endereco: enderecoNovo || null,
           cep: cep || null,
           latitude:
-            input.latitude === null ? null : input.latitude.toFixed(6),
+            coordenadas === null ? null : coordenadas.latitude.toFixed(6),
           longitude:
-            input.longitude === null ? null : input.longitude.toFixed(6),
+            coordenadas === null ? null : coordenadas.longitude.toFixed(6),
           numeroPedido: input.numeroPedido.trim() || null,
           numeroNfe: input.numeroNfe.trim() || null,
           valorPagamento: input.valorPagamento.toFixed(2),
