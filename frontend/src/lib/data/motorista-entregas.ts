@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { entregas } from "@/lib/db/schema";
 import { formatBRL, formatCep } from "@/lib/format";
+import { montarEnderecoRoteavel } from "@/lib/endereco-rota";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 export interface EntregaMotoristaDetalhe {
@@ -13,6 +14,7 @@ export interface EntregaMotoristaDetalhe {
   clienteTelefone: string;
   endereco: string;
   cep: string;
+  enderecoRoteavel: string;
   numeroPedido: string;
   numeroNfe: string;
   valor: string;
@@ -58,6 +60,11 @@ export async function getEntregaMotoristaDetalhe(
 
   if (!entrega) return null;
 
+  const enderecoRoteavel = await montarEnderecoRoteavel({
+    endereco: entrega.endereco ?? "",
+    cep: entrega.cep ?? "",
+  });
+
   return {
     id: entrega.id,
     numero: `#${entrega.numero}`,
@@ -65,6 +72,7 @@ export async function getEntregaMotoristaDetalhe(
     clienteTelefone: entrega.clienteTelefone ?? "",
     endereco: entrega.endereco ?? "",
     cep: entrega.cep ? formatCep(entrega.cep) : "",
+    enderecoRoteavel,
     numeroPedido: entrega.numeroPedido ?? "",
     numeroNfe: entrega.numeroNfe ?? "",
     valor: formatBRL(Number(entrega.valorPagamento)),
