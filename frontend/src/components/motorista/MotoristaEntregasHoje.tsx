@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { PackageCheck, Search } from "lucide-react";
 import { EntregaMotoristaCard } from "@/components/motorista/EntregaMotoristaCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PackageCheck } from "lucide-react";
 import type { EntregaMotorista } from "@/lib/data/entregas";
 
 type Filtro = "todas" | "pendentes" | "em_rota" | "concluidas";
