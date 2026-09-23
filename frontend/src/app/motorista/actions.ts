@@ -294,14 +294,16 @@ export async function confirmarEntrega(
 
   const fotoEntrada = formData.get("foto");
   const assinaturaEntrada = formData.get("assinatura");
+  const fotoFoiEnviada =
+    fotoEntrada instanceof File && fotoEntrada.size > 0;
   const foto = validarFoto(fotoEntrada);
   const assinatura = validarAssinatura(assinaturaEntrada);
 
-  if (!foto) {
+  if (fotoFoiEnviada && !foto) {
     return {
       ok: false,
       error:
-        "Envie uma foto válida do comprovante (JPG, PNG, WEBP, HEIC ou HEIF, até 8 MB).",
+        "A foto do comprovante é opcional, mas quando enviada deve ser JPG, PNG, WEBP, HEIC ou HEIF com até 8 MB.",
     };
   }
 
@@ -347,12 +349,15 @@ export async function confirmarEntrega(
     "entregas",
     entregaId
   );
-  const extensaoFoto = EXTENSAO_POR_MIME[foto.type];
-  const nomeFoto = `foto-${randomUUID()}.${extensaoFoto}`;
+  const nomeFoto = foto
+    ? `foto-${randomUUID()}.${EXTENSAO_POR_MIME[foto.type]}`
+    : null;
   const nomeAssinatura = `assinatura-${randomUUID()}.png`;
-  const caminhoFoto = path.join(pastaEntrega, nomeFoto);
+  const caminhoFoto = nomeFoto ? path.join(pastaEntrega, nomeFoto) : null;
   const caminhoAssinatura = path.join(pastaEntrega, nomeAssinatura);
-  const arquivoUrlFoto = `entregas/${entregaId}/${nomeFoto}`;
+  const arquivoUrlFoto = nomeFoto
+    ? `entregas/${entregaId}/${nomeFoto}`
+    : null;
   const arquivoUrlAssinatura = `entregas/${entregaId}/${nomeAssinatura}`;
 
   let fotoGravada = false;
@@ -361,25 +366,30 @@ export async function confirmarEntrega(
   try {
     await mkdir(pastaEntrega, { recursive: true });
 
-    const [bufferFoto, bufferAssinatura] = await Promise.all([
-      foto.arrayBuffer(),
-      assinatura.arrayBuffer(),
-    ]);
-    const bytesFoto = new Uint8Array(bufferFoto);
+    const bufferAssinatura = await assinatura.arrayBuffer();
     const bytesAssinatura = new Uint8Array(bufferAssinatura);
 
-    if (
-      !conteudoConfereComMime(bytesFoto, foto.type) ||
-      !conteudoConfereComMime(bytesAssinatura, assinatura.type)
-    ) {
+    if (!conteudoConfereComMime(bytesAssinatura, assinatura.type)) {
       return {
         ok: false,
-        error: "O conteúdo de um dos comprovantes não corresponde a uma imagem válida.",
+        error: "O conteúdo da assinatura não corresponde a uma imagem válida.",
       };
     }
 
-    await writeFile(caminhoFoto, bytesFoto, { flag: "wx" });
-    fotoGravada = true;
+    if (foto && caminhoFoto) {
+      const bufferFoto = await foto.arrayBuffer();
+      const bytesFoto = new Uint8Array(bufferFoto);
+
+      if (!conteudoConfereComMime(bytesFoto, foto.type)) {
+        return {
+          ok: false,
+          error: "O conteúdo da foto não corresponde a uma imagem válida.",
+        };
+      }
+
+      await writeFile(caminhoFoto, bytesFoto, { flag: "wx" });
+      fotoGravada = true;
+    }
 
     await writeFile(caminhoAssinatura, bytesAssinatura, {
       flag: "wx",
@@ -405,27 +415,34 @@ export async function confirmarEntrega(
 
       if (!atualizada) return false;
 
-      await tx.insert(entregaAnexos).values([
-        {
-          entregaId,
-          tipo: "foto",
-          arquivoUrl: arquivoUrlFoto,
-          capturadoPorMotoboy: acesso.motoboyId,
-        },
+      const anexosComprovante: Array<typeof entregaAnexos.$inferInsert> = [
         {
           entregaId,
           tipo: "assinatura_cliente",
           arquivoUrl: arquivoUrlAssinatura,
           capturadoPorMotoboy: acesso.motoboyId,
         },
-      ]);
+      ];
+
+      if (arquivoUrlFoto) {
+        anexosComprovante.unshift({
+          entregaId,
+          tipo: "foto",
+          arquivoUrl: arquivoUrlFoto,
+          capturadoPorMotoboy: acesso.motoboyId,
+        });
+      }
+
+      await tx.insert(entregaAnexos).values(anexosComprovante);
 
       await tx.insert(entregaHistorico).values({
         entregaId,
         statusAnterior: "pendente",
         statusNovo: "entregue",
         alteradoPorMotoboy: acesso.motoboyId,
-        observacao: "Entrega confirmada com foto e assinatura do cliente.",
+        observacao: foto
+          ? "Entrega confirmada com foto e assinatura do cliente."
+          : "Entrega confirmada com assinatura do cliente.",
       });
 
       return true;
@@ -436,7 +453,9 @@ export async function confirmarEntrega(
     }
   } catch (error) {
     await Promise.allSettled([
-      fotoGravada ? rm(caminhoFoto, { force: true }) : Promise.resolve(),
+      fotoGravada && caminhoFoto
+        ? rm(caminhoFoto, { force: true })
+        : Promise.resolve(),
       assinaturaGravada
         ? rm(caminhoAssinatura, { force: true })
         : Promise.resolve(),
