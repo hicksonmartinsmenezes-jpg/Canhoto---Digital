@@ -364,7 +364,10 @@ export function EntregaMotoristaDetalheView({
 
       {emRota && (
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <ComprovanteEntregaForm entregaId={entrega.id} />
+          <ComprovanteEntregaForm
+            entregaId={entrega.id}
+            formaPagamento={entrega.formaPagamento}
+          />
         </section>
       )}
 
