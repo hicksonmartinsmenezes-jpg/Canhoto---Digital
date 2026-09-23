@@ -265,7 +265,6 @@ try {
         "usuarios_admin",
         "motoboys",
         "motoboy_localizacoes",
-        "motoboy_localizacao_historico",
         "veiculos",
         "veiculo_gastos",
         "treinamento_progresso",
