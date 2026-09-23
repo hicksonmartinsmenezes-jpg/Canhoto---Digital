@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRelatorioEntregas } from "@/lib/data/entregas";
+import { arquivarRelatorioCsv } from "@/lib/relatorios-storage";
 import {
   FORMA_PAGAMENTO_LABEL,
   STATUS_LABEL,
@@ -63,7 +64,24 @@ export async function GET(request: NextRequest) {
   // acentos como caracteres corrompidos ao abrir o CSV direto.
   const csv = "﻿" + [cabecalho.join(","), ...linhas].join("\r\n") + "\r\n";
 
-  const nomeArquivo = `relatorio-entregas${dataInicio ? `_${dataInicio}` : ""}${dataFim ? `_a_${dataFim}` : ""}.csv`;
+  const nomeBase = `relatorio-entregas${dataInicio ? `_${dataInicio}` : ""}${dataFim ? `_a_${dataFim}` : ""}`;
+  const nomeArquivo = `${nomeBase}.csv`;
+
+  try {
+    await arquivarRelatorioCsv(nomeBase, csv);
+  } catch (error) {
+    console.error("Falha ao arquivar relatório CSV localmente.", error);
+    return new NextResponse(
+      "Não foi possível arquivar o relatório localmente. Tente novamente.",
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  }
 
   return new NextResponse(csv, {
     headers: {
