@@ -145,23 +145,17 @@ export default async function MotoristaPage({
 
                 <div className="mt-4 grid grid-cols-[auto_1fr] items-end gap-5">
                   <div className="shrink-0">
-                    <p className="text-[24px] font-black tabular-nums leading-none">
+                    <p className="text-[17px] font-medium tabular-nums leading-none">
                       {kmCorrida.toLocaleString("pt-BR", {
                         minimumFractionDigits: 1,
                         maximumFractionDigits: 1,
                       })}{" "}
                       km
                     </p>
-                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white/55">
-                      Nesta corrida
-                    </p>
                   </div>
 
                   <div className="min-w-0 text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/55">
-                      Cliente
-                    </p>
-                    <p className="mt-1 truncate text-[17px] font-black text-white">
+                    <p className="truncate text-[15px] font-medium text-white">
                       {proximaEntrega.clienteNome}
                     </p>
                     {proximaEntrega.endereco && (
