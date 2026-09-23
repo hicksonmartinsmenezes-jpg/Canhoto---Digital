@@ -16,6 +16,16 @@ const LOJA_RILDON = {
   longitude: -37.07624,
 } as const;
 
+
+const DESTINOS_CONHECIDOS = [
+  {
+    termos: ["blue village", "blue village residence"],
+    endereco:
+      "Avenida Governador Marcelo Déda, 142, Costa Paradiso, Barra dos Coqueiros - SE",
+    cep: "49141048",
+  },
+] as const;
+
 interface BrasilApiCepV2 {
   location?: {
     coordinates?: {
@@ -41,6 +51,15 @@ function destinoEhALoja(endereco: string): boolean {
     normalizado === "rildon eletropecas" ||
     normalizado.includes("rildon eletropecas") ||
     normalizado.includes("chanceler osvaldo aranha 151")
+  );
+}
+
+
+function destinoConhecido(endereco: string) {
+  const normalizado = normalizarEndereco(endereco);
+
+  return DESTINOS_CONHECIDOS.find((destino) =>
+    destino.termos.some((termo) => normalizado.includes(termo))
   );
 }
 
@@ -160,9 +179,13 @@ export async function getDistanciaLojaAteDestinoKm(
         }
       : null;
 
+  const conhecido = destinoConhecido(entrega.endereco ?? "");
+
   const destinoResolvido = destinoPersistido
     ? destinoPersistido
-    : await resolverCoordenadas(entrega.endereco ?? "", entrega.cep ?? "");
+    : conhecido
+      ? await resolverCoordenadas(conhecido.endereco, conhecido.cep)
+      : await resolverCoordenadas(entrega.endereco ?? "", entrega.cep ?? "");
 
   if (!destinoResolvido) return null;
 
