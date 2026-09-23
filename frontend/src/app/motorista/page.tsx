@@ -23,10 +23,8 @@ import {
   getEntregasDoMotorista,
   getHistoricoDoMotorista,
 } from "@/lib/data/entregas";
-import {
-  getDistanciaAtualAteDestinoKm,
-  getMotoboyPerfil,
-} from "@/lib/data/motoboys";
+import { getMotoboyPerfil } from "@/lib/data/motoboys";
+import { getDistanciaLojaAteDestinoKm } from "@/lib/distancia-loja";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 import { sairMotorista } from "./actions";
 
@@ -90,10 +88,9 @@ export default async function MotoristaPage({
       (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
     ) ?? entregas.find((entrega) => entrega.status === "pendente");
 
-  const distanciaAteDestino =
-    proximaEntrega?.horaSaida
-      ? await getDistanciaAtualAteDestinoKm(motoboyId, proximaEntrega.id)
-      : null;
+  const distanciaAteDestino = proximaEntrega
+    ? await getDistanciaLojaAteDestinoKm(proximaEntrega.id)
+    : null;
 
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
