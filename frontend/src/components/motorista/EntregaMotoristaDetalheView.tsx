@@ -364,14 +364,6 @@ export function EntregaMotoristaDetalheView({
 
       {emRota && (
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-base font-black text-[#0A1F44]">
-              Finalizar entrega
-            </h2>
-            <p className="mt-1 text-xs font-medium text-slate-500">
-              A assinatura é obrigatória. A foto do comprovante é opcional.
-            </p>
-          </div>
           <ComprovanteEntregaForm entregaId={entrega.id} />
         </section>
       )}
