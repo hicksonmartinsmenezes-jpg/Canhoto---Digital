@@ -167,16 +167,19 @@ http://IP-DA-MAQUINA:3003
 
 O backup não depende de Cloudflare R2 nem de AWS CLI.
 
-Cada execução cria um pacote atômico em:
+Cada exportação CSV feita pela tela de Relatórios é arquivada automaticamente em `storage/relatorios` (ou em `CANHOTO_RELATORIOS_DIR`, quando configurado).
+
+Cada execução de backup cria um pacote atômico em:
 
 ```text
 backups/canhoto/canhoto-AAAAMMDD-HHMMSS/
 ├── database.dump
 ├── uploads.zip
+├── relatorios.zip
 └── manifest.json
 ```
 
-O pacote reúne o PostgreSQL e os comprovantes físicos da mesma execução. O `manifest.json` registra hashes SHA-256, quantidade de arquivos e as tabelas obrigatórias. Um backup só é promovido para a pasta final depois de passar nas validações.
+O pacote reúne o PostgreSQL, os comprovantes físicos e os relatórios já exportados na mesma execução. O `manifest.json` registra hashes SHA-256, quantidade de arquivos e as tabelas obrigatórias. Um backup só é promovido para a pasta final depois de passar nas validações.
 
 Opcionalmente, o pacote completo é copiado para uma pasta sincronizada por outro serviço, como OneDrive ou Google Drive.
 
@@ -192,6 +195,7 @@ Configuração padrão:
 ```env
 BACKUP_RETENTION_DAYS=30
 BACKUP_MIRROR_DIR=
+CANHOTO_RELATORIOS_DIR=
 ```
 
 Enquanto `BACKUP_MIRROR_DIR` estiver vazio, o backup fica apenas na máquina local.
@@ -224,7 +228,8 @@ O script:
 - executa `pg_dump -Fc` dentro do container PostgreSQL;
 - valida o dump com `pg_restore -l`;
 - compacta `storage/uploads` (ou `CANHOTO_UPLOAD_DIR`) em `uploads.zip`;
-- calcula SHA-256 do banco e do arquivo de comprovantes;
+- compacta `storage/relatorios` (ou `CANHOTO_RELATORIOS_DIR`) em `relatorios.zip`;
+- calcula SHA-256 do banco, dos comprovantes e dos relatórios;
 - grava o `manifest.json`;
 - copia o pacote completo para `BACKUP_MIRROR_DIR` quando configurado;
 - mantém a retenção configurada.
@@ -235,7 +240,7 @@ Depois faça uma restauração real em banco separado:
 .\ops\backup\test-restore.ps1
 ```
 
-O teste cria um banco temporário `canhoto_restore_...`, restaura o dump, confirma as 11 tabelas essenciais, extrai `uploads.zip` e verifica se cada `arquivo_url` restaurado no banco possui o arquivo físico correspondente.
+O teste cria um banco temporário `canhoto_restore_...`, restaura o dump, confirma as 11 tabelas essenciais, extrai `uploads.zip`, verifica se cada `arquivo_url` restaurado no banco possui o arquivo físico correspondente e também valida a quantidade de arquivos em `relatorios.zip` quando o pacote contém relatórios.
 
 Por padrão, banco e pasta temporários são apagados após uma validação bem-sucedida ou com erro. Para mantê-los para inspeção manual:
 
