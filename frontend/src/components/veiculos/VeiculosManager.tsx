@@ -41,6 +41,7 @@ type ModalState =
   | { tipo: "novo-veiculo" }
   | { tipo: "editar-veiculo"; veiculo: VeiculoListItem }
   | { tipo: "novo-gasto"; veiculoId?: string }
+  | { tipo: "sem-veiculos" }
   | { tipo: "excluir-gasto"; gasto: VeiculoGastoItem }
   | null;
 
@@ -85,7 +86,11 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
           <button
             type="button"
             onClick={() => {
-              if (data.veiculos.length === 0) return;
+              if (data.veiculos.length === 0) {
+                setModal({ tipo: "sem-veiculos" });
+                return;
+              }
+
               setModal({ tipo: "novo-gasto" });
             }}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-[#102b5d] active:scale-[0.97]"
@@ -362,6 +367,42 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
             onClose={() => setModal(null)}
             onSuccess={fecharEAtualizar}
           />
+        )}
+
+        {modal?.tipo === "sem-veiculos" && (
+          <Modal
+            key="sem-veiculos"
+            onClose={() => setModal(null)}
+          >
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Cadastre um veículo primeiro
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  O gasto precisa ficar vinculado a um veículo da frota.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Fechar"
+                onClick={() => setModal(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setModal({ tipo: "novo-veiculo" })}
+              className="inline-flex w-full items-center justify-center gap-2 bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.98]"
+            >
+              <Plus className="size-4" />
+              Cadastrar veículo
+            </button>
+          </Modal>
         )}
 
         {modal?.tipo === "excluir-gasto" && (
