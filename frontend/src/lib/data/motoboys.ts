@@ -178,7 +178,10 @@ function distanciaHaversineKm(
   return 2 * raioTerraKm * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-export async function getKmRodadosHoje(motoboyId: string): Promise<number> {
+async function calcularKmDosPontos(
+  motoboyId: string,
+  entregaId?: string
+): Promise<number> {
   const db = getDb();
   if (!db) return 0;
 
@@ -200,7 +203,10 @@ export async function getKmRodadosHoje(motoboyId: string): Promise<number> {
     .where(
       and(
         eq(motoboyLocalizacaoHistorico.motoboyId, motoboyId),
-        eq(entregas.data, hoje)
+        eq(entregas.data, hoje),
+        entregaId
+          ? eq(motoboyLocalizacaoHistorico.entregaId, entregaId)
+          : undefined
       )
     )
     .orderBy(
@@ -263,5 +269,16 @@ export async function getKmRodadosHoje(motoboyId: string): Promise<number> {
   }
 
   return Number(totalKm.toFixed(1));
+}
+
+export async function getKmRodadosHoje(motoboyId: string): Promise<number> {
+  return calcularKmDosPontos(motoboyId);
+}
+
+export async function getKmRodadosEntrega(
+  motoboyId: string,
+  entregaId: string
+): Promise<number> {
+  return calcularKmDosPontos(motoboyId, entregaId);
 }
 
