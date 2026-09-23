@@ -105,7 +105,7 @@ export default async function MotoristaPage({
           <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full border border-white/5" />
 
           <div className="relative w-full">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 border-b border-white/15 pb-4">
               <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
                 <CalendarDays className="size-4" />
                 {formatarDataHoje()}
@@ -120,7 +120,7 @@ export default async function MotoristaPage({
             </div>
 
             {proximaEntrega ? (
-              <section className="mt-4 border-t border-white/15 pt-4">
+              <section className="mt-4">
                 <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-4">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#1F73F1] text-white shadow-sm shadow-black/10">
@@ -177,7 +177,7 @@ export default async function MotoristaPage({
                 </div>
               </section>
             ) : (
-              <section className="mt-4 flex items-center gap-3 border-t border-white/15 pt-4">
+              <section className="mt-4 flex items-center gap-3">
                 <CheckCircle2 className="size-6 shrink-0 text-white/85" />
                 <div>
                   <p className="text-sm font-black">Nenhuma entrega pendente</p>
