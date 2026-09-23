@@ -205,7 +205,21 @@ foreach ($change in $changes) {
 }
 
 [void]$sql.AppendLine("commit;")
-$null = Invoke-Postgres $sql.ToString()
+$null = Invoke-Postgres ($sql.ToString())
+
+$verifyRawRows = @(Invoke-Postgres $query | Where-Object { "$_".Trim() })
+$verifyRows = @($verifyRawRows | ForEach-Object { "$_".Trim() | ConvertFrom-Json })
+$pathsByAttachment = @{}
+
+foreach ($row in $verifyRows) {
+    $pathsByAttachment["$($row.anexoId)"] = "$($row.arquivoUrl)".Replace("\", "/")
+}
+
+foreach ($change in $changes) {
+    if ($pathsByAttachment[$change.AnexoId] -ne $change.NewRelative) {
+        throw "Database path validation failed for attachment $($change.AnexoId). Source files were preserved."
+    }
+}
 
 foreach ($change in $changes) {
     if (
