@@ -141,29 +141,30 @@ export default async function MotoristaPage({
                   )}
                 </div>
 
-                <div className="mt-3">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <p className="min-w-0 truncate text-[16px] font-normal leading-5 tracking-[0.01em] text-white/95">
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-normal leading-5 text-white/95">
                       {proximaEntrega.clienteNome}
                     </p>
-                    <span className="shrink-0 text-[13px] font-normal tabular-nums text-white/70">
-                      {distanciaAteDestino === null
-                        ? "— km"
-                        : `${distanciaAteDestino.toLocaleString("pt-BR", {
-                            minimumFractionDigits: 1,
-                            maximumFractionDigits: 1,
-                          })} km`}
-                    </span>
+
+                    {proximaEntrega.endereco && (
+                      <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium leading-5 text-white/70">
+                        <MapPin className="mt-0.5 size-3.5 shrink-0 text-white/55" />
+                        <span className="line-clamp-1">
+                          {proximaEntrega.endereco}
+                        </span>
+                      </p>
+                    )}
                   </div>
 
-                  {proximaEntrega.endereco && (
-                    <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium leading-5 text-white/75">
-                      <MapPin className="mt-0.5 size-3.5 shrink-0" />
-                      <span className="line-clamp-1">
-                        {proximaEntrega.endereco}
-                      </span>
-                    </p>
-                  )}
+                  <span className="shrink-0 pb-0.5 text-[15px] font-medium tabular-nums text-white/90">
+                    {distanciaAteDestino === null
+                      ? "— km"
+                      : `${distanciaAteDestino.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })} km`}
+                  </span>
                 </div>
 
                 <Link
