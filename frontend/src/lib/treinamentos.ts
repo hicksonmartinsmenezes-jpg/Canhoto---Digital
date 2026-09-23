@@ -140,20 +140,22 @@ export const TREINAMENTOS: Treinamento[] = [
   },
   {
     slug: "gestao-veiculos",
-    titulo: "Gestão de veículos",
+    titulo: "Gestão de veículos e despesas",
     perfis: ["frota", "administrativo"],
-    duracaoMinutos: 4,
+    duracaoMinutos: 6,
     objetivo:
-      "Manter o cadastro da frota atualizado e identificar rapidamente os veículos ativos.",
+      "Manter o cadastro da frota e registrar os gastos operacionais por veículo.",
     passos: [
       "Abra Gestão de Veículos e cadastre o veículo com placa, marca, modelo e ano.",
-      "Confira os veículos cadastrados e o status de cada um.",
-      "Use a ação de editar quando precisar corrigir os dados de um veículo.",
-      "Inative veículos que saírem da frota em vez de excluir o cadastro.",
+      "Use Registrar gasto para lançar uma despesa vinculada ao veículo.",
+      "Selecione a categoria correta: combustível, manutenção, multa, lava-jato, pedágio ou outro.",
+      "Informe data, valor e, quando disponível, quilometragem e observação.",
+      "Acompanhe o gasto do mês e o histórico de lançamentos.",
+      "Inative veículos que saírem da frota em vez de perder o histórico financeiro.",
     ],
     pontosImportantes: [
-      "Mantenha placa, marca, modelo e ano atualizados.",
-      "Veículos fora de operação devem ficar inativos.",
+      "Um gasto só pode ser registrado depois que o veículo existe no cadastro.",
+      "Quilometragem ajuda a relacionar custos com o uso real da frota.",
     ],
   },
   {
@@ -205,6 +207,7 @@ export const TREINAMENTOS: Treinamento[] = [
       "Motorista sem entrega: confira se a entrega está atribuída ao motorista correto e se pertence ao fluxo do dia.",
       "Localização não aparece: confirme a permissão de localização no navegador e retorne ao painel do motorista para atualizar.",
       "Waze não abriu: confira se a entrega possui endereço válido e use novamente o botão Abrir rota no Waze.",
+      "Não consegue registrar gasto: confirme se já existe pelo menos um veículo cadastrado.",
       "Relatório vazio: revise período, situação e forma de pagamento selecionados.",
       "Após uma atualização do sistema, atualize a página antes de repetir uma ação.",
     ],
