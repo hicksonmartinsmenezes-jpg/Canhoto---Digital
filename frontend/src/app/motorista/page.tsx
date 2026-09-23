@@ -23,7 +23,10 @@ import {
   getEntregasDoMotorista,
   getHistoricoDoMotorista,
 } from "@/lib/data/entregas";
-import { getMotoboyPerfil } from "@/lib/data/motoboys";
+import {
+  getKmRodadosEntrega,
+  getMotoboyPerfil,
+} from "@/lib/data/motoboys";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 import { sairMotorista } from "./actions";
 
@@ -87,6 +90,10 @@ export default async function MotoristaPage({
       (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
     ) ?? entregas.find((entrega) => entrega.status === "pendente");
 
+  const kmCorrida = proximaEntrega
+    ? await getKmRodadosEntrega(motoboyId, proximaEntrega.id)
+    : 0;
+
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
       <MotoristaAutoRefresh />
@@ -137,9 +144,19 @@ export default async function MotoristaPage({
                 </div>
 
                 <div className="mt-3">
-                  <p className="text-lg font-black">
-                    {proximaEntrega.clienteNome}
-                  </p>
+                  <div className="flex items-baseline justify-between gap-4">
+                    <p className="min-w-0 truncate text-[16px] font-normal leading-5 tracking-[0.01em] text-white/95">
+                      {proximaEntrega.clienteNome}
+                    </p>
+                    <span className="shrink-0 text-[13px] font-normal tabular-nums text-white/70">
+                      {kmCorrida.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })}{" "}
+                      km
+                    </span>
+                  </div>
+
                   {proximaEntrega.endereco && (
                     <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium leading-5 text-white/75">
                       <MapPin className="mt-0.5 size-3.5 shrink-0" />
