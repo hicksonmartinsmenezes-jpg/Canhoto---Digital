@@ -256,7 +256,25 @@ Somente depois de backup + restore passarem registre o agendamento:
 
 Por padrão o backup fica agendado diariamente às 02:30.
 
-## 6. Checklist de reinicialização
+## 6. Organização dos anexos por cliente
+
+Novos anexos são salvos em:
+
+```text
+storage/uploads/entregas/<cliente>/entrega-000123/
+```
+
+Para migrar anexos antigos que ainda estejam em pastas por UUID, pare o Next.js e execute na raiz do projeto:
+
+```powershell
+.\ops\storage\organize-uploads-by-client.ps1
+```
+
+O script copia os arquivos para a nova estrutura, atualiza `entrega_anexos.arquivo_url`, valida os novos caminhos no PostgreSQL e só então remove os arquivos antigos.
+
+Depois da migração, crie um novo backup completo e execute novamente o teste de restauração.
+
+## 7. Checklist de reinicialização
 
 Após toda configuração estar concluída:
 
