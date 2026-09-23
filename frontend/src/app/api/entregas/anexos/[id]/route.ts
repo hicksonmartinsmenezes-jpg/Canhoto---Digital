@@ -40,7 +40,9 @@ export async function GET(
 
   if (
     !anexo ||
-    (anexo.tipo !== "foto" && anexo.tipo !== "assinatura_cliente")
+    (anexo.tipo !== "foto" &&
+      anexo.tipo !== "comprovante_pix" &&
+      anexo.tipo !== "assinatura_cliente")
   ) {
     return new Response("Comprovante não encontrado.", {
       status: 404,
