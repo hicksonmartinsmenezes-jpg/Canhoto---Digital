@@ -14,7 +14,69 @@ const LOJA_RILDON = {
   cep: "49082110",
 } as const;
 
+interface BrasilApiCepV2 {
+  location?: {
+    coordinates?: {
+      latitude?: string | number;
+      longitude?: string | number;
+    };
+  };
+}
+
 let coordenadasLojaPromise: Promise<CoordenadasEntrega | null> | null = null;
+
+function coordenadasValidas(
+  latitude: number,
+  longitude: number
+): boolean {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
+}
+
+async function coordenadasPorCep(
+  cepEntrada: string
+): Promise<CoordenadasEntrega | null> {
+  const cep = cepEntrada.replace(/\D/g, "");
+  if (!/^\d{8}$/.test(cep)) return null;
+
+  try {
+    const resposta = await fetch(
+      `https://brasilapi.com.br/api/cep/v2/${cep}`,
+      {
+        headers: {
+          "User-Agent": "Canhoto-Digital/2.0",
+        },
+        next: {
+          revalidate: 60 * 60 * 24 * 30,
+        },
+        signal: AbortSignal.timeout(5_000),
+      }
+    );
+
+    if (!resposta.ok) return null;
+
+    const dados = (await resposta.json()) as BrasilApiCepV2;
+    const latitude = Number(dados.location?.coordinates?.latitude);
+    const longitude = Number(dados.location?.coordinates?.longitude);
+
+    if (!coordenadasValidas(latitude, longitude)) {
+      return null;
+    }
+
+    return {
+      latitude: Number(latitude.toFixed(6)),
+      longitude: Number(longitude.toFixed(6)),
+    };
+  } catch {
+    return null;
+  }
+}
 
 function distanciaHaversineKm(
   latitudeA: number,
@@ -38,16 +100,27 @@ function distanciaHaversineKm(
   return 2 * raioTerraKm * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
+async function resolverCoordenadas(
+  endereco: string,
+  cep: string
+): Promise<CoordenadasEntrega | null> {
+  const exatas = await geocodificarEntregaGratis({ endereco, cep });
+  if (exatas) return exatas;
+
+  return coordenadasPorCep(cep);
+}
+
 function obterCoordenadasLoja(): Promise<CoordenadasEntrega | null> {
   if (!coordenadasLojaPromise) {
-    coordenadasLojaPromise = geocodificarEntregaGratis(LOJA_RILDON).then(
-      (coordenadas) => {
-        if (!coordenadas) {
-          coordenadasLojaPromise = null;
-        }
-        return coordenadas;
+    coordenadasLojaPromise = resolverCoordenadas(
+      LOJA_RILDON.endereco,
+      LOJA_RILDON.cep
+    ).then((coordenadas) => {
+      if (!coordenadas) {
+        coordenadasLojaPromise = null;
       }
-    );
+      return coordenadas;
+    });
   }
 
   return coordenadasLojaPromise;
@@ -72,31 +145,28 @@ export async function getDistanciaLojaAteDestinoKm(
 
   if (!entrega) return null;
 
-  const [loja, destinoGeocodificado] = await Promise.all([
-    obterCoordenadasLoja(),
-    entrega.latitude === null || entrega.longitude === null
-      ? geocodificarEntregaGratis({
-          endereco: entrega.endereco ?? "",
-          cep: entrega.cep ?? "",
-        })
-      : Promise.resolve(null),
-  ]);
-
-  const destino =
+  const destinoPersistido =
     entrega.latitude !== null && entrega.longitude !== null
       ? {
           latitude: Number(entrega.latitude),
           longitude: Number(entrega.longitude),
         }
-      : destinoGeocodificado;
+      : null;
 
-  if (!loja || !destino) return null;
+  const [loja, destinoResolvido] = await Promise.all([
+    obterCoordenadasLoja(),
+    destinoPersistido
+      ? Promise.resolve(destinoPersistido)
+      : resolverCoordenadas(entrega.endereco ?? "", entrega.cep ?? ""),
+  ]);
+
+  if (!loja || !destinoResolvido) return null;
 
   const distanciaKm = distanciaHaversineKm(
     loja.latitude,
     loja.longitude,
-    destino.latitude,
-    destino.longitude
+    destinoResolvido.latitude,
+    destinoResolvido.longitude
   );
 
   return Number(distanciaKm.toFixed(1));
