@@ -369,7 +369,7 @@ export function EntregaMotoristaDetalheView({
               Finalizar entrega
             </h2>
             <p className="mt-1 text-xs font-medium text-slate-500">
-              Registre a foto do comprovante e a assinatura do cliente.
+              A assinatura é obrigatória. A foto do comprovante é opcional.
             </p>
           </div>
           <ComprovanteEntregaForm entregaId={entrega.id} />
