@@ -1,3 +1,4 @@
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({
@@ -13,6 +14,10 @@ vi.mock("node:fs/promises", () => ({
 }));
 vi.mock("@/lib/comprovantes-storage", () => ({
   diretorioRaizUploads: vi.fn(() => "/tmp/canhoto-test"),
+  diretorioRelativoEntrega: vi.fn(
+    (clienteNome: string, numeroEntrega: number) =>
+      `entregas/${clienteNome.toLowerCase().replace(/\s+/g, "-")}/entrega-${String(numeroEntrega).padStart(6, "0")}`
+  ),
 }));
 vi.mock("@/lib/rate-limit", () => ({
   checarRateLimit: vi.fn(),
@@ -48,6 +53,8 @@ const ENTREGA_ID = "11111111-1111-4111-8111-111111111111";
 
 type SelectRow = {
   id: string;
+  numero?: number;
+  clienteNome?: string;
   formaPagamento?: "dinheiro" | "pix" | "debito" | "cartao_1x" | "prazo";
 };
 
@@ -218,7 +225,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("confirma entrega não Pix com foto da entrega e assinatura", async () => {
     const { tx, insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, formaPagamento: "dinheiro" }]],
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }]],
     });
 
     await expect(
@@ -229,6 +236,13 @@ describe("ações do motorista com PostgreSQL local", () => {
 
     expect(tx.update).toHaveBeenCalledTimes(1);
     expect(writeFileMock).toHaveBeenCalledTimes(2);
+    expect(writeFileMock).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "entregas/cliente-teste/entrega-000123".replaceAll("/", path.sep)
+      ),
+      expect.any(Uint8Array),
+      { flag: "wx" }
+    );
 
     expect(insertValues).toHaveBeenCalledWith(
       expect.arrayContaining([
@@ -256,7 +270,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("permite entrega Pix sem comprovante de pagamento", async () => {
     const { insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, formaPagamento: "pix" }]],
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }]],
     });
 
     await expect(
@@ -278,7 +292,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("salva comprovante Pix separado quando o motorista envia", async () => {
     const { insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, formaPagamento: "pix" }]],
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }]],
     });
 
     await expect(
@@ -367,7 +381,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("revalida as telas após confirmar a entrega", async () => {
     configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, formaPagamento: "dinheiro" }]],
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }]],
     });
 
     await confirmarEntrega(ENTREGA_ID, criarFormDataEntrega());
