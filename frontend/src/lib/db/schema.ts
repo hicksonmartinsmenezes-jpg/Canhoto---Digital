@@ -159,50 +159,6 @@ export const motoboyLocalizacoes = pgTable(
   ]
 );
 
-export const motoboyLocalizacaoHistorico = pgTable(
-  "motoboy_localizacao_historico",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    motoboyId: uuid("motoboy_id")
-      .notNull()
-      .references(() => motoboys.id, { onDelete: "cascade" }),
-    entregaId: uuid("entrega_id")
-      .notNull()
-      .references(() => entregas.id, { onDelete: "cascade" }),
-    latitude: numeric("latitude", { precision: 9, scale: 6 }).notNull(),
-    longitude: numeric("longitude", { precision: 9, scale: 6 }).notNull(),
-    precisaoMetros: numeric("precisao_metros", { precision: 10, scale: 2 }),
-    registradoEm: timestamp("registrado_em", {
-      withTimezone: true,
-      mode: "string",
-    })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    index("idx_motoboy_localizacao_historico_motoboy").on(
-      table.motoboyId,
-      table.registradoEm
-    ),
-    index("idx_motoboy_localizacao_historico_entrega").on(
-      table.entregaId,
-      table.registradoEm
-    ),
-    check(
-      "ck_motoboy_localizacao_historico_latitude",
-      sql`${table.latitude} between -90 and 90`
-    ),
-    check(
-      "ck_motoboy_localizacao_historico_longitude",
-      sql`${table.longitude} between -180 and 180`
-    ),
-    check(
-      "ck_motoboy_localizacao_historico_precisao",
-      sql`${table.precisaoMetros} is null or ${table.precisaoMetros} >= 0`
-    ),
-  ]
-);
-
 export const veiculos = pgTable(
   "veiculos",
   {
@@ -390,6 +346,50 @@ export const entregas = pgTable(
     check(
       "ck_entregas_coordenadas_completas",
       sql`(${table.latitude} is null) = (${table.longitude} is null)`
+    ),
+  ]
+);
+
+export const motoboyLocalizacaoHistorico = pgTable(
+  "motoboy_localizacao_historico",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    motoboyId: uuid("motoboy_id")
+      .notNull()
+      .references(() => motoboys.id, { onDelete: "cascade" }),
+    entregaId: uuid("entrega_id")
+      .notNull()
+      .references(() => entregas.id, { onDelete: "cascade" }),
+    latitude: numeric("latitude", { precision: 9, scale: 6 }).notNull(),
+    longitude: numeric("longitude", { precision: 9, scale: 6 }).notNull(),
+    precisaoMetros: numeric("precisao_metros", { precision: 10, scale: 2 }),
+    registradoEm: timestamp("registrado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_motoboy_localizacao_historico_motoboy").on(
+      table.motoboyId,
+      table.registradoEm
+    ),
+    index("idx_motoboy_localizacao_historico_entrega").on(
+      table.entregaId,
+      table.registradoEm
+    ),
+    check(
+      "ck_motoboy_localizacao_historico_latitude",
+      sql`${table.latitude} between -90 and 90`
+    ),
+    check(
+      "ck_motoboy_localizacao_historico_longitude",
+      sql`${table.longitude} between -180 and 180`
+    ),
+    check(
+      "ck_motoboy_localizacao_historico_precisao",
+      sql`${table.precisaoMetros} is null or ${table.precisaoMetros} >= 0`
     ),
   ]
 );
