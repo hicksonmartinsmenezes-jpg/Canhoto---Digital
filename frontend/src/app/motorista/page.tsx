@@ -24,7 +24,7 @@ import {
   getHistoricoDoMotorista,
 } from "@/lib/data/entregas";
 import {
-  getKmRodadosEntrega,
+  getDistanciaAtualAteDestinoKm,
   getMotoboyPerfil,
 } from "@/lib/data/motoboys";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
@@ -90,9 +90,10 @@ export default async function MotoristaPage({
       (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
     ) ?? entregas.find((entrega) => entrega.status === "pendente");
 
-  const kmCorrida = proximaEntrega
-    ? await getKmRodadosEntrega(motoboyId, proximaEntrega.id)
-    : 0;
+  const distanciaAteDestino =
+    proximaEntrega?.horaSaida
+      ? await getDistanciaAtualAteDestinoKm(motoboyId, proximaEntrega.id)
+      : null;
 
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
@@ -149,11 +150,12 @@ export default async function MotoristaPage({
                       {proximaEntrega.clienteNome}
                     </p>
                     <span className="shrink-0 text-[13px] font-normal tabular-nums text-white/70">
-                      {kmCorrida.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 1,
-                        maximumFractionDigits: 1,
-                      })}{" "}
-                      km
+                      {distanciaAteDestino === null
+                        ? "— km"
+                        : `${distanciaAteDestino.toLocaleString("pt-BR", {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1,
+                          })} km`}
                     </span>
                   </div>
 
