@@ -125,17 +125,17 @@ export const TREINAMENTOS: Treinamento[] = [
     perfis: ["motorista"],
     duracaoMinutos: 5,
     objetivo:
-      "Registrar foto e assinatura corretamente antes de concluir a entrega.",
+      "Coletar a assinatura do cliente e, quando necessário, registrar também uma foto do comprovante antes de concluir a entrega.",
     passos: [
       "Abra a entrega que está em rota.",
-      "Registre a foto do comprovante solicitado.",
+      "Se houver comprovante físico, use a opção de foto para registrá-lo.",
       "Colete a assinatura do cliente no campo de assinatura.",
-      "Revise os comprovantes antes de confirmar.",
+      "Revise os dados antes de confirmar.",
       "Finalize a entrega e confirme que o status passou para Entregue.",
     ],
     pontosImportantes: [
-      "Os comprovantes ficam vinculados à entrega e podem ser consultados pelo Portal Admin.",
-      "Evite fotos desfocadas, cortadas ou sem o conteúdo necessário para conferência.",
+      "A assinatura do cliente é obrigatória para concluir a entrega.",
+      "A foto do comprovante é opcional e, quando enviada, fica vinculada à entrega no Portal Admin.",
     ],
   },
   {
