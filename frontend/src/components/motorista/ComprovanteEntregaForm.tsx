@@ -153,11 +153,6 @@ export function ComprovanteEntregaForm({
   function confirmar() {
     setErro(null);
 
-    if (!foto) {
-      setErro("Tire uma foto do comprovante antes de confirmar.");
-      return;
-    }
-
     if (!temAssinatura) {
       setErro("Peça ao cliente para assinar antes de confirmar.");
       return;
@@ -172,7 +167,9 @@ export function ComprovanteEntregaForm({
       }
 
       const formData = new FormData();
-      formData.set("foto", foto);
+      if (foto) {
+        formData.set("foto", foto);
+      }
       formData.set("assinatura", assinatura);
 
       const resultado = await confirmarEntrega(entregaId, formData);
@@ -190,7 +187,10 @@ export function ComprovanteEntregaForm({
     <div className="p-4">
       <div>
         <p className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
-          Foto do comprovante
+          Foto do comprovante{" "}
+          <span className="font-semibold normal-case tracking-normal text-slate-400">
+            (opcional)
+          </span>
         </p>
 
         {fotoUrl && (
@@ -268,7 +268,7 @@ export function ComprovanteEntregaForm({
         {pending ? (
           <>
             <Loader2 className="size-4 animate-spin" />
-            Salvando comprovantes...
+            Finalizando...
           </>
         ) : (
           <>
