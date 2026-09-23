@@ -138,6 +138,56 @@ function distanciaHaversineKm(
   return 2 * raioTerraKm * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
+
+interface OsrmRouteResponse {
+  code?: string;
+  routes?: Array<{
+    distance?: number;
+  }>;
+}
+
+async function distanciaRodoviariaKm(
+  origem: CoordenadasEntrega,
+  destino: CoordenadasEntrega
+): Promise<number | null> {
+  const baseUrl = (
+    process.env.ROUTING_URL?.trim() || "https://router.project-osrm.org"
+  ).replace(/\/$/, "");
+
+  const coordenadas =
+    `${origem.longitude},${origem.latitude};${destino.longitude},${destino.latitude}`;
+
+  try {
+    const resposta = await fetch(
+      `${baseUrl}/route/v1/driving/${coordenadas}?overview=false&alternatives=false&steps=false`,
+      {
+        headers: {
+          "User-Agent": "Canhoto-Digital/2.0",
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(6_000),
+      }
+    );
+
+    if (!resposta.ok) return null;
+
+    const dados = (await resposta.json()) as OsrmRouteResponse;
+    const distanciaMetros = Number(dados.routes?.[0]?.distance);
+
+    if (
+      dados.code !== "Ok" ||
+      !Number.isFinite(distanciaMetros) ||
+      distanciaMetros < 0
+    ) {
+      return null;
+    }
+
+    return Number((distanciaMetros / 1000).toFixed(1));
+  } catch {
+    return null;
+  }
+}
+
 async function resolverCoordenadas(
   endereco: string,
   cep: string
@@ -189,12 +239,26 @@ export async function getDistanciaLojaAteDestinoKm(
 
   if (!destinoResolvido) return null;
 
-  const distanciaKm = distanciaHaversineKm(
-    LOJA_RILDON.latitude,
-    LOJA_RILDON.longitude,
+  const origem = {
+    latitude: LOJA_RILDON.latitude,
+    longitude: LOJA_RILDON.longitude,
+  };
+
+  const distanciaPorRuas = await distanciaRodoviariaKm(
+    origem,
+    destinoResolvido
+  );
+
+  if (distanciaPorRuas !== null) {
+    return distanciaPorRuas;
+  }
+
+  const distanciaDireta = distanciaHaversineKm(
+    origem.latitude,
+    origem.longitude,
     destinoResolvido.latitude,
     destinoResolvido.longitude
   );
 
-  return Number(distanciaKm.toFixed(1));
+  return Number(distanciaDireta.toFixed(1));
 }
