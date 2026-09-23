@@ -292,18 +292,26 @@ export async function confirmarEntrega(
   const acesso = await motoristaPodeAcessarEntrega(entregaId);
   if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
-  const fotoEntrada = formData.get("foto");
-  const assinaturaEntrada = formData.get("assinatura");
-  const fotoFoiEnviada =
-    fotoEntrada instanceof File && fotoEntrada.size > 0;
-  const foto = validarFoto(fotoEntrada);
-  const assinatura = validarAssinatura(assinaturaEntrada);
+  const fotoEntrega = validarFoto(formData.get("fotoEntrega"));
+  const comprovantePixEntrada = formData.get("comprovantePix");
+  const comprovantePixFoiEnviado =
+    comprovantePixEntrada instanceof File && comprovantePixEntrada.size > 0;
+  const comprovantePix = validarFoto(comprovantePixEntrada);
+  const assinatura = validarAssinatura(formData.get("assinatura"));
 
-  if (fotoFoiEnviada && !foto) {
+  if (!fotoEntrega) {
     return {
       ok: false,
       error:
-        "A foto do comprovante é opcional, mas quando enviada deve ser JPG, PNG, WEBP, HEIC ou HEIF com até 8 MB.",
+        "Tire uma foto válida da entrega (JPG, PNG, WEBP, HEIC ou HEIF, até 8 MB).",
+    };
+  }
+
+  if (comprovantePixFoiEnviado && !comprovantePix) {
+    return {
+      ok: false,
+      error:
+        "O comprovante Pix deve ser uma imagem JPG, PNG, WEBP, HEIC ou HEIF com até 8 MB.",
     };
   }
 
@@ -317,9 +325,14 @@ export async function confirmarEntrega(
   const db = getDb();
   if (!db) return { ok: false, error: ERRO_BANCO };
 
+  let entregaEhPix = false;
+
   try {
     const [entregaConfirmavel] = await db
-      .select({ id: entregas.id })
+      .select({
+        id: entregas.id,
+        formaPagamento: entregas.formaPagamento,
+      })
       .from(entregas)
       .where(
         and(
@@ -337,6 +350,8 @@ export async function confirmarEntrega(
         error: "Entrega não encontrada, já concluída ou ainda não iniciada.",
       };
     }
+
+    entregaEhPix = entregaConfirmavel.formaPagamento === "pix";
   } catch {
     return {
       ok: false,
@@ -344,30 +359,52 @@ export async function confirmarEntrega(
     };
   }
 
+  const comprovantePixValido =
+    entregaEhPix && comprovantePix ? comprovantePix : null;
+
   const pastaEntrega = path.join(
     diretorioRaizUploads(),
     "entregas",
     entregaId
   );
-  const nomeFoto = foto
-    ? `foto-${randomUUID()}.${EXTENSAO_POR_MIME[foto.type]}`
+  const nomeFotoEntrega = `foto-entrega-${randomUUID()}.${EXTENSAO_POR_MIME[fotoEntrega.type]}`;
+  const nomeComprovantePix = comprovantePixValido
+    ? `comprovante-pix-${randomUUID()}.${EXTENSAO_POR_MIME[comprovantePixValido.type]}`
     : null;
   const nomeAssinatura = `assinatura-${randomUUID()}.png`;
-  const caminhoFoto = nomeFoto ? path.join(pastaEntrega, nomeFoto) : null;
+
+  const caminhoFotoEntrega = path.join(pastaEntrega, nomeFotoEntrega);
+  const caminhoComprovantePix = nomeComprovantePix
+    ? path.join(pastaEntrega, nomeComprovantePix)
+    : null;
   const caminhoAssinatura = path.join(pastaEntrega, nomeAssinatura);
-  const arquivoUrlFoto = nomeFoto
-    ? `entregas/${entregaId}/${nomeFoto}`
+
+  const arquivoUrlFotoEntrega = `entregas/${entregaId}/${nomeFotoEntrega}`;
+  const arquivoUrlComprovantePix = nomeComprovantePix
+    ? `entregas/${entregaId}/${nomeComprovantePix}`
     : null;
   const arquivoUrlAssinatura = `entregas/${entregaId}/${nomeAssinatura}`;
 
-  let fotoGravada = false;
+  let fotoEntregaGravada = false;
+  let comprovantePixGravado = false;
   let assinaturaGravada = false;
 
   try {
     await mkdir(pastaEntrega, { recursive: true });
 
-    const bufferAssinatura = await assinatura.arrayBuffer();
+    const [bufferFotoEntrega, bufferAssinatura] = await Promise.all([
+      fotoEntrega.arrayBuffer(),
+      assinatura.arrayBuffer(),
+    ]);
+    const bytesFotoEntrega = new Uint8Array(bufferFotoEntrega);
     const bytesAssinatura = new Uint8Array(bufferAssinatura);
+
+    if (!conteudoConfereComMime(bytesFotoEntrega, fotoEntrega.type)) {
+      return {
+        ok: false,
+        error: "O conteúdo da foto da entrega não corresponde a uma imagem válida.",
+      };
+    }
 
     if (!conteudoConfereComMime(bytesAssinatura, assinatura.type)) {
       return {
@@ -376,19 +413,33 @@ export async function confirmarEntrega(
       };
     }
 
-    if (foto && caminhoFoto) {
-      const bufferFoto = await foto.arrayBuffer();
-      const bytesFoto = new Uint8Array(bufferFoto);
+    let bytesComprovantePix: Uint8Array | null = null;
+    if (comprovantePixValido) {
+      const bufferComprovantePix = await comprovantePixValido.arrayBuffer();
+      bytesComprovantePix = new Uint8Array(bufferComprovantePix);
 
-      if (!conteudoConfereComMime(bytesFoto, foto.type)) {
+      if (
+        !conteudoConfereComMime(
+          bytesComprovantePix,
+          comprovantePixValido.type
+        )
+      ) {
         return {
           ok: false,
-          error: "O conteúdo da foto não corresponde a uma imagem válida.",
+          error:
+            "O conteúdo do comprovante Pix não corresponde a uma imagem válida.",
         };
       }
+    }
 
-      await writeFile(caminhoFoto, bytesFoto, { flag: "wx" });
-      fotoGravada = true;
+    await writeFile(caminhoFotoEntrega, bytesFotoEntrega, { flag: "wx" });
+    fotoEntregaGravada = true;
+
+    if (bytesComprovantePix && caminhoComprovantePix) {
+      await writeFile(caminhoComprovantePix, bytesComprovantePix, {
+        flag: "wx",
+      });
+      comprovantePixGravado = true;
     }
 
     await writeFile(caminhoAssinatura, bytesAssinatura, {
@@ -418,17 +469,23 @@ export async function confirmarEntrega(
       const anexosComprovante: Array<typeof entregaAnexos.$inferInsert> = [
         {
           entregaId,
+          tipo: "foto",
+          arquivoUrl: arquivoUrlFotoEntrega,
+          capturadoPorMotoboy: acesso.motoboyId,
+        },
+        {
+          entregaId,
           tipo: "assinatura_cliente",
           arquivoUrl: arquivoUrlAssinatura,
           capturadoPorMotoboy: acesso.motoboyId,
         },
       ];
 
-      if (arquivoUrlFoto) {
-        anexosComprovante.unshift({
+      if (arquivoUrlComprovantePix) {
+        anexosComprovante.splice(1, 0, {
           entregaId,
-          tipo: "foto",
-          arquivoUrl: arquivoUrlFoto,
+          tipo: "comprovante_pix",
+          arquivoUrl: arquivoUrlComprovantePix,
           capturadoPorMotoboy: acesso.motoboyId,
         });
       }
@@ -440,9 +497,9 @@ export async function confirmarEntrega(
         statusAnterior: "pendente",
         statusNovo: "entregue",
         alteradoPorMotoboy: acesso.motoboyId,
-        observacao: foto
-          ? "Entrega confirmada com foto e assinatura do cliente."
-          : "Entrega confirmada com assinatura do cliente.",
+        observacao: arquivoUrlComprovantePix
+          ? "Entrega confirmada com foto da entrega, comprovante Pix e assinatura do cliente."
+          : "Entrega confirmada com foto da entrega e assinatura do cliente.",
       });
 
       return true;
@@ -453,8 +510,11 @@ export async function confirmarEntrega(
     }
   } catch (error) {
     await Promise.allSettled([
-      fotoGravada && caminhoFoto
-        ? rm(caminhoFoto, { force: true })
+      fotoEntregaGravada
+        ? rm(caminhoFotoEntrega, { force: true })
+        : Promise.resolve(),
+      comprovantePixGravado && caminhoComprovantePix
+        ? rm(caminhoComprovantePix, { force: true })
         : Promise.resolve(),
       assinaturaGravada
         ? rm(caminhoAssinatura, { force: true })
