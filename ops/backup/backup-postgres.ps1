@@ -94,8 +94,18 @@ function Assert-BackupPackage([string]$PackagePath) {
 
     $databasePath = Join-Path $PackagePath $manifest.database.file
     $uploadsPath = Join-Path $PackagePath $manifest.uploads.file
+    $reportsPath = $null
 
-    foreach ($required in @($databasePath, $uploadsPath)) {
+    if ($manifest.PSObject.Properties.Name -contains "reports") {
+        $reportsPath = Join-Path $PackagePath $manifest.reports.file
+    }
+
+    $requiredFiles = @($databasePath, $uploadsPath)
+    if ($reportsPath) {
+        $requiredFiles += $reportsPath
+    }
+
+    foreach ($required in $requiredFiles) {
         if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
             throw "Backup package is incomplete: $required"
         }
@@ -115,6 +125,14 @@ function Assert-BackupPackage([string]$PackagePath) {
     }
 
     Assert-ZipReadable $uploadsPath
+
+    if ($reportsPath) {
+        $reportsHash = (Get-FileHash -LiteralPath $reportsPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($reportsHash -ne $manifest.reports.sha256.ToLowerInvariant()) {
+            throw "Reports archive SHA-256 mismatch."
+        }
+        Assert-ZipReadable $reportsPath
+    }
 }
 
 Import-EnvFile $configPath
@@ -140,6 +158,8 @@ if ($env:BACKUP_MIRROR_DIR) {
 
 $defaultUploadDir = Join-Path (Join-Path $repoRoot "storage") "uploads"
 $uploadDir = Resolve-OperationalPath $env:CANHOTO_UPLOAD_DIR $defaultUploadDir
+$defaultReportsDir = Join-Path (Join-Path $repoRoot "storage") "relatorios"
+$reportsDir = Resolve-OperationalPath $env:CANHOTO_RELATORIOS_DIR $defaultReportsDir
 
 New-Item -ItemType Directory -Force -Path $backupRoot | Out-Null
 
@@ -149,6 +169,7 @@ $finalPath = Join-Path $backupRoot $packageName
 $partialPath = Join-Path $backupRoot (".partial-" + $packageName + "-" + $PID)
 $databasePath = Join-Path $partialPath "database.dump"
 $uploadsArchivePath = Join-Path $partialPath "uploads.zip"
+$reportsArchivePath = Join-Path $partialPath "relatorios.zip"
 $manifestPath = Join-Path $partialPath "manifest.json"
 $containerPath = "/tmp/$packageName.dump"
 
@@ -204,6 +225,31 @@ try {
         $uploadFiles = @(Get-ChildItem -LiteralPath $uploadDir -File -Recurse)
     }
 
+    $sourceReportsDir = $reportsDir
+    $temporaryEmptyReportsDir = $null
+
+    if (-not (Test-Path -LiteralPath $reportsDir -PathType Container)) {
+        $temporaryEmptyReportsDir = Join-Path $partialPath "_empty-reports"
+        New-Item -ItemType Directory -Force -Path $temporaryEmptyReportsDir | Out-Null
+        $sourceReportsDir = $temporaryEmptyReportsDir
+    }
+
+    [IO.Compression.ZipFile]::CreateFromDirectory(
+        $sourceReportsDir,
+        $reportsArchivePath,
+        [IO.Compression.CompressionLevel]::Optimal,
+        $false
+    )
+
+    if ($temporaryEmptyReportsDir) {
+        Remove-Item -LiteralPath $temporaryEmptyReportsDir -Recurse -Force
+    }
+
+    $reportFiles = @()
+    if (Test-Path -LiteralPath $reportsDir -PathType Container) {
+        $reportFiles = @(Get-ChildItem -LiteralPath $reportsDir -File -Recurse)
+    }
+
     $gitCommit = $null
     if (Get-Command git -ErrorAction SilentlyContinue) {
         $previousErrorAction = $ErrorActionPreference
@@ -241,6 +287,16 @@ try {
             fileCount = $uploadFiles.Count
             totalBytes = [long]($(if ($uploadFiles.Count -gt 0) {
                 ($uploadFiles | Measure-Object -Property Length -Sum).Sum
+            } else {
+                0
+            }))
+        }
+        reports = [ordered]@{
+            file = "relatorios.zip"
+            sha256 = (Get-FileHash -LiteralPath $reportsArchivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+            fileCount = $reportFiles.Count
+            totalBytes = [long]($(if ($reportFiles.Count -gt 0) {
+                ($reportFiles | Measure-Object -Property Length -Sum).Sum
             } else {
                 0
             }))
@@ -283,7 +339,7 @@ try {
     }
 
     Write-Host "Complete backup created: $finalPath"
-    Write-Host "Database + delivery uploads are in the same validated package."
+    Write-Host "Database + delivery uploads + exported reports are in the same validated package."
     Write-Host "Retention: $retention days"
 }
 finally {
