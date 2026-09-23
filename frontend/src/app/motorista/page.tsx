@@ -9,6 +9,7 @@ import {
   Navigation,
   Package,
   Phone,
+  Route,
   UserRound,
 } from "lucide-react";
 import {
@@ -120,63 +121,71 @@ export default async function MotoristaPage({
 
             {proximaEntrega ? (
               <section className="mt-4 border-t border-white/15 pt-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-9 place-items-center rounded-full bg-[#1F73F1] text-white">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#1F73F1] text-white shadow-sm shadow-black/10">
                       {proximaEntrega.horaSaida ? (
-                        <Navigation className="size-4" />
+                        <Navigation className="size-4.5" />
                       ) : (
-                        <Package className="size-4" />
+                        <Package className="size-4.5" />
                       )}
                     </span>
-                    <span className="text-xs font-black">
-                      {proximaEntrega.horaSaida
-                        ? "Entrega em andamento"
-                        : "Próxima entrega"}
-                    </span>
-                  </div>
 
-                  {proximaEntrega.horaSaida && (
-                    <span className="rounded-full bg-[#1F73F1] px-2.5 py-1 text-[10px] font-black text-white">
-                      Em rota
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-4 grid grid-cols-[auto_1fr] items-end gap-5">
-                  <div className="shrink-0">
-                    <p className="text-[17px] font-medium tabular-nums leading-none">
-                      {kmCorrida.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 1,
-                        maximumFractionDigits: 1,
-                      })}{" "}
-                      km
-                    </p>
-                  </div>
-
-                  <div className="min-w-0 text-right">
-                    <p className="truncate text-[15px] font-medium text-white">
-                      {proximaEntrega.clienteNome}
-                    </p>
-                    {proximaEntrega.endereco && (
-                      <p className="mt-1.5 flex items-start justify-end gap-1.5 text-xs font-medium leading-5 text-white/75">
-                        <MapPin className="mt-0.5 size-3.5 shrink-0" />
-                        <span className="line-clamp-1 text-right">
-                          {proximaEntrega.endereco}
-                        </span>
+                    <div className="min-w-0 border-l border-white/20 pl-3">
+                      <p className="truncate text-[15px] font-semibold text-white">
+                        {proximaEntrega.horaSaida
+                          ? "Entrega em andamento"
+                          : "Próxima entrega"}
                       </p>
-                    )}
+                      <p className="mt-0.5 truncate text-[11px] font-medium text-white/55">
+                        {proximaEntrega.horaSaida && proximaEntrega.horaSaida
+                          ? `Saída às ${proximaEntrega.horaSaida.slice(0, 5)}`
+                          : "Aguardando a próxima coleta"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex min-w-0 items-start justify-end gap-2 text-right">
+                    <MapPin className="mt-0.5 size-4 shrink-0 text-white/65" />
+                    <div className="min-w-0">
+                      <p className="truncate text-[14px] font-medium text-white">
+                        {proximaEntrega.clienteNome}
+                      </p>
+                      {proximaEntrega.endereco && (
+                        <p className="mt-0.5 line-clamp-1 text-[11px] font-medium leading-4 text-white/55">
+                          {proximaEntrega.endereco}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <Link
-                  href={`/motorista/entregas/${proximaEntrega.id}`}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1F73F1] px-4 py-3 text-sm font-black text-white transition hover:bg-[#1767dc]"
-                >
-                  <Navigation className="size-4" />
-                  Ver entrega
-                  <ChevronRight className="size-4" />
-                </Link>
+                <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border-t border-white/10 pt-4">
+                  <div className="flex min-w-[108px] items-center gap-2.5 pr-4">
+                    <Route className="size-5 shrink-0 text-[#2C8BFF]" />
+                    <div>
+                      <p className="text-[15px] font-medium tabular-nums leading-none text-white">
+                        {kmCorrida.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })}{" "}
+                        km
+                      </p>
+                      <p className="mt-1 text-[10px] font-medium text-white/45">
+                        Distância percorrida
+                      </p>
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/motorista/entregas/${proximaEntrega.id}`}
+                    className="flex min-w-0 items-center justify-center gap-2 rounded-2xl bg-[#1F73F1] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1767dc]"
+                  >
+                    <Navigation className="size-4" />
+                    Ver entrega
+                    <ChevronRight className="size-4" />
+                  </Link>
+                </div>
               </section>
             ) : (
               <section className="mt-4 flex items-center gap-3 border-t border-white/15 pt-4">
