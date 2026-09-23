@@ -9,6 +9,7 @@ import {
   Navigation,
   Package,
   Phone,
+  Route,
   UserRound,
 } from "lucide-react";
 import {
@@ -23,7 +24,10 @@ import {
   getEntregasDoMotorista,
   getHistoricoDoMotorista,
 } from "@/lib/data/entregas";
-import { getMotoboyPerfil } from "@/lib/data/motoboys";
+import {
+  getKmRodadosHoje,
+  getMotoboyPerfil,
+} from "@/lib/data/motoboys";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 import { sairMotorista } from "./actions";
 
@@ -60,12 +64,13 @@ export default async function MotoristaPage({
   const motoboyId = await obterMotoristaAutorizado();
   if (!motoboyId) redirect("/motorista/login");
 
-  const [perfil, entregas, historico] = await Promise.all([
+  const [perfil, entregas, historico, kmRodadosHoje] = await Promise.all([
     getMotoboyPerfil(motoboyId),
     getEntregasDoMotorista(motoboyId),
     view === "historico"
       ? getHistoricoDoMotorista(motoboyId, 100)
       : Promise.resolve([]),
+    getKmRodadosHoje(motoboyId),
   ]);
 
   const nome = perfil?.nome ?? "Motorista";
@@ -97,13 +102,42 @@ export default async function MotoristaPage({
           <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full border border-white/5" />
 
           <div className="relative w-full">
-            <div>
-              <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
-                <CalendarDays className="size-4" />
-                {formatarDataHoje()}
-              </p>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/10 text-white">
+                  <Route className="size-4" />
+                </span>
+                <div>
+                  <p className="text-[18px] font-black tabular-nums leading-none">
+                    {kmRodadosHoje.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    })}{" "}
+                    km
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white/55">
+                    Rodados hoje
+                  </p>
+                </div>
+              </div>
 
+              <div className="min-w-0 text-right">
+                <p className="truncate text-[12px] font-black text-white">
+                  {nome}
+                </p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/rildon-express-logo-white.svg"
+                  alt="Rildon Express"
+                  className="ml-auto mt-1.5 h-5 w-auto max-w-[128px]"
+                />
+              </div>
             </div>
+
+            <p className="mt-3 flex items-center gap-2 text-[12px] font-semibold text-white/70">
+              <CalendarDays className="size-4" />
+              {formatarDataHoje()}
+            </p>
 
             {proximaEntrega ? (
               <section className="mt-4 border-t border-white/15 pt-4">
@@ -123,9 +157,11 @@ export default async function MotoristaPage({
                     </span>
                   </div>
 
-                  <span className="rounded-full bg-[#FF942E] px-2.5 py-1 text-[10px] font-black text-white">
-                    {proximaEntrega.horaSaida ? "Em rota" : "Pendente"}
-                  </span>
+                  {proximaEntrega.horaSaida && (
+                    <span className="rounded-full bg-[#1F73F1] px-2.5 py-1 text-[10px] font-black text-white">
+                      Em rota
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-3">
