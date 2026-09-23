@@ -76,7 +76,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#0A1F44]">
+          <h1 className="text-2xl font-bold tracking-tight">
             Gestão de Veículos
           </h1>
         </div>
@@ -138,7 +138,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
           <Card className="overflow-hidden">
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div>
-                <h2 className="text-[15px] font-bold text-[#0A1F44]">
+                <h2 className="text-[15px] font-bold">
                   Veículos cadastrados
                 </h2>
                 <p className="mt-0.5 text-xs text-slate-500">
@@ -193,7 +193,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                         <td className="px-6 py-4 tabular-nums text-slate-500">
                           {veiculo.ano ?? "—"}
                         </td>
-                        <td className="px-6 py-4 font-semibold tabular-nums text-slate-700">
+                        <td className="px-6 py-4 tabular-nums">
                           {veiculo.gastoMes}
                         </td>
                         <td className="px-6 py-4">
@@ -251,7 +251,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
         <div className="col-span-12">
           <Card className="overflow-hidden">
             <div className="border-b border-slate-200 px-6 py-5">
-              <h2 className="text-[15px] font-bold text-[#0A1F44]">
+              <h2 className="text-[15px] font-bold">
                 Gastos recentes
               </h2>
             </div>
@@ -288,7 +288,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                           <p className="font-semibold text-slate-800">
                             {gasto.veiculo}
                           </p>
-                          <p className="mt-0.5 font-mono text-xs text-slate-400">
+                          <p className="mt-0.5 text-xs text-slate-400">
                             {gasto.placa}
                           </p>
                         </td>
@@ -307,7 +307,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                             {gasto.observacao || "—"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-right font-bold tabular-nums text-slate-800">
+                        <td className="px-6 py-4 text-right tabular-nums">
                           {gasto.valor}
                         </td>
                         <td className="px-6 py-4">
@@ -392,10 +392,10 @@ function ResumoCard({
     <Card className="p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+          <p className="text-[13px] font-semibold uppercase tracking-wide text-[#64748B]">
             {label}
           </p>
-          <p className="mt-2 text-2xl font-black tracking-tight text-[#0A1F44]">
+          <p className="mt-3 text-[36px] font-bold leading-none tracking-tight text-[#0F172A]">
             {value}
           </p>
         </div>
