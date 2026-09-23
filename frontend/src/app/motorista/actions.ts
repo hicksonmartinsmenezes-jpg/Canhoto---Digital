@@ -6,7 +6,10 @@ import path from "node:path";
 import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { diretorioRaizUploads } from "@/lib/comprovantes-storage";
+import {
+  diretorioRaizUploads,
+  diretorioRelativoEntrega,
+} from "@/lib/comprovantes-storage";
 import { getDb } from "@/lib/db";
 import {
   entregaAnexos,
@@ -331,6 +334,8 @@ export async function confirmarEntrega(
     const [entregaConfirmavel] = await db
       .select({
         id: entregas.id,
+        numero: entregas.numero,
+        clienteNome: entregas.clienteNome,
         formaPagamento: entregas.formaPagamento,
       })
       .from(entregas)
@@ -362,10 +367,13 @@ export async function confirmarEntrega(
   const comprovantePixValido =
     entregaEhPix && comprovantePix ? comprovantePix : null;
 
+  const pastaRelativaEntrega = diretorioRelativoEntrega(
+    entregaConfirmavel.clienteNome,
+    entregaConfirmavel.numero
+  );
   const pastaEntrega = path.join(
     diretorioRaizUploads(),
-    "entregas",
-    entregaId
+    ...pastaRelativaEntrega.split("/")
   );
   const nomeFotoEntrega = `foto-entrega-${randomUUID()}.${EXTENSAO_POR_MIME[fotoEntrega.type]}`;
   const nomeComprovantePix = comprovantePixValido
@@ -379,11 +387,11 @@ export async function confirmarEntrega(
     : null;
   const caminhoAssinatura = path.join(pastaEntrega, nomeAssinatura);
 
-  const arquivoUrlFotoEntrega = `entregas/${entregaId}/${nomeFotoEntrega}`;
+  const arquivoUrlFotoEntrega = `${pastaRelativaEntrega}/${nomeFotoEntrega}`;
   const arquivoUrlComprovantePix = nomeComprovantePix
-    ? `entregas/${entregaId}/${nomeComprovantePix}`
+    ? `${pastaRelativaEntrega}/${nomeComprovantePix}`
     : null;
-  const arquivoUrlAssinatura = `entregas/${entregaId}/${nomeAssinatura}`;
+  const arquivoUrlAssinatura = `${pastaRelativaEntrega}/${nomeAssinatura}`;
 
   let fotoEntregaGravada = false;
   let comprovantePixGravado = false;
