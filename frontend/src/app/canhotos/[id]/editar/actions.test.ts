@@ -126,7 +126,7 @@ describe("edição administrativa de entrega", () => {
     expect(resultado).toEqual({
       ok: false,
       error:
-        "A entrega só pode ser concluída pelo fluxo do motorista com foto e assinatura.",
+        "A entrega só pode ser concluída pelo fluxo do motorista com foto da entrega e assinatura.",
     });
     expect(tx.update).not.toHaveBeenCalled();
   });
