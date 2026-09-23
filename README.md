@@ -83,7 +83,7 @@ O PostgreSQL é publicado somente em `127.0.0.1:5433` e não deve ser exposto pe
 | Infraestrutura | Docker Compose, Windows 11, WSL2 |
 | Acesso externo | Cloudflare Tunnel somente para a área do motorista |
 | Qualidade | ESLint, TypeScript, Vitest, Playwright, Knip, Lighthouse |
-| Backup | PostgreSQL + comprovantes físicos + manifesto de integridade |
+| Backup | PostgreSQL + comprovantes físicos + relatórios exportados + manifesto de integridade |
 
 ## Estrutura do projeto
 
