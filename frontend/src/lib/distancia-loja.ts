@@ -12,8 +12,8 @@ const LOJA_RILDON = {
   endereco:
     "Avenida Chanceler Osvaldo Aranha, 151, Novo Paraíso, Aracaju - SE",
   cep: "49082110",
-  latitude: -10.90968,
-  longitude: -37.07624,
+  latitude: -10.9082,
+  longitude: -37.0889,
 } as const;
 
 
@@ -23,6 +23,8 @@ const DESTINOS_CONHECIDOS = [
     endereco:
       "Avenida Governador Marcelo Déda, 142, Costa Paradiso, Barra dos Coqueiros - SE",
     cep: "49141048",
+    latitude: -10.907875,
+    longitude: -37.026708,
   },
 ] as const;
 
@@ -234,7 +236,10 @@ export async function getDistanciaLojaAteDestinoKm(
   const destinoResolvido = destinoPersistido
     ? destinoPersistido
     : conhecido
-      ? await resolverCoordenadas(conhecido.endereco, conhecido.cep)
+      ? {
+          latitude: conhecido.latitude,
+          longitude: conhecido.longitude,
+        }
       : await resolverCoordenadas(entrega.endereco ?? "", entrega.cep ?? "");
 
   if (!destinoResolvido) return null;
