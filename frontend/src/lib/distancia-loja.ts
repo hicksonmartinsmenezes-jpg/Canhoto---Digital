@@ -12,6 +12,8 @@ const LOJA_RILDON = {
   endereco:
     "Avenida Chanceler Osvaldo Aranha, 151, Novo Paraíso, Aracaju - SE",
   cep: "49082110",
+  latitude: -10.90968,
+  longitude: -37.07624,
 } as const;
 
 interface BrasilApiCepV2 {
@@ -22,8 +24,6 @@ interface BrasilApiCepV2 {
     };
   };
 }
-
-let coordenadasLojaPromise: Promise<CoordenadasEntrega | null> | null = null;
 
 function normalizarEndereco(valor: string): string {
   return valor
@@ -129,22 +129,6 @@ async function resolverCoordenadas(
   return coordenadasPorCep(cep);
 }
 
-function obterCoordenadasLoja(): Promise<CoordenadasEntrega | null> {
-  if (!coordenadasLojaPromise) {
-    coordenadasLojaPromise = resolverCoordenadas(
-      LOJA_RILDON.endereco,
-      LOJA_RILDON.cep
-    ).then((coordenadas) => {
-      if (!coordenadas) {
-        coordenadasLojaPromise = null;
-      }
-      return coordenadas;
-    });
-  }
-
-  return coordenadasLojaPromise;
-}
-
 export async function getDistanciaLojaAteDestinoKm(
   entregaId: string
 ): Promise<number | null> {
@@ -176,18 +160,15 @@ export async function getDistanciaLojaAteDestinoKm(
         }
       : null;
 
-  const [loja, destinoResolvido] = await Promise.all([
-    obterCoordenadasLoja(),
-    destinoPersistido
-      ? Promise.resolve(destinoPersistido)
-      : resolverCoordenadas(entrega.endereco ?? "", entrega.cep ?? ""),
-  ]);
+  const destinoResolvido = destinoPersistido
+    ? destinoPersistido
+    : await resolverCoordenadas(entrega.endereco ?? "", entrega.cep ?? "");
 
-  if (!loja || !destinoResolvido) return null;
+  if (!destinoResolvido) return null;
 
   const distanciaKm = distanciaHaversineKm(
-    loja.latitude,
-    loja.longitude,
+    LOJA_RILDON.latitude,
+    LOJA_RILDON.longitude,
     destinoResolvido.latitude,
     destinoResolvido.longitude
   );
