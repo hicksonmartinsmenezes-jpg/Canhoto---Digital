@@ -126,19 +126,24 @@ function configurarDb({
   };
 }
 
-function criarFormDataComprovante(): FormData {
-  const cabecalhoPng = new Uint8Array([
-    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-  ]);
+const CABECALHO_PNG = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
 
+function criarFormDataAssinatura(): FormData {
   const formData = new FormData();
   formData.set(
-    "foto",
-    new File([cabecalhoPng], "foto.png", { type: "image/png" })
-  );
-  formData.set(
     "assinatura",
-    new File([cabecalhoPng], "assinatura.png", { type: "image/png" })
+    new File([CABECALHO_PNG], "assinatura.png", { type: "image/png" })
+  );
+  return formData;
+}
+
+function criarFormDataComprovante(): FormData {
+  const formData = criarFormDataAssinatura();
+  formData.set(
+    "foto",
+    new File([CABECALHO_PNG], "foto.png", { type: "image/png" })
   );
   return formData;
 }
@@ -179,19 +184,64 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
-  it("exige foto e assinatura antes de confirmar", async () => {
+  it("exige assinatura antes de confirmar", async () => {
     const formData = new FormData();
 
     await expect(confirmarEntrega(ENTREGA_ID, formData)).resolves.toEqual({
       ok: false,
-      error:
-        "Envie uma foto válida do comprovante (JPG, PNG, WEBP, HEIC ou HEIF, até 8 MB).",
+      error: "Colete a assinatura do cliente antes de confirmar a entrega.",
     });
 
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
-  it("confirma entrega iniciada com comprovantes e registra o motorista no histórico", async () => {
+  it("aceita concluir a entrega sem foto quando há assinatura", async () => {
+    const { insertValues } = configurarDb({
+      selectResultados: [[{ id: ENTREGA_ID }]],
+    });
+
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarFormDataAssinatura())
+    ).resolves.toEqual({
+      ok: true,
+    });
+
+    expect(writeFileMock).toHaveBeenCalledTimes(1);
+
+    expect(insertValues).toHaveBeenCalledWith([
+      expect.objectContaining({
+        entregaId: ENTREGA_ID,
+        tipo: "assinatura_cliente",
+        capturadoPorMotoboy: "motorista-a",
+      }),
+    ]);
+
+    expect(insertValues).toHaveBeenCalledWith({
+      entregaId: ENTREGA_ID,
+      statusAnterior: "pendente",
+      statusNovo: "entregue",
+      alteradoPorMotoboy: "motorista-a",
+      observacao: "Entrega confirmada com assinatura do cliente.",
+    });
+  });
+
+  it("rejeita foto inválida quando o motorista opta por enviá-la", async () => {
+    const formData = criarFormDataAssinatura();
+    formData.set(
+      "foto",
+      new File(["conteudo-invalido"], "foto.txt", { type: "text/plain" })
+    );
+
+    await expect(confirmarEntrega(ENTREGA_ID, formData)).resolves.toEqual({
+      ok: false,
+      error:
+        "A foto do comprovante é opcional, mas quando enviada deve ser JPG, PNG, WEBP, HEIC ou HEIF com até 8 MB.",
+    });
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it("confirma entrega iniciada com foto e assinatura e registra o motorista no histórico", async () => {
     const { tx, insertValues } = configurarDb({
       selectResultados: [[{ id: ENTREGA_ID }]],
     });
