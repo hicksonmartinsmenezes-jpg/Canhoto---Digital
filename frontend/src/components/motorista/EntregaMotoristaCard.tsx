@@ -28,7 +28,7 @@ export function EntregaMotoristaCard({
               ? "bg-[#E7F8EF] text-[#169653]"
               : emRota
                 ? "bg-[#E9F2FF] text-[#1768D8]"
-                : "bg-[#FFF0DE] text-[#F07A12]"
+                : "text-[#F07A12]"
           }`}
         >
           {entregue ? (
@@ -48,7 +48,7 @@ export function EntregaMotoristaCard({
                   ? "bg-[#E7F8EF] text-[#169653]"
                   : emRota
                     ? "bg-[#E9F2FF] text-[#1768D8]"
-                    : "bg-[#FFF0DE] text-[#D96B0B]"
+                    : "text-[#D96B0B]"
               }`}
             >
               {entregue ? "Concluída" : emRota ? "Em andamento" : "Pendente"}
