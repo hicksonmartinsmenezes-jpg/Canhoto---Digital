@@ -38,10 +38,10 @@ function Get-DatabaseValues(
     [string]$Sql,
     [string]$DatabaseName
 ) {
-    $escapedSql = $Sql.Replace('"', '\"')
-    $escapedDatabase = $DatabaseName.Replace('"', '\"')
-    $command = 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -At -h 127.0.0.1 -U "$POSTGRES_USER" -d "' + $escapedDatabase + '" -c "' + $escapedSql + '"'
-    $result = @(docker exec $container sh -lc $command)
+    # Envia o SQL pelo stdin para evitar problemas de escaping entre
+    # PowerShell -> docker exec -> sh -> psql.
+    $command = 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -At -U "$POSTGRES_USER" -d "$1"'
+    $result = @($Sql | docker exec -i $container sh -lc $command sh $DatabaseName)
 
     if ($LASTEXITCODE -ne 0) {
         throw "PostgreSQL query failed during restore validation."
