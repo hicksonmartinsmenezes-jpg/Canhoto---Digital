@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import {
   entregas,
   motoboyLocalizacaoHistorico,
+  motoboyLocalizacoes,
   motoboys,
 } from "@/lib/db/schema";
 
@@ -280,5 +281,62 @@ export async function getKmRodadosEntrega(
   entregaId: string
 ): Promise<number> {
   return calcularKmDosPontos(motoboyId, entregaId);
+}
+
+export async function getDistanciaAtualAteDestinoKm(
+  motoboyId: string,
+  entregaId: string
+): Promise<number | null> {
+  const db = getDb();
+  if (!db) return null;
+
+  const [dados] = await db
+    .select({
+      destinoLatitude: entregas.latitude,
+      destinoLongitude: entregas.longitude,
+      motoristaLatitude: motoboyLocalizacoes.latitude,
+      motoristaLongitude: motoboyLocalizacoes.longitude,
+      localizacaoAtualizadaEm: motoboyLocalizacoes.atualizadoEm,
+    })
+    .from(entregas)
+    .leftJoin(
+      motoboyLocalizacoes,
+      eq(motoboyLocalizacoes.motoboyId, motoboyId)
+    )
+    .where(
+      and(
+        eq(entregas.id, entregaId),
+        eq(entregas.motoboyId, motoboyId)
+      )
+    )
+    .limit(1);
+
+  if (
+    !dados ||
+    dados.destinoLatitude === null ||
+    dados.destinoLongitude === null ||
+    dados.motoristaLatitude === null ||
+    dados.motoristaLongitude === null ||
+    dados.localizacaoAtualizadaEm === null
+  ) {
+    return null;
+  }
+
+  const atualizadoEm = new Date(dados.localizacaoAtualizadaEm).getTime();
+  if (
+    !Number.isFinite(atualizadoEm) ||
+    Date.now() - atualizadoEm > 2 * 60 * 1000
+  ) {
+    return null;
+  }
+
+  const distanciaKm = distanciaHaversineKm(
+    Number(dados.motoristaLatitude),
+    Number(dados.motoristaLongitude),
+    Number(dados.destinoLatitude),
+    Number(dados.destinoLongitude)
+  );
+
+  return Number(distanciaKm.toFixed(1));
 }
 
