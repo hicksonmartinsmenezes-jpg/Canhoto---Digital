@@ -670,7 +670,7 @@ export async function getEntregaById(
 
 export interface EntregaComprovante {
   id: string;
-  tipo: "foto" | "assinatura_cliente";
+  tipo: "foto" | "comprovante_pix" | "assinatura_cliente";
   capturadoEm: string;
   capturadoPorMotoboy: string | null;
 }
@@ -699,11 +699,16 @@ export async function getComprovantesEntrega(
   return rows
     .filter(
       (anexo) =>
-        anexo.tipo === "foto" || anexo.tipo === "assinatura_cliente"
+        anexo.tipo === "foto" ||
+        anexo.tipo === "comprovante_pix" ||
+        anexo.tipo === "assinatura_cliente"
     )
     .map((anexo) => ({
       id: anexo.id,
-      tipo: anexo.tipo as "foto" | "assinatura_cliente",
+      tipo: anexo.tipo as
+        | "foto"
+        | "comprovante_pix"
+        | "assinatura_cliente",
       capturadoEm: anexo.capturadoEm,
       capturadoPorMotoboy: anexo.motoboyNome ?? null,
     }));
