@@ -244,7 +244,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
               <p className="mt-2 text-xs leading-5 text-slate-500">
                 {entrega.status === "entregue"
                   ? "Entrega concluída com comprovante: o status fica preservado."
-                  : "A conclusão da entrega é feita pelo motorista após registrar foto e assinatura do cliente."}
+                  : "A conclusão da entrega é feita pelo motorista após registrar a foto da entrega e a assinatura do cliente."}
               </p>
             </div>
           </div>
