@@ -34,6 +34,18 @@ function Resolve-OperationalPath([string]$Value) {
     return [IO.Path]::GetFullPath((Join-Path $repoRoot $expanded))
 }
 
+function Get-DatabaseValues([string]$Sql, [string]$DatabaseExpression = '"$POSTGRES_DB"') {
+    $escapedSql = $Sql.Replace('"', '\"')
+    $command = 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -At -h 127.0.0.1 -U "$POSTGRES_USER" -d ' + $DatabaseExpression + ' -c "' + $escapedSql + '"'
+    $result = @(docker exec $container sh -lc $command)
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "PostgreSQL query failed during restore validation."
+    }
+
+    return @($result | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+}
+
 function Assert-BackupPackage([string]$PackagePath) {
     $manifestPath = Join-Path $PackagePath "manifest.json"
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
@@ -186,10 +198,92 @@ try {
 
     $quotedTables = ($tableNames | ForEach-Object { "'" + $_.Replace("'", "''") + "'" }) -join ","
     $tableQuery = "select count(*) from information_schema.tables where table_schema='public' and table_name in ($quotedTables);"
-    $tableCommand = 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -At -h 127.0.0.1 -U "$POSTGRES_USER" -d "' + $restoreDb + '" -c "' + $tableQuery + '"'
-    $requiredTableCount = docker exec $container sh -lc $tableCommand
+    $databaseExpression = '"' + $restoreDb + '"'
+    $requiredTableCountValues = @(Get-DatabaseValues $tableQuery $databaseExpression)
 
-    if ($LASTEXITCODE -ne 0 -or [int]$requiredTableCount -ne $tableNames.Count) {
+    if ($requiredTableCountValues.Count -ne 1 -or $requiredTableCountValues[0] -notmatch '^\d+
+    New-Item -ItemType Directory -Force -Path $restoreUploadsDir | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [IO.Compression.ZipFile]::ExtractToDirectory($uploadsArchivePath, $restoreUploadsDir)
+
+    $restoredFiles = @(Get-ChildItem -LiteralPath $restoreUploadsDir -File -Recurse)
+    if ($restoredFiles.Count -ne [int]$manifest.uploads.fileCount) {
+        throw "Upload file count mismatch after extraction. Expected $($manifest.uploads.fileCount), found $($restoredFiles.Count)."
+    }
+
+    $attachmentQuery = "select arquivo_url from entrega_anexos where arquivo_url is not null and btrim(arquivo_url) <> '' order by arquivo_url;"
+    $attachmentPaths = @(Get-DatabaseValues $attachmentQuery $databaseExpression)
+
+    $root = [IO.Path]::GetFullPath($restoreUploadsDir).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $rootPrefix = $root + [IO.Path]::DirectorySeparatorChar
+
+    foreach ($relativeRaw in $attachmentPaths) {
+        $relative = "$relativeRaw".Trim()
+        if (-not $relative) { continue }
+
+        $normalized = $relative.Replace("/", [IO.Path]::DirectorySeparatorChar)
+        $candidate = [IO.Path]::GetFullPath((Join-Path $root $normalized))
+
+        if (-not $candidate.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Unsafe attachment path restored from database: $relative"
+        }
+
+        if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            throw "Database attachment has no matching restored file: $relative"
+        }
+    }
+
+    $restoredReports = @()
+    if ($reportsArchivePath) {
+        New-Item -ItemType Directory -Force -Path $restoreReportsDir | Out-Null
+        [IO.Compression.ZipFile]::ExtractToDirectory($reportsArchivePath, $restoreReportsDir)
+
+        $restoredReports = @(Get-ChildItem -LiteralPath $restoreReportsDir -File -Recurse)
+        if ($restoredReports.Count -ne [int]$manifest.reports.fileCount) {
+            throw "Report file count mismatch after extraction. Expected $($manifest.reports.fileCount), found $($restoredReports.Count)."
+        }
+    }
+
+    Write-Host "Complete restore validated successfully."
+    Write-Host "Source: $BackupPath"
+    Write-Host "Tables validated: $($tableNames.Count)"
+    Write-Host "Upload files validated: $($restoredFiles.Count)"
+    if ($reportsArchivePath) {
+        Write-Host "Report files validated: $($restoredReports.Count)"
+    }
+
+    if ($KeepTestArtifacts) {
+        Write-Host "Restore-test database kept: $restoreDb"
+        Write-Host "Extracted uploads kept: $restoreUploadsDir"
+        if ($reportsArchivePath) {
+            Write-Host "Extracted reports kept: $restoreReportsDir"
+        }
+    }
+}
+finally {
+    docker exec $container rm -f $containerPath 2>$null | Out-Null
+
+    if (-not $KeepTestArtifacts) {
+        if ($databaseCreated) {
+            $dropCommand = 'PGPASSWORD="$POSTGRES_PASSWORD" dropdb -h 127.0.0.1 -U "$POSTGRES_USER" --if-exists "' + $restoreDb + '"'
+            docker exec $container sh -lc $dropCommand 2>$null | Out-Null
+        }
+
+        if (Test-Path -LiteralPath $restoreUploadsDir) {
+            Remove-Item -LiteralPath $restoreUploadsDir -Recurse -Force
+        }
+
+        if (Test-Path -LiteralPath $restoreReportsDir) {
+            Remove-Item -LiteralPath $restoreReportsDir -Recurse -Force
+        }
+    }
+}
+) {
+        throw "Restore finished, but the required-table count query returned an invalid result: $($requiredTableCountValues -join ', ')."
+    }
+
+    $requiredTableCount = [int]$requiredTableCountValues[0]
+    if ($requiredTableCount -ne $tableNames.Count) {
         throw "Restore finished, but required-table validation failed. Expected $($tableNames.Count), found $requiredTableCount."
     }
 
