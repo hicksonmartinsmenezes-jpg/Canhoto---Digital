@@ -13,7 +13,7 @@ O Canhoto Digital é um sistema operacional interno. Não publique credenciais, 
 - Motorista inativo é bloqueado também na leitura do painel.
 - PostgreSQL publicado somente em `127.0.0.1`.
 - Host público do motorista restringe rotas administrativas via `src/proxy.ts`.
-- Conclusão de entrega exige foto + assinatura no fluxo do motorista.
+- Conclusão de entrega exige assinatura no fluxo do motorista; a foto do comprovante é opcional.
 - Entregas concluídas e registros com histórico/comprovantes são preservados contra exclusão destrutiva.
 - Comprovantes ficam fora do Git, em `storage/` ou `CANHOTO_UPLOAD_DIR`.
 - Backup completo reúne PostgreSQL + comprovantes e possui validação de restore no CI.
