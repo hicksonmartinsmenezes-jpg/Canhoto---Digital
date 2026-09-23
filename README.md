@@ -16,7 +16,7 @@ O Canhoto Digital reúne em uma única aplicação:
 - área mobile para o motorista;
 - abertura de rota no Waze;
 - geocodificação automática de endereço + CEP;
-- comprovante de entrega com assinatura e foto opcional;
+- foto da entrega + assinatura, com comprovante Pix opcional e separado;
 - gestão de colaboradores, motoristas e veículos;
 - relatórios operacionais;
 - central de treinamentos;
@@ -237,7 +237,9 @@ Localização registrada
       ↓
 Rota aberta no Waze
       ↓
-Assinatura do cliente + foto opcional
+Foto da entrega + assinatura do cliente
+      ↓
+Comprovante Pix opcional (quando aplicável)
       ↓
 Entrega concluída
       ↓
