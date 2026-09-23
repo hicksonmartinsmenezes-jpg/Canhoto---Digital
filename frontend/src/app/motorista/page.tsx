@@ -145,22 +145,17 @@ export default async function MotoristaPage({
                     </div>
                   </div>
 
-                  <div className="flex min-w-0 items-start justify-end gap-2 text-right">
-                    <MapPin className="mt-0.5 size-4 shrink-0 text-white/65" />
-                    <div className="min-w-0">
-                      <p className="truncate text-[14px] font-medium text-white">
-                        {proximaEntrega.clienteNome}
+                  {proximaEntrega.endereco && (
+                    <div className="flex min-w-0 items-start justify-end gap-2 text-right">
+                      <MapPin className="mt-0.5 size-4 shrink-0 text-white/65" />
+                      <p className="line-clamp-2 text-[12px] font-medium leading-4 text-white/65">
+                        {proximaEntrega.endereco}
                       </p>
-                      {proximaEntrega.endereco && (
-                        <p className="mt-0.5 line-clamp-1 text-[11px] font-medium leading-4 text-white/55">
-                          {proximaEntrega.endereco}
-                        </p>
-                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 border-t border-white/10 pt-4">
+                <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
                   <div className="flex min-w-[108px] items-center gap-2.5 pr-4">
                     <Route className="size-5 shrink-0 text-[#2C8BFF]" />
                     <div>
