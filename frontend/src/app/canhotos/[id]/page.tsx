@@ -6,6 +6,7 @@ import {
   ExternalLink,
   MapPin,
   PenLine,
+  ReceiptText,
   SquarePen,
   UserRound,
 } from "lucide-react";
@@ -47,6 +48,9 @@ export default async function EntregaDetalhePage({
   if (!entrega) notFound();
 
   const fotos = comprovantes.filter((item) => item.tipo === "foto");
+  const comprovantesPix = comprovantes.filter(
+    (item) => item.tipo === "comprovante_pix"
+  );
   const assinaturas = comprovantes.filter(
     (item) => item.tipo === "assinatura_cliente"
   );
@@ -173,7 +177,7 @@ export default async function EntregaDetalhePage({
               Comprovante de entrega
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Assinatura do cliente e foto opcional enviadas pelo motorista.
+              Foto da entrega, assinatura do cliente e comprovante Pix quando informado.
             </p>
           </div>
 
@@ -186,7 +190,7 @@ export default async function EntregaDetalhePage({
                 Nenhum comprovante registrado
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                A assinatura e, quando registrada, a foto aparecerão aqui após a conclusão pelo motorista.
+                A foto da entrega e a assinatura aparecerão aqui após a conclusão pelo motorista.
               </p>
             </div>
           ) : (
@@ -212,7 +216,7 @@ export default async function EntregaDetalhePage({
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={`/api/entregas/anexos/${foto.id}`}
-                            alt="Foto do comprovante da entrega"
+                            alt="Foto da entrega"
                             className="h-64 w-full object-contain"
                           />
                         </a>
@@ -297,6 +301,62 @@ export default async function EntregaDetalhePage({
                     Assinatura não registrada.
                   </p>
                 )}
+              {entrega.formaPagamento === "pix" && (
+                <div className="md:col-span-2">
+                  <div className="mb-3 flex items-center gap-2">
+                    <ReceiptText className="size-4 text-[#0A1F44]" />
+                    <h3 className="text-sm font-bold text-slate-800">
+                      Comprovante Pix
+                    </h3>
+                  </div>
+
+                  {comprovantesPix.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {comprovantesPix.map((comprovante) => (
+                        <div key={comprovante.id}>
+                          <a
+                            href={`/api/entregas/anexos/${comprovante.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block overflow-hidden border border-slate-200 bg-slate-50"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/api/entregas/anexos/${comprovante.id}`}
+                              alt="Comprovante de pagamento Pix"
+                              className="h-64 w-full object-contain"
+                            />
+                          </a>
+                          <div className="mt-2 flex items-start justify-between gap-3 text-xs text-slate-500">
+                            <div>
+                              <p>
+                                {comprovante.capturadoPorMotoboy
+                                  ? `Enviado por ${comprovante.capturadoPorMotoboy}`
+                                  : "Motorista não identificado"}
+                              </p>
+                              <p>{formatarDataHora(comprovante.capturadoEm)}</p>
+                            </div>
+                            <a
+                              href={`/api/entregas/anexos/${comprovante.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-semibold text-[#0A1F44] hover:underline"
+                            >
+                              Ampliar
+                              <ExternalLink className="size-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
+                      Comprovante Pix não registrado.
+                    </p>
+                  )}
+                </div>
+              )}
+
               </div>
             </div>
           )}
