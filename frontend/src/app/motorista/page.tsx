@@ -121,12 +121,55 @@ export default async function MotoristaPage({
 
             {proximaEntrega ? (
               <section className="mt-4">
-                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#1F73F1] text-white shadow-sm shadow-black/10">
-                      {proximaEntrega.horaSaida ? (
-                        <Navigation className="size-4.5" />
-                      ) : (
+                <div className="flex items-center gap-2">
+                  <span className="grid size-9 place-items-center rounded-full bg-[#1F73F1] text-white">
+                    {proximaEntrega.horaSaida ? (
+                      <Navigation className="size-4" />
+                    ) : (
+                      <Package className="size-4" />
+                    )}
+                  </span>
+                  <span className="text-xs font-black">
+                    {proximaEntrega.horaSaida
+                      ? "Entrega em andamento"
+                      : "Próxima entrega"}
+                  </span>
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-lg font-black text-white">
+                    {proximaEntrega.clienteNome}
+                  </p>
+
+                  {proximaEntrega.endereco && (
+                    <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium leading-5 text-white/75">
+                      <MapPin className="mt-0.5 size-3.5 shrink-0" />
+                      <span className="line-clamp-1">
+                        {proximaEntrega.endereco}
+                      </span>
+                    </p>
+                  )}
+
+                  <p className="mt-2 flex items-center gap-1.5 text-sm font-medium tabular-nums text-white/85">
+                    <Route className="size-4 shrink-0 text-[#2C8BFF]" />
+                    {kmCorrida.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    })}{" "}
+                    km
+                  </p>
+                </div>
+
+                <Link
+                  href={`/motorista/entregas/${proximaEntrega.id}`}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1F73F1] px-4 py-3 text-sm font-black text-white transition hover:bg-[#1767dc]"
+                >
+                  <Navigation className="size-4" />
+                  Ver entrega
+                  <ChevronRight className="size-4" />
+                </Link>
+              </section>
+            ) : (
                         <Package className="size-4.5" />
                       )}
                     </span>
