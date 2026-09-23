@@ -8,31 +8,43 @@ import {
   Eraser,
   Loader2,
   PenLine,
+  ReceiptText,
 } from "lucide-react";
 import { confirmarEntrega } from "@/app/motorista/actions";
+import type { FormaPagamento } from "@/types/database";
 
 const TAMANHO_MAX_FOTO = 8 * 1024 * 1024;
 
 export function ComprovanteEntregaForm({
   entregaId,
+  formaPagamento,
 }: {
   entregaId: string;
+  formaPagamento: FormaPagamento;
 }) {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const desenhandoRef = useRef(false);
   const assinaturaMarcadaRef = useRef(false);
-  const [foto, setFoto] = useState<File | null>(null);
-  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+  const [fotoEntrega, setFotoEntrega] = useState<File | null>(null);
+  const [fotoEntregaUrl, setFotoEntregaUrl] = useState<string | null>(null);
+  const [comprovantePix, setComprovantePix] = useState<File | null>(null);
+  const [comprovantePixUrl, setComprovantePixUrl] = useState<string | null>(null);
   const [temAssinatura, setTemAssinatura] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     return () => {
-      if (fotoUrl) URL.revokeObjectURL(fotoUrl);
+      if (fotoEntregaUrl) URL.revokeObjectURL(fotoEntregaUrl);
     };
-  }, [fotoUrl]);
+  }, [fotoEntregaUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (comprovantePixUrl) URL.revokeObjectURL(comprovantePixUrl);
+    };
+  }, [comprovantePixUrl]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -127,31 +139,63 @@ export function ComprovanteEntregaForm({
     return new File([blob], "assinatura.png", { type: "image/png" });
   }
 
-  function selecionarFoto(arquivo: File | undefined) {
-    setErro(null);
-
-    if (!arquivo) {
-      setFoto(null);
-      setFotoUrl(null);
-      return;
-    }
-
+  function validarImagem(arquivo: File): string | null {
     if (!arquivo.type.startsWith("image/")) {
-      setErro("Selecione uma imagem válida.");
-      return;
+      return "Selecione uma imagem válida.";
     }
 
     if (arquivo.size > TAMANHO_MAX_FOTO) {
-      setErro("A foto deve ter no máximo 8 MB.");
+      return "A imagem deve ter no máximo 8 MB.";
+    }
+
+    return null;
+  }
+
+  function selecionarFotoEntrega(arquivo: File | undefined) {
+    setErro(null);
+
+    if (!arquivo) {
+      setFotoEntrega(null);
+      setFotoEntregaUrl(null);
       return;
     }
 
-    setFoto(arquivo);
-    setFotoUrl(URL.createObjectURL(arquivo));
+    const erroImagem = validarImagem(arquivo);
+    if (erroImagem) {
+      setErro(erroImagem);
+      return;
+    }
+
+    setFotoEntrega(arquivo);
+    setFotoEntregaUrl(URL.createObjectURL(arquivo));
+  }
+
+  function selecionarComprovantePix(arquivo: File | undefined) {
+    setErro(null);
+
+    if (!arquivo) {
+      setComprovantePix(null);
+      setComprovantePixUrl(null);
+      return;
+    }
+
+    const erroImagem = validarImagem(arquivo);
+    if (erroImagem) {
+      setErro(erroImagem);
+      return;
+    }
+
+    setComprovantePix(arquivo);
+    setComprovantePixUrl(URL.createObjectURL(arquivo));
   }
 
   function confirmar() {
     setErro(null);
+
+    if (!fotoEntrega) {
+      setErro("Tire uma foto da entrega antes de finalizar.");
+      return;
+    }
 
     if (!temAssinatura) {
       setErro("Peça ao cliente para assinar antes de confirmar.");
@@ -167,8 +211,9 @@ export function ComprovanteEntregaForm({
       }
 
       const formData = new FormData();
-      if (foto) {
-        formData.set("foto", foto);
+      formData.set("fotoEntrega", fotoEntrega);
+      if (formaPagamento === "pix" && comprovantePix) {
+        formData.set("comprovantePix", comprovantePix);
       }
       formData.set("assinatura", assinatura);
 
@@ -187,18 +232,15 @@ export function ComprovanteEntregaForm({
     <div className="p-4">
       <div>
         <p className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
-          Foto do comprovante{" "}
-          <span className="font-semibold normal-case tracking-normal text-slate-400">
-            (opcional)
-          </span>
+          Foto da entrega
         </p>
 
-        {fotoUrl && (
+        {fotoEntregaUrl && (
           <div className="mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={fotoUrl}
-              alt="Prévia da foto do comprovante"
+              src={fotoEntregaUrl}
+              alt="Prévia da foto da entrega"
               className="max-h-52 w-full object-cover"
             />
           </div>
@@ -206,19 +248,56 @@ export function ComprovanteEntregaForm({
 
         <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#1768D8] bg-white px-4 py-3 text-sm font-black text-[#1768D8] transition hover:bg-[#F5F9FF]">
           <Camera className="size-4" />
-          {foto ? "Tirar outra foto" : "Tirar foto"}
+          {fotoEntrega ? "Tirar outra foto" : "Tirar foto da entrega"}
           <input
             type="file"
             accept="image/*"
             capture="environment"
             className="sr-only"
             disabled={pending}
-            onChange={(event) => selecionarFoto(event.target.files?.[0])}
+            onChange={(event) => selecionarFotoEntrega(event.target.files?.[0])}
           />
         </label>
       </div>
 
-      <div className="mt-5">
+      {formaPagamento === "pix" && (
+        <div className="mt-5 border-t border-slate-100 pt-5">
+          <p className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
+            Comprovante Pix{" "}
+            <span className="font-semibold normal-case tracking-normal text-slate-400">
+              (opcional)
+            </span>
+          </p>
+
+          {comprovantePixUrl && (
+            <div className="mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={comprovantePixUrl}
+                alt="Prévia do comprovante Pix"
+                className="max-h-52 w-full object-cover"
+              />
+            </div>
+          )}
+
+          <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">
+            <ReceiptText className="size-4" />
+            {comprovantePix ? "Trocar comprovante" : "Fotografar comprovante Pix"}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              disabled={pending}
+              onChange={(event) =>
+                selecionarComprovantePix(event.target.files?.[0])
+              }
+            />
+          </label>
+        </div>
+      )}
+
+      <div className="mt-5 border-t border-slate-100 pt-5">
         <div className="mb-2 flex items-center justify-between gap-3">
           <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
             Assinatura do cliente
