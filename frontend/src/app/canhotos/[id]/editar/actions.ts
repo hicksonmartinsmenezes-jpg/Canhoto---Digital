@@ -131,7 +131,7 @@ export async function atualizarEntrega(
         return {
           ok: false as const,
           error:
-            "A entrega só pode ser concluída pelo fluxo do motorista com foto e assinatura.",
+            "A entrega só pode ser concluída pelo fluxo do motorista com foto da entrega e assinatura.",
         };
       }
 
