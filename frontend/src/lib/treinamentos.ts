@@ -125,17 +125,17 @@ export const TREINAMENTOS: Treinamento[] = [
     perfis: ["motorista"],
     duracaoMinutos: 5,
     objetivo:
-      "Coletar a assinatura do cliente e, quando necessário, registrar também uma foto do comprovante antes de concluir a entrega.",
+      "Registrar a foto da entrega, coletar a assinatura do cliente e, em pagamentos Pix, anexar opcionalmente o comprovante de pagamento.",
     passos: [
       "Abra a entrega que está em rota.",
-      "Se houver comprovante físico, use a opção de foto para registrá-lo.",
+      "Registre a foto da entrega realizada.",
+      "Se o pagamento for Pix, você também pode fotografar o comprovante de pagamento.",
       "Colete a assinatura do cliente no campo de assinatura.",
-      "Revise os dados antes de confirmar.",
-      "Finalize a entrega e confirme que o status passou para Entregue.",
+      "Revise os registros e finalize a entrega.",
     ],
     pontosImportantes: [
-      "A assinatura do cliente é obrigatória para concluir a entrega.",
-      "A foto do comprovante é opcional e, quando enviada, fica vinculada à entrega no Portal Admin.",
+      "A foto da entrega e a assinatura do cliente são obrigatórias para concluir a entrega.",
+      "O comprovante Pix é opcional e aparece separado da foto da entrega no Portal Admin.",
     ],
   },
   {
