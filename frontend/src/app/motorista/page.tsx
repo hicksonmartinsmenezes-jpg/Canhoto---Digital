@@ -158,27 +158,21 @@ export default async function MotoristaPage({
                 <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
                   <div className="flex min-w-[108px] items-center gap-2.5 pr-4">
                     <Route className="size-5 shrink-0 text-[#2C8BFF]" />
-                    <div>
-                      <p className="text-[15px] font-medium tabular-nums leading-none text-white">
-                        {kmCorrida.toLocaleString("pt-BR", {
-                          minimumFractionDigits: 1,
-                          maximumFractionDigits: 1,
-                        })}{" "}
-                        km
-                      </p>
-                      <p className="mt-1 text-[10px] font-medium text-white/45">
-                        Distância percorrida
-                      </p>
-                    </div>
+                    <p className="text-[15px] font-medium tabular-nums leading-none text-white">
+                      {kmCorrida.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })}{" "}
+                      km
+                    </p>
                   </div>
 
                   <Link
                     href={`/motorista/entregas/${proximaEntrega.id}`}
-                    className="flex min-w-0 items-center justify-center gap-2 rounded-2xl bg-[#1F73F1] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1767dc]"
+                    className="justify-self-end inline-flex items-center gap-1.5 rounded-lg bg-[#1F73F1] px-3 py-2 text-xs font-medium text-white transition hover:bg-[#1767dc]"
                   >
-                    <Navigation className="size-4" />
+                    <Navigation className="size-3.5" />
                     Ver entrega
-                    <ChevronRight className="size-4" />
                   </Link>
                 </div>
               </section>
