@@ -4,16 +4,10 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "motion/react";
 import {
-  Banknote,
   Car,
-  CircleDollarSign,
-  Fuel,
   Loader2,
   Plus,
-  ReceiptText,
   SquarePen,
-  Trash2,
-  Wrench,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -23,16 +17,10 @@ import { Modal } from "@/components/ui/Modal";
 import {
   atualizarVeiculo,
   criarVeiculo,
-  excluirGastoVeiculo,
-  registrarGastoVeiculo,
-  type GastoVeiculoInput,
   type VeiculoActionResult,
   type VeiculoInput,
 } from "@/app/veiculos/actions";
 import {
-  TIPO_GASTO_VEICULO_LABEL,
-  type TipoGastoVeiculo,
-  type VeiculoGastoItem,
   type VeiculoListItem,
   type VeiculosData,
 } from "@/lib/veiculos";
@@ -40,21 +28,7 @@ import {
 type ModalState =
   | { tipo: "novo-veiculo" }
   | { tipo: "editar-veiculo"; veiculo: VeiculoListItem }
-  | { tipo: "novo-gasto"; veiculoId?: string }
-  | { tipo: "excluir-gasto"; gasto: VeiculoGastoItem }
   | null;
-
-const TIPOS_GASTO = Object.entries(TIPO_GASTO_VEICULO_LABEL) as Array<
-  [TipoGastoVeiculo, string]
->;
-
-function dataHojeInput(): string {
-  const agora = new Date();
-  const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, "0");
-  const dia = String(agora.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
-}
 
 function normalizarPlacaInput(valor: string): string {
   return valor
@@ -84,19 +58,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => {
-              if (data.veiculos.length === 0) return;
-              setModal({ tipo: "novo-gasto" });
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-[#102b5d] active:scale-[0.97]"
-            style={{ backgroundColor: "#0A1F44" }}
-          >
-            <ReceiptText className="size-4" />
-            Registrar gasto
-          </button>
-
-          <button
-            type="button"
             onClick={() => setModal({ tipo: "novo-veiculo" })}
             className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97]"
           >
@@ -106,30 +67,12 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
         </div>
       </div>
 
-      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-5 max-w-sm">
         <ResumoCard
           label="Veículos ativos"
           value={String(data.resumo.ativos)}
           icon={Car}
           tone="navy"
-        />
-        <ResumoCard
-          label="Gasto no mês"
-          value={data.resumo.totalMes}
-          icon={CircleDollarSign}
-          tone="accent"
-        />
-        <ResumoCard
-          label="Combustível"
-          value={data.resumo.combustivelMes}
-          icon={Fuel}
-          tone="neutral"
-        />
-        <ResumoCard
-          label="Manutenção"
-          value={data.resumo.manutencaoMes}
-          icon={Wrench}
-          tone="neutral"
         />
       </div>
 
@@ -161,7 +104,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                       <th className="px-6 py-3.5 font-bold">Veículo</th>
                       <th className="px-6 py-3.5 font-bold">Placa</th>
                       <th className="px-6 py-3.5 font-bold">Ano</th>
-                      <th className="px-6 py-3.5 font-bold">Gasto no mês</th>
                       <th className="px-6 py-3.5 font-bold">Status</th>
                       <th className="px-6 py-3.5 font-bold">Ações</th>
                     </tr>
@@ -193,9 +135,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                         <td className="px-6 py-4 tabular-nums text-slate-500">
                           {veiculo.ano ?? "—"}
                         </td>
-                        <td className="px-6 py-4 tabular-nums">
-                          {veiculo.gastoMes}
-                        </td>
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex border px-2.5 py-1 text-xs font-semibold ${
@@ -209,20 +148,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              aria-label="Registrar gasto"
-                              title="Registrar gasto"
-                              onClick={() =>
-                                setModal({
-                                  tipo: "novo-gasto",
-                                  veiculoId: veiculo.id,
-                                })
-                              }
-                              className="border border-slate-200 p-1.5 text-slate-500 transition hover:border-[#DE6C09]/40 hover:text-[#DE6C09]"
-                            >
-                              <Banknote className="size-4" />
-                            </button>
                             <button
                               type="button"
                               aria-label="Editar veículo"
@@ -248,89 +173,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
           </Card>
         </div>
 
-        <div className="col-span-12">
-          <Card className="overflow-hidden">
-            <div className="border-b border-slate-200 px-6 py-5">
-              <h2 className="text-[15px] font-bold">
-                Gastos recentes
-              </h2>
-            </div>
-
-            {data.gastosRecentes.length === 0 ? (
-              <EmptyState
-                icon={ReceiptText}
-                title="Nenhum gasto registrado"
-              />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] border-collapse text-left">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-400">
-                      <th className="px-6 py-3.5 font-bold">Data</th>
-                      <th className="px-6 py-3.5 font-bold">Veículo</th>
-                      <th className="px-6 py-3.5 font-bold">Categoria</th>
-                      <th className="px-6 py-3.5 font-bold">Km</th>
-                      <th className="px-6 py-3.5 font-bold">Observação</th>
-                      <th className="px-6 py-3.5 text-right font-bold">Valor</th>
-                      <th className="px-6 py-3.5 font-bold">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.gastosRecentes.map((gasto) => (
-                      <tr
-                        key={gasto.id}
-                        className="border-b border-slate-100 text-sm last:border-b-0 hover:bg-slate-50/70"
-                      >
-                        <td className="px-6 py-4 tabular-nums text-slate-500">
-                          {gasto.data}
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="font-semibold text-slate-800">
-                            {gasto.veiculo}
-                          </p>
-                          <p className="mt-0.5 text-xs text-slate-400">
-                            {gasto.placa}
-                          </p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex bg-[#0A1F44]/10 px-2.5 py-1 text-xs font-semibold text-[#0A1F44]">
-                            {TIPO_GASTO_VEICULO_LABEL[gasto.tipo]}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 tabular-nums text-slate-500">
-                          {gasto.quilometragem === null
-                            ? "—"
-                            : `${gasto.quilometragem.toLocaleString("pt-BR")} km`}
-                        </td>
-                        <td className="max-w-[260px] px-6 py-4 text-slate-500">
-                          <span className="line-clamp-2">
-                            {gasto.observacao || "—"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right tabular-nums">
-                          {gasto.valor}
-                        </td>
-                        <td className="px-6 py-4">
-                          <button
-                            type="button"
-                            aria-label="Excluir gasto"
-                            title="Excluir gasto"
-                            onClick={() =>
-                              setModal({ tipo: "excluir-gasto", gasto })
-                            }
-                            className="border border-slate-200 p-1.5 text-slate-400 transition hover:border-red-300 hover:text-red-600"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </div>
       </div>
 
       <AnimatePresence>
@@ -354,24 +196,6 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
           />
         )}
 
-        {modal?.tipo === "novo-gasto" && (
-          <GastoFormModal
-            key="novo-gasto"
-            veiculos={data.veiculos}
-            veiculoIdInicial={modal.veiculoId}
-            onClose={() => setModal(null)}
-            onSuccess={fecharEAtualizar}
-          />
-        )}
-
-        {modal?.tipo === "excluir-gasto" && (
-          <ExcluirGastoModal
-            key="excluir-gasto"
-            gasto={modal.gasto}
-            onClose={() => setModal(null)}
-            onSuccess={fecharEAtualizar}
-          />
-        )}
       </AnimatePresence>
     </div>
   );
@@ -552,254 +376,6 @@ function VeiculoFormModal({
         >
           {pending && <Loader2 className="size-4 animate-spin" />}
           Salvar veículo
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
-function GastoFormModal({
-  veiculos,
-  veiculoIdInicial,
-  onClose,
-  onSuccess,
-}: {
-  veiculos: VeiculoListItem[];
-  veiculoIdInicial?: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const primeiroAtivo = veiculos.find((veiculo) => veiculo.ativo);
-  const [veiculoId, setVeiculoId] = useState(
-    veiculoIdInicial ?? primeiroAtivo?.id ?? veiculos[0]?.id ?? ""
-  );
-  const [tipo, setTipo] = useState<TipoGastoVeiculo>("combustivel");
-  const [data, setData] = useState(dataHojeInput());
-  const [valor, setValor] = useState("");
-  const [quilometragem, setQuilometragem] = useState("");
-  const [observacao, setObservacao] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function salvar() {
-    const input: GastoVeiculoInput = {
-      veiculoId,
-      tipo,
-      data,
-      valor: Number(valor),
-      quilometragem: quilometragem.trim()
-        ? Number(quilometragem)
-        : null,
-      observacao,
-    };
-
-    setErro(null);
-    startTransition(async () => {
-      const resultado = await registrarGastoVeiculo(input);
-
-      if (!resultado.ok) {
-        setErro(resultado.error ?? "Não foi possível registrar o gasto.");
-        return;
-      }
-
-      onSuccess();
-    });
-  }
-
-  return (
-    <Modal onClose={onClose} size="lg">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-base font-bold text-[#0A1F44]">
-            Registrar gasto
-          </h3>
-          <p className="mt-1 text-xs text-slate-500">
-            Lance uma despesa vinculada a um veículo.
-          </p>
-        </div>
-        <button
-          type="button"
-          aria-label="Fechar"
-          onClick={onClose}
-          className="text-slate-400 hover:text-slate-600"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Campo label="Veículo">
-          <select
-            value={veiculoId}
-            onChange={(event) => setVeiculoId(event.target.value)}
-            className={inputClass}
-          >
-            {veiculos.map((veiculo) => (
-              <option key={veiculo.id} value={veiculo.id}>
-                {veiculo.placa} · {veiculo.marca} {veiculo.modelo}
-                {veiculo.ativo ? "" : " (inativo)"}
-              </option>
-            ))}
-          </select>
-        </Campo>
-
-        <Campo label="Categoria">
-          <select
-            value={tipo}
-            onChange={(event) =>
-              setTipo(event.target.value as TipoGastoVeiculo)
-            }
-            className={inputClass}
-          >
-            {TIPOS_GASTO.map(([valorTipo, label]) => (
-              <option key={valorTipo} value={valorTipo}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </Campo>
-
-        <Campo label="Data">
-          <input
-            type="date"
-            value={data}
-            onChange={(event) => setData(event.target.value)}
-            className={inputClass}
-          />
-        </Campo>
-
-        <Campo label="Valor">
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0.01"
-            step="0.01"
-            value={valor}
-            placeholder="0,00"
-            onChange={(event) => setValor(event.target.value)}
-            className={inputClass}
-          />
-        </Campo>
-
-        <Campo label="Quilometragem" opcional>
-          <input
-            type="number"
-            inputMode="numeric"
-            min="0"
-            step="1"
-            value={quilometragem}
-            placeholder="Ex.: 48520"
-            onChange={(event) => setQuilometragem(event.target.value)}
-            className={inputClass}
-          />
-        </Campo>
-
-        <div className="sm:col-span-2">
-          <Campo label="Observação" opcional>
-            <textarea
-              rows={3}
-              value={observacao}
-              placeholder="Ex.: troca de óleo e filtro, posto abastecido, motivo da multa..."
-              onChange={(event) => setObservacao(event.target.value)}
-              className={inputClass}
-            />
-          </Campo>
-        </div>
-      </div>
-
-      {erro && <Erro mensagem={erro} />}
-
-      <div className="mt-6 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={salvar}
-          className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-[#102b5d] active:scale-[0.97] disabled:opacity-60"
-        >
-          {pending && <Loader2 className="size-4 animate-spin" />}
-          Registrar gasto
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
-function ExcluirGastoModal({
-  gasto,
-  onClose,
-  onSuccess,
-}: {
-  gasto: VeiculoGastoItem;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [erro, setErro] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function excluir() {
-    setErro(null);
-    startTransition(async () => {
-      const resultado = await excluirGastoVeiculo(gasto.id);
-      if (!resultado.ok) {
-        setErro(resultado.error ?? "Não foi possível excluir o gasto.");
-        return;
-      }
-      onSuccess();
-    });
-  }
-
-  return (
-    <Modal onClose={onClose}>
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-base font-bold text-slate-900">
-            Excluir lançamento?
-          </h3>
-          <p className="mt-1 text-sm text-slate-500">
-            {gasto.placa} · {TIPO_GASTO_VEICULO_LABEL[gasto.tipo]} ·{" "}
-            {gasto.valor}
-          </p>
-        </div>
-        <button
-          type="button"
-          aria-label="Fechar"
-          onClick={onClose}
-          className="text-slate-400 hover:text-slate-600"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
-
-      <p className="text-sm leading-6 text-slate-600">
-        Use esta ação apenas para corrigir um lançamento feito por engano.
-        A exclusão não pode ser desfeita.
-      </p>
-
-      {erro && <Erro mensagem={erro} />}
-
-      <div className="mt-6 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={excluir}
-          className="inline-flex items-center gap-2 bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60"
-        >
-          {pending && <Loader2 className="size-4 animate-spin" />}
-          Excluir gasto
         </button>
       </div>
     </Modal>
