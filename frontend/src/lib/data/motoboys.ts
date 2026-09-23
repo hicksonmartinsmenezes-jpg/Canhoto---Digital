@@ -2,7 +2,11 @@
 
 import { and, asc, eq, gte, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { entregas, motoboys } from "@/lib/db/schema";
+import {
+  entregas,
+  motoboyLocalizacaoHistorico,
+  motoboys,
+} from "@/lib/db/schema";
 
 export interface MotoboyOption {
   id: string;
@@ -144,3 +148,120 @@ export async function getMotoboyPerfil(
 
   return motoboy ?? null;
 }
+
+function chaveDataLocal(data: Date): string {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+function distanciaHaversineKm(
+  latitudeA: number,
+  longitudeA: number,
+  latitudeB: number,
+  longitudeB: number
+): number {
+  const raioTerraKm = 6371.0088;
+  const rad = (graus: number) => (graus * Math.PI) / 180;
+  const deltaLatitude = rad(latitudeB - latitudeA);
+  const deltaLongitude = rad(longitudeB - longitudeA);
+  const latA = rad(latitudeA);
+  const latB = rad(latitudeB);
+
+  const a =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(latA) *
+      Math.cos(latB) *
+      Math.sin(deltaLongitude / 2) ** 2;
+
+  return 2 * raioTerraKm * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+export async function getKmRodadosHoje(motoboyId: string): Promise<number> {
+  const db = getDb();
+  if (!db) return 0;
+
+  const hoje = chaveDataLocal(new Date());
+
+  const pontos = await db
+    .select({
+      entregaId: motoboyLocalizacaoHistorico.entregaId,
+      latitude: motoboyLocalizacaoHistorico.latitude,
+      longitude: motoboyLocalizacaoHistorico.longitude,
+      precisaoMetros: motoboyLocalizacaoHistorico.precisaoMetros,
+      registradoEm: motoboyLocalizacaoHistorico.registradoEm,
+    })
+    .from(motoboyLocalizacaoHistorico)
+    .innerJoin(
+      entregas,
+      eq(motoboyLocalizacaoHistorico.entregaId, entregas.id)
+    )
+    .where(
+      and(
+        eq(motoboyLocalizacaoHistorico.motoboyId, motoboyId),
+        eq(entregas.data, hoje)
+      )
+    )
+    .orderBy(
+      asc(motoboyLocalizacaoHistorico.entregaId),
+      asc(motoboyLocalizacaoHistorico.registradoEm)
+    );
+
+  let totalKm = 0;
+  let anterior:
+    | {
+        entregaId: string;
+        latitude: number;
+        longitude: number;
+        registradoEm: number;
+      }
+    | null = null;
+
+  for (const ponto of pontos) {
+    const precisao =
+      ponto.precisaoMetros === null ? null : Number(ponto.precisaoMetros);
+
+    if (precisao !== null && precisao > 100) {
+      anterior = null;
+      continue;
+    }
+
+    const atual = {
+      entregaId: ponto.entregaId,
+      latitude: Number(ponto.latitude),
+      longitude: Number(ponto.longitude),
+      registradoEm: new Date(ponto.registradoEm).getTime(),
+    };
+
+    if (
+      anterior &&
+      anterior.entregaId === atual.entregaId &&
+      Number.isFinite(atual.registradoEm)
+    ) {
+      const distanciaKm = distanciaHaversineKm(
+        anterior.latitude,
+        anterior.longitude,
+        atual.latitude,
+        atual.longitude
+      );
+      const segundos = Math.max(
+        1,
+        (atual.registradoEm - anterior.registradoEm) / 1000
+      );
+
+      // Ignora oscilação pequena do GPS parado e saltos incompatíveis com
+      // deslocamento rodoviário normal. O limite equivale a ~180 km/h,
+      // com uma margem de 100 m por amostra.
+      const limiteKm = segundos * 0.05 + 0.1;
+      if (distanciaKm >= 0.015 && distanciaKm <= limiteKm) {
+        totalKm += distanciaKm;
+      }
+    }
+
+    anterior = atual;
+  }
+
+  return Number(totalKm.toFixed(1));
+}
+
