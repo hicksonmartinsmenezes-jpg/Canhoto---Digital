@@ -25,6 +25,25 @@ interface BrasilApiCepV2 {
 
 let coordenadasLojaPromise: Promise<CoordenadasEntrega | null> | null = null;
 
+function normalizarEndereco(valor: string): string {
+  return valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function destinoEhALoja(endereco: string): boolean {
+  const normalizado = normalizarEndereco(endereco);
+
+  return (
+    normalizado === "rildon eletropecas" ||
+    normalizado.includes("rildon eletropecas") ||
+    normalizado.includes("chanceler osvaldo aranha 151")
+  );
+}
+
 function coordenadasValidas(
   latitude: number,
   longitude: number
@@ -144,6 +163,10 @@ export async function getDistanciaLojaAteDestinoKm(
     .limit(1);
 
   if (!entrega) return null;
+
+  if (destinoEhALoja(entrega.endereco ?? "")) {
+    return 0;
+  }
 
   const destinoPersistido =
     entrega.latitude !== null && entrega.longitude !== null
