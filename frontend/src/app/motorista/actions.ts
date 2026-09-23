@@ -15,7 +15,6 @@ import {
   entregaAnexos,
   entregaHistorico,
   entregas,
-  motoboyLocalizacaoHistorico,
   motoboyLocalizacoes,
 } from "@/lib/db/schema";
 import { checarRateLimit } from "@/lib/rate-limit";
@@ -246,38 +245,26 @@ export async function atualizarLocalizacaoMotorista(input: {
 
     const atualizadoEm = new Date().toISOString();
 
-    await db.transaction(async (tx) => {
-      await tx
-        .insert(motoboyLocalizacoes)
-        .values({
-          motoboyId,
+    await db
+      .insert(motoboyLocalizacoes)
+      .values({
+        motoboyId,
+        latitude: latitude.toFixed(6),
+        longitude: longitude.toFixed(6),
+        precisaoMetros:
+          precisaoMetros === null ? null : precisaoMetros.toFixed(2),
+        atualizadoEm,
+      })
+      .onConflictDoUpdate({
+        target: motoboyLocalizacoes.motoboyId,
+        set: {
           latitude: latitude.toFixed(6),
           longitude: longitude.toFixed(6),
           precisaoMetros:
             precisaoMetros === null ? null : precisaoMetros.toFixed(2),
           atualizadoEm,
-        })
-        .onConflictDoUpdate({
-          target: motoboyLocalizacoes.motoboyId,
-          set: {
-            latitude: latitude.toFixed(6),
-            longitude: longitude.toFixed(6),
-            precisaoMetros:
-              precisaoMetros === null ? null : precisaoMetros.toFixed(2),
-            atualizadoEm,
-          },
-        });
-
-      await tx.insert(motoboyLocalizacaoHistorico).values({
-        motoboyId,
-        entregaId: emRota.id,
-        latitude: latitude.toFixed(6),
-        longitude: longitude.toFixed(6),
-        precisaoMetros:
-          precisaoMetros === null ? null : precisaoMetros.toFixed(2),
-        registradoEm: atualizadoEm,
+        },
       });
-    });
 
     return { ok: true };
   } catch {
