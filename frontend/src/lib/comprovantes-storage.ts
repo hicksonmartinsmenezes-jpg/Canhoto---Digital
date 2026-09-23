@@ -18,6 +18,58 @@ export function diretorioRaizUploads(): string {
   return path.resolve(process.cwd(), "..", "storage", "uploads");
 }
 
+const NOMES_RESERVADOS_WINDOWS = new Set([
+  "con",
+  "prn",
+  "aux",
+  "nul",
+  "com1",
+  "com2",
+  "com3",
+  "com4",
+  "com5",
+  "com6",
+  "com7",
+  "com8",
+  "com9",
+  "lpt1",
+  "lpt2",
+  "lpt3",
+  "lpt4",
+  "lpt5",
+  "lpt6",
+  "lpt7",
+  "lpt8",
+  "lpt9",
+]);
+
+export function nomeSeguroParaPasta(valor: string): string {
+  const normalizado = valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+    .replace(/-+$/g, "");
+
+  if (!normalizado) return "cliente-sem-nome";
+  if (NOMES_RESERVADOS_WINDOWS.has(normalizado)) {
+    return `cliente-${normalizado}`;
+  }
+
+  return normalizado;
+}
+
+export function diretorioRelativoEntrega(
+  clienteNome: string,
+  numeroEntrega: number
+): string {
+  const cliente = nomeSeguroParaPasta(clienteNome);
+  const numero = String(numeroEntrega).padStart(6, "0");
+  return path.posix.join("entregas", cliente, `entrega-${numero}`);
+}
+
 export function resolverArquivoComprovante(
   arquivoRelativo: string
 ): { caminho: string; mime: string } | null {
