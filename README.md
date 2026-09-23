@@ -181,12 +181,13 @@ A aplicação de produção utiliza a porta `3003`.
 | `MOTORISTA_SESSION_SECRET` | assinatura da sessão do Motorista |
 | `COLABORADOR_SESSION_SECRET` | assinatura da sessão do Gestor de setor |
 | `PUBLIC_MOTORISTA_HOST` | hostname público exclusivo da área do motorista |
-| `CANHOTO_UPLOAD_DIR` | diretório de fotos e assinaturas |
+| `CANHOTO_UPLOAD_DIR` | diretório de fotos, comprovantes Pix e assinaturas |
+| `CANHOTO_RELATORIOS_DIR` | diretório onde os CSVs exportados são arquivados automaticamente |
 | `GEOCODER_URL` | endereço interno do geocoder local |
 | `NEXT_PUBLIC_MAP_TILE_URL` | origem dos tiles do mini mapa |
 | `DEV_AUTH_BYPASS` | bypass opcional apenas para desenvolvimento local |
 
-Nunca versione arquivos `.env`, segredos reais, dumps do banco ou comprovantes.
+Nunca versione arquivos `.env`, segredos reais, dumps do banco, comprovantes ou relatórios operacionais exportados.
 
 ## Perfis de acesso
 
@@ -300,18 +301,28 @@ npm run build
 npm run test:e2e
 ```
 
-## Backup e recuperação
+## Arquivo local e backup
 
-Cada backup válido reúne o banco e os comprovantes físicos no mesmo pacote:
+Cada exportação feita em **Relatórios** continua sendo baixada pelo navegador e também recebe uma cópia automática em:
+
+```text
+storage/relatorios/
+└── relatorio-entregas_2026-09-01_a_2026-09-30_20260923-153000_ab12cd34.csv
+```
+
+O caminho pode ser alterado por `CANHOTO_RELATORIOS_DIR`.
+
+Cada backup válido reúne banco, comprovantes físicos e relatórios arquivados no mesmo pacote:
 
 ```text
 backups/canhoto/canhoto-AAAAMMDD-HHMMSS/
 ├── database.dump
 ├── uploads.zip
+├── relatorios.zip
 └── manifest.json
 ```
 
-O `manifest.json` registra hashes SHA-256 e informações de integridade. O processo de restauração valida o banco, os arquivos físicos e as referências existentes em `entrega_anexos`.
+O `manifest.json` registra hashes SHA-256 e informações de integridade. O processo de restauração valida o banco, os arquivos físicos, as referências existentes em `entrega_anexos` e o arquivo de relatórios quando presente.
 
 Para detalhes de operação, agendamento, Cloudflare Tunnel e recuperação, consulte:
 
