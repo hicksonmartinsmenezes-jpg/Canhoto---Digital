@@ -14,7 +14,8 @@ export type TipoAnexoEntrega =
   | "xml_nfe"
   | "xml_cte"
   | "assinatura_cliente"
-  | "foto";
+  | "foto"
+  | "comprovante_pix";
 
 export type TipoGastoVeiculo =
   | "combustivel"
