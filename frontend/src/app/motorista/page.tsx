@@ -131,17 +131,17 @@ export default async function MotoristaPage({
                       )}
                     </span>
 
-                    <div className="min-w-0 border-l border-white/20 pl-3">
+                    <div className="min-w-0">
                       <p className="truncate text-[15px] font-semibold text-white">
                         {proximaEntrega.horaSaida
                           ? "Entrega em andamento"
                           : "Próxima entrega"}
                       </p>
-                      <p className="mt-0.5 truncate text-[11px] font-medium text-white/55">
-                        {proximaEntrega.horaSaida && proximaEntrega.horaSaida
-                          ? `Saída às ${proximaEntrega.horaSaida.slice(0, 5)}`
-                          : "Aguardando a próxima coleta"}
-                      </p>
+                      {proximaEntrega.horaSaida && (
+                        <p className="mt-0.5 truncate text-[11px] font-medium text-white/55">
+                          Saída às {proximaEntrega.horaSaida.slice(0, 5)}
+                        </p>
+                      )}
                     </div>
                   </div>
 
