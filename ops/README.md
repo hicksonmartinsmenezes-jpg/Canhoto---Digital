@@ -240,7 +240,7 @@ Depois faça uma restauração real em banco separado:
 .\ops\backup\test-restore.ps1
 ```
 
-O teste cria um banco temporário `canhoto_restore_...`, restaura o dump, confirma as 11 tabelas essenciais, extrai `uploads.zip`, verifica se cada `arquivo_url` restaurado no banco possui o arquivo físico correspondente e também valida a quantidade de arquivos em `relatorios.zip` quando o pacote contém relatórios.
+O teste cria um banco temporário `canhoto_restore_...`, restaura o dump, confirma as 12 tabelas essenciais, extrai `uploads.zip`, verifica se cada `arquivo_url` restaurado no banco possui o arquivo físico correspondente e também valida a quantidade de arquivos em `relatorios.zip` quando o pacote contém relatórios.
 
 Por padrão, banco e pasta temporários são apagados após uma validação bem-sucedida ou com erro. Para mantê-los para inspeção manual:
 
