@@ -47,8 +47,18 @@ function Assert-BackupPackage([string]$PackagePath) {
 
     $databasePath = Join-Path $PackagePath $manifest.database.file
     $uploadsPath = Join-Path $PackagePath $manifest.uploads.file
+    $reportsPath = $null
 
-    foreach ($required in @($databasePath, $uploadsPath)) {
+    if ($manifest.PSObject.Properties.Name -contains "reports") {
+        $reportsPath = Join-Path $PackagePath $manifest.reports.file
+    }
+
+    $requiredFiles = @($databasePath, $uploadsPath)
+    if ($reportsPath) {
+        $requiredFiles += $reportsPath
+    }
+
+    foreach ($required in $requiredFiles) {
         if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
             throw "Backup package is incomplete: $required"
         }
@@ -74,6 +84,21 @@ function Assert-BackupPackage([string]$PackagePath) {
     }
     finally {
         $zip.Dispose()
+    }
+
+    if ($reportsPath) {
+        $reportsHash = (Get-FileHash -LiteralPath $reportsPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($reportsHash -ne $manifest.reports.sha256.ToLowerInvariant()) {
+            throw "Reports archive SHA-256 mismatch."
+        }
+
+        $reportsZip = [IO.Compression.ZipFile]::OpenRead($reportsPath)
+        try {
+            $null = $reportsZip.Entries.Count
+        }
+        finally {
+            $reportsZip.Dispose()
+        }
     }
 
     return $manifest
@@ -118,9 +143,15 @@ if ($LASTEXITCODE -ne 0 -or $running -ne "true") {
 
 $databasePath = Join-Path $BackupPath $manifest.database.file
 $uploadsArchivePath = Join-Path $BackupPath $manifest.uploads.file
+$reportsArchivePath = if ($manifest.PSObject.Properties.Name -contains "reports") {
+    Join-Path $BackupPath $manifest.reports.file
+} else {
+    $null
+}
 $containerPath = "/tmp/canhoto-restore-" + [guid]::NewGuid().ToString("N") + ".dump"
 $restoreDb = "canhoto_restore_" + (Get-Date -Format "yyyyMMddHHmmss") + "_" + (Get-Random -Minimum 1000 -Maximum 9999)
 $restoreUploadsDir = Join-Path ([IO.Path]::GetTempPath()) ("canhoto-uploads-" + [guid]::NewGuid().ToString("N"))
+$restoreReportsDir = Join-Path ([IO.Path]::GetTempPath()) ("canhoto-relatorios-" + [guid]::NewGuid().ToString("N"))
 $databaseCreated = $false
 
 docker cp $databasePath ($container + ":" + $containerPath)
@@ -198,14 +229,31 @@ try {
         }
     }
 
+    $restoredReports = @()
+    if ($reportsArchivePath) {
+        New-Item -ItemType Directory -Force -Path $restoreReportsDir | Out-Null
+        [IO.Compression.ZipFile]::ExtractToDirectory($reportsArchivePath, $restoreReportsDir)
+
+        $restoredReports = @(Get-ChildItem -LiteralPath $restoreReportsDir -File -Recurse)
+        if ($restoredReports.Count -ne [int]$manifest.reports.fileCount) {
+            throw "Report file count mismatch after extraction. Expected $($manifest.reports.fileCount), found $($restoredReports.Count)."
+        }
+    }
+
     Write-Host "Complete restore validated successfully."
     Write-Host "Source: $BackupPath"
     Write-Host "Tables validated: $($tableNames.Count)"
     Write-Host "Upload files validated: $($restoredFiles.Count)"
+    if ($reportsArchivePath) {
+        Write-Host "Report files validated: $($restoredReports.Count)"
+    }
 
     if ($KeepTestArtifacts) {
         Write-Host "Restore-test database kept: $restoreDb"
         Write-Host "Extracted uploads kept: $restoreUploadsDir"
+        if ($reportsArchivePath) {
+            Write-Host "Extracted reports kept: $restoreReportsDir"
+        }
     }
 }
 finally {
@@ -219,6 +267,10 @@ finally {
 
         if (Test-Path -LiteralPath $restoreUploadsDir) {
             Remove-Item -LiteralPath $restoreUploadsDir -Recurse -Force
+        }
+
+        if (Test-Path -LiteralPath $restoreReportsDir) {
+            Remove-Item -LiteralPath $restoreReportsDir -Recurse -Force
         }
     }
 }
