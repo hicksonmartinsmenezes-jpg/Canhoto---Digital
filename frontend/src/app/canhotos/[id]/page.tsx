@@ -173,7 +173,7 @@ export default async function EntregaDetalhePage({
               Comprovante de entrega
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Foto e assinatura enviadas pelo motorista.
+              Assinatura do cliente e foto opcional enviadas pelo motorista.
             </p>
           </div>
 
@@ -186,7 +186,7 @@ export default async function EntregaDetalhePage({
                 Nenhum comprovante registrado
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                Foto e assinatura aparecerão aqui após a conclusão pelo motorista.
+                A assinatura e, quando registrada, a foto aparecerão aqui após a conclusão pelo motorista.
               </p>
             </div>
           ) : (
