@@ -9,7 +9,6 @@ import {
   Navigation,
   Package,
   Phone,
-  Route,
   UserRound,
 } from "lucide-react";
 import {
@@ -24,10 +23,7 @@ import {
   getEntregasDoMotorista,
   getHistoricoDoMotorista,
 } from "@/lib/data/entregas";
-import {
-  getKmRodadosEntrega,
-  getMotoboyPerfil,
-} from "@/lib/data/motoboys";
+import { getMotoboyPerfil } from "@/lib/data/motoboys";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 import { sairMotorista } from "./actions";
 
@@ -91,10 +87,6 @@ export default async function MotoristaPage({
       (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
     ) ?? entregas.find((entrega) => entrega.status === "pendente");
 
-  const kmCorrida = proximaEntrega
-    ? await getKmRodadosEntrega(motoboyId, proximaEntrega.id)
-    : 0;
-
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
       <MotoristaAutoRefresh />
@@ -105,42 +97,41 @@ export default async function MotoristaPage({
           <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full border border-white/5" />
 
           <div className="relative w-full">
-            <div className="flex items-center justify-between gap-4 border-b border-white/15 pb-4">
+            <div>
               <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
                 <CalendarDays className="size-4" />
                 {formatarDataHoje()}
               </p>
 
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/rildon-express-logo-white.svg"
-                alt="Rildon Express"
-                className="h-5 w-auto max-w-[132px]"
-              />
             </div>
 
             {proximaEntrega ? (
-              <section className="mt-4">
-                <div className="flex items-center gap-2">
-                  <span className="grid size-9 place-items-center rounded-full bg-[#1F73F1] text-white">
-                    {proximaEntrega.horaSaida ? (
-                      <Navigation className="size-4" />
-                    ) : (
-                      <Package className="size-4" />
-                    )}
-                  </span>
-                  <span className="text-xs font-black">
-                    {proximaEntrega.horaSaida
-                      ? "Entrega em andamento"
-                      : "Próxima entrega"}
+              <section className="mt-4 border-t border-white/15 pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-9 place-items-center rounded-full bg-[#1F73F1] text-white">
+                      {proximaEntrega.horaSaida ? (
+                        <Navigation className="size-4" />
+                      ) : (
+                        <Package className="size-4" />
+                      )}
+                    </span>
+                    <span className="text-xs font-black">
+                      {proximaEntrega.horaSaida
+                        ? "Entrega em andamento"
+                        : "Próxima entrega"}
+                    </span>
+                  </div>
+
+                  <span className="rounded-full bg-[#FF942E] px-2.5 py-1 text-[10px] font-black text-white">
+                    {proximaEntrega.horaSaida ? "Em rota" : "Pendente"}
                   </span>
                 </div>
 
                 <div className="mt-3">
-                  <p className="text-lg font-black text-white">
+                  <p className="text-lg font-black">
                     {proximaEntrega.clienteNome}
                   </p>
-
                   {proximaEntrega.endereco && (
                     <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium leading-5 text-white/75">
                       <MapPin className="mt-0.5 size-3.5 shrink-0" />
@@ -149,15 +140,6 @@ export default async function MotoristaPage({
                       </span>
                     </p>
                   )}
-
-                  <p className="mt-2 flex items-center gap-1.5 text-sm font-medium tabular-nums text-white/85">
-                    <Route className="size-4 shrink-0 text-[#2C8BFF]" />
-                    {kmCorrida.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 1,
-                      maximumFractionDigits: 1,
-                    })}{" "}
-                    km
-                  </p>
                 </div>
 
                 <Link
@@ -170,57 +152,7 @@ export default async function MotoristaPage({
                 </Link>
               </section>
             ) : (
-                        <Package className="size-4.5" />
-                      )}
-                    </span>
-
-                    <div className="min-w-0">
-                      <p className="truncate text-[15px] font-semibold text-white">
-                        {proximaEntrega.horaSaida
-                          ? "Entrega em andamento"
-                          : "Próxima entrega"}
-                      </p>
-                      {proximaEntrega.horaSaida && (
-                        <p className="mt-0.5 truncate text-[11px] font-medium text-white/55">
-                          Saída às {proximaEntrega.horaSaida.slice(0, 5)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {proximaEntrega.endereco && (
-                    <div className="flex min-w-0 items-start justify-end gap-2 text-right">
-                      <MapPin className="mt-0.5 size-4 shrink-0 text-white/65" />
-                      <p className="line-clamp-2 text-[12px] font-medium leading-4 text-white/65">
-                        {proximaEntrega.endereco}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
-                  <div className="flex min-w-[108px] items-center gap-2.5 pr-4">
-                    <Route className="size-5 shrink-0 text-[#2C8BFF]" />
-                    <p className="text-[15px] font-medium tabular-nums leading-none text-white">
-                      {kmCorrida.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 1,
-                        maximumFractionDigits: 1,
-                      })}{" "}
-                      km
-                    </p>
-                  </div>
-
-                  <Link
-                    href={`/motorista/entregas/${proximaEntrega.id}`}
-                    className="justify-self-end inline-flex items-center gap-1.5 rounded-lg bg-[#1F73F1] px-3 py-2 text-xs font-medium text-white transition hover:bg-[#1767dc]"
-                  >
-                    <Navigation className="size-3.5" />
-                    Ver entrega
-                  </Link>
-                </div>
-              </section>
-            ) : (
-              <section className="mt-4 flex items-center gap-3">
+              <section className="mt-4 flex items-center gap-3 border-t border-white/15 pt-4">
                 <CheckCircle2 className="size-6 shrink-0 text-white/85" />
                 <div>
                   <p className="text-sm font-black">Nenhuma entrega pendente</p>
