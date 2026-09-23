@@ -301,6 +301,8 @@ export default async function EntregaDetalhePage({
                     Assinatura não registrada.
                   </p>
                 )}
+              </div>
+
               {entrega.formaPagamento === "pix" && (
                 <div className="md:col-span-2">
                   <div className="mb-3 flex items-center gap-2">
@@ -356,8 +358,6 @@ export default async function EntregaDetalhePage({
                   )}
                 </div>
               )}
-
-              </div>
             </div>
           )}
         </section>
