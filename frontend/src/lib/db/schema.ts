@@ -40,6 +40,7 @@ export const tipoAnexoEntregaEnum = pgEnum("tipo_anexo_entrega", [
   "xml_cte",
   "assinatura_cliente",
   "foto",
+  "comprovante_pix",
 ]);
 
 export const tipoGastoVeiculoEnum = pgEnum("tipo_gasto_veiculo", [
