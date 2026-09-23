@@ -329,6 +329,8 @@ export async function confirmarEntrega(
   if (!db) return { ok: false, error: ERRO_BANCO };
 
   let entregaEhPix = false;
+  let clienteNomeEntrega = "";
+  let numeroEntrega = 0;
 
   try {
     const [entregaConfirmavel] = await db
@@ -357,6 +359,8 @@ export async function confirmarEntrega(
     }
 
     entregaEhPix = entregaConfirmavel.formaPagamento === "pix";
+    clienteNomeEntrega = entregaConfirmavel.clienteNome;
+    numeroEntrega = entregaConfirmavel.numero;
   } catch {
     return {
       ok: false,
@@ -368,8 +372,8 @@ export async function confirmarEntrega(
     entregaEhPix && comprovantePix ? comprovantePix : null;
 
   const pastaRelativaEntrega = diretorioRelativoEntrega(
-    entregaConfirmavel.clienteNome,
-    entregaConfirmavel.numero
+    clienteNomeEntrega,
+    numeroEntrega
   );
   const pastaEntrega = path.join(
     diretorioRaizUploads(),
