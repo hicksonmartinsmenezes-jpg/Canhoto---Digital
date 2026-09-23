@@ -187,7 +187,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-mono font-semibold tracking-wide text-slate-600">
+                        <td className="px-6 py-4 font-medium tabular-nums text-slate-500">
                           {veiculo.placa}
                         </td>
                         <td className="px-6 py-4 tabular-nums text-slate-500">
