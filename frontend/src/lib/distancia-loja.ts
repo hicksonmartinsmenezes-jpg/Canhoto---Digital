@@ -23,8 +23,8 @@ const DESTINOS_CONHECIDOS = [
     endereco:
       "Avenida Governador Marcelo Déda, 142, Costa Paradiso, Barra dos Coqueiros - SE",
     cep: "49141048",
-    latitude: -10.907875,
-    longitude: -37.026708,
+    latitude: -10.917163,
+    longitude: -37.026267,
   },
 ] as const;
 
