@@ -303,6 +303,22 @@ npm run test:e2e
 
 ## Arquivo local e backup
 
+Os anexos de cada entrega são organizados por cliente e pelo número da entrega:
+
+```text
+storage/uploads/entregas/
+└── joao-da-silva/
+    ├── entrega-000123/
+    │   ├── foto-entrega-....jpg
+    │   ├── comprovante-pix-....jpg
+    │   └── assinatura-....png
+    └── entrega-000157/
+        ├── foto-entrega-....jpg
+        └── assinatura-....png
+```
+
+O nome do cliente é normalizado para um nome de pasta seguro, sem acentos e em minúsculas. O número global da entrega mantém entregas diferentes separadas mesmo quando dois clientes possuem nomes iguais.
+
 Cada exportação feita em **Relatórios** continua sendo baixada pelo navegador e também recebe uma cópia automática em:
 
 ```text
