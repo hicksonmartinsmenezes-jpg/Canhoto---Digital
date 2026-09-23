@@ -97,12 +97,18 @@ export default async function MotoristaPage({
           <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full border border-white/5" />
 
           <div className="relative w-full">
-            <div>
+            <div className="flex items-center justify-between gap-4">
               <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
                 <CalendarDays className="size-4" />
                 {formatarDataHoje()}
               </p>
 
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/rildon-express-logo-white.svg"
+                alt="Rildon Express"
+                className="h-5 w-auto max-w-[132px]"
+              />
             </div>
 
             {proximaEntrega ? (
@@ -123,9 +129,11 @@ export default async function MotoristaPage({
                     </span>
                   </div>
 
-                  <span className="rounded-full bg-[#FF942E] px-2.5 py-1 text-[10px] font-black text-white">
-                    {proximaEntrega.horaSaida ? "Em rota" : "Pendente"}
-                  </span>
+                  {proximaEntrega.horaSaida && (
+                    <span className="rounded-full bg-[#1F73F1] px-2.5 py-1 text-[10px] font-black text-white">
+                      Em rota
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-3">
@@ -144,7 +152,7 @@ export default async function MotoristaPage({
 
                 <Link
                   href={`/motorista/entregas/${proximaEntrega.id}`}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1F73F1] px-4 py-3 text-sm font-black text-white transition hover:bg-[#1767dc]"
+                  className="mt-4 flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white transition hover:text-white/80"
                 >
                   <Navigation className="size-4" />
                   Ver entrega
