@@ -28,7 +28,7 @@ O Canhoto Digital reúne em uma única aplicação:
 A versão 2.0 consolida a nova experiência do motorista e a camada de localização da aplicação:
 
 - painel mobile reorganizado;
-- quilometragem percorrida no dia calculada pela trilha de GPS durante entregas em rota;
+- distância aproximada da Rildon Eletropeças até o destino exibida na próxima entrega;
 - histórico de entregas com busca e filtros;
 - página de detalhes da entrega;
 - mini mapa do destino;
