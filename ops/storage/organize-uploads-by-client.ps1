@@ -118,7 +118,8 @@ select json_build_object(
   'entregaId', e.id,
   'numero', e.numero,
   'clienteNome', e.cliente_nome,
-  'arquivoUrl', a.arquivo_url
+  'arquivoUrl', a.arquivo_url,
+  'dataEntrega', e.data
 )::text
 from entrega_anexos a
 inner join entregas e on e.id = a.entrega_id
@@ -143,9 +144,12 @@ foreach ($row in $rows) {
         throw "Attachment $($row.anexoId) has an invalid file path: $oldRelative"
     }
 
+    $dataEntrega = [DateTime]::Parse("$($row.dataEntrega)", [Globalization.CultureInfo]::InvariantCulture)
+    $mesFolder = $dataEntrega.ToString("yyyy-MM")
+    $diaFolder = $dataEntrega.ToString("yyyy-MM-dd")
     $clientFolder = ConvertTo-SafeFolderName "$($row.clienteNome)"
     $deliveryFolder = "entrega-{0:D6}" -f [int]$row.numero
-    $newRelative = "entregas/$clientFolder/$deliveryFolder/$fileName"
+    $newRelative = "entregas/$mesFolder/$diaFolder/$clientFolder/$deliveryFolder/$fileName"
 
     if ($oldRelative -eq $newRelative) {
         $alreadyOrganized++
@@ -245,4 +249,4 @@ Write-Host "Attachment organization completed successfully."
 Write-Host "Attachments checked: $($rows.Count)"
 Write-Host "Files reorganized: $($changes.Count)"
 Write-Host "Already organized: $alreadyOrganized"
-Write-Host "Structure: storage\uploads\entregas\<cliente>\entrega-000123\<arquivo>"
+Write-Host "Structure: storage\uploads\entregas\<AAAA-MM>\<AAAA-MM-DD>\<cliente>\entrega-000123\<arquivo>"
