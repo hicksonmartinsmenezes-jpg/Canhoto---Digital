@@ -19,6 +19,7 @@ export function MotoristasStatCard({
       value={ativos.toLocaleString("pt-BR")}
       sub=""
       mini={{ label: "Em rota", value: emRota.length.toLocaleString("pt-BR") }}
+      variant="accent"
     />
   );
 }

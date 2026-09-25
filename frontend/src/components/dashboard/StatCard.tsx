@@ -15,14 +15,17 @@ interface StatCardProps {
   iconBare?: boolean;
   /** Métrica secundária compacta à direita do valor (ex.: "Eficiência 78,6%"). */
   mini?: { label: string; value: string };
-  /** "accent" = card em destaque (gradiente âmbar → laranja, texto branco
-   * sólido) — hoje só o card "Total de entregas" do Dashboard usa. Mesmo
-   * layout/estrutura dos demais cards (padrão fixado em 19/08/2026: label
-   * em cima, valor + badges numa linha, sub embaixo) — só muda a cor. O
-   * gradiente é pintado via `background-image`, então cobre o `bg-white`
-   * do Card sem precisar de "!"; a borda usa "!" (Tailwind v4 important
-   * modifier) porque `border-color` é a mesma propriedade nos dois casos e
-   * só empilhar classe não garante ordem de precedência. */
+  /** "accent" = card em destaque (fundo sólido #0A1F44 — o mesmo azul do
+   * <aside> da Sidebar — texto branco). Usado pelos 4 StatCards do
+   * Dashboard (24/09/2026, a pedido do Hickson — inicialmente só "Total
+   * de entregas" usava, os outros três eram brancos/"default"). Mesmo
+   * layout/estrutura em ambas as variantes (padrão fixado em 19/08/2026:
+   * label em cima, valor + badges numa linha, sub embaixo) — só muda a
+   * cor. Tanto a borda quanto o fundo usam "!" (Tailwind v4 important
+   * modifier): o `Card` já vem com `border-slate-200 bg-white` fixos,
+   * então sem o "!" a ordem de geração das classes no CSS final decide
+   * quem ganha — não a ordem em que aparecem no className — e o branco
+   * padrão pode vencer silenciosamente. */
   variant?: "default" | "accent";
 }
 
@@ -39,11 +42,12 @@ export function StatCard({
   const accent = variant === "accent";
 
   return (
-    // Gradiente da variante "accent" escurecido um pouco (20/08/2026) —
-    // as cores originais (#FCC531 → #F5820C) deixavam o texto branco com
-    // contraste apertado em monitores mais claros/mal calibrados.
+    // Fundo sólido #0A1F44 na variante "accent" (24/09/2026, a pedido do
+    // Hickson) — mesmo azul do <aside> da Sidebar, texto branco. Passou
+    // antes por um fundo #FFCC29 (mesma sessão) até o Hickson decidir
+    // pelo azul da Sidebar em vez do amarelo.
     <Card
-      className={`p-[22px] ${accent ? "border-transparent! bg-linear-to-br from-[#F2B22E] to-[#DE6C09]" : ""}`}
+      className={`p-[22px] ${accent ? "border-transparent! bg-[#0A1F44]!" : ""}`}
     >
       <p
         className={`text-[13px] font-semibold uppercase tracking-wide ${accent ? "text-white" : "text-[#64748B]"}`}
@@ -102,9 +106,8 @@ export function StatCard({
       {/* Contraste (20/08/2026): subtítulo escurecido um tom (slate-600 em
           vez de slate-500) pra melhorar legibilidade em monitores mais
           claros; na variante "accent" ganha peso médio em vez de normal
-          pelo mesmo motivo — texto branco fino sobre o gradiente laranja
-          ficava com contraste apertado. Alinhado à direita a pedido do
-          Hickson (21/08/2026). */}
+          pelo mesmo motivo. Alinhado à direita a pedido do Hickson
+          (21/08/2026). */}
       <p
         className={`mt-2 text-right text-sm ${accent ? "font-medium text-white" : "font-normal text-[#475569]"}`}
       >

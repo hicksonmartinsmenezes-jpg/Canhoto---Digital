@@ -88,14 +88,14 @@ export function AlertsPanel({ alertas }: AlertsPanelProps) {
               <Link
                 key={a.id}
                 href={a.href}
-                className="mb-3.5 flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 transition-colors last:mb-0 hover:border-amber-500/35 hover:bg-amber-500/5"
+                className="mb-3.5 flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 transition-colors last:mb-0 hover:border-slate-300 hover:bg-slate-100/70"
               >
                 {conteudo}
               </Link>
             ) : (
               <div
                 key={a.id}
-                className="mb-3.5 flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 transition-colors last:mb-0 hover:border-amber-500/35"
+                className="mb-3.5 flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-slate-50/50 p-4 transition-colors last:mb-0"
               >
                 {conteudo}
               </div>
