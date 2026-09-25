@@ -51,6 +51,11 @@ export const tipoGastoVeiculoEnum = pgEnum("tipo_gasto_veiculo", [
   "outro",
 ]);
 
+export const statusTreinamentoEnum = pgEnum("status_treinamento", [
+  "em_andamento",
+  "concluido",
+]);
+
 export const setores = pgTable("setores", {
   id: uuid("id").defaultRandom().primaryKey(),
   nome: text("nome").notNull().unique(),
@@ -210,6 +215,52 @@ export const veiculoGastos = pgTable(
     check(
       "ck_veiculo_gastos_quilometragem",
       sql`${table.quilometragem} is null or ${table.quilometragem} >= 0`
+    ),
+  ]
+);
+
+export const treinamentoProgresso = pgTable(
+  "treinamento_progresso",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    usuarioAdminId: uuid("usuario_admin_id")
+      .notNull()
+      .references(() => usuariosAdmin.id, { onDelete: "cascade" }),
+    treinamentoSlug: text("treinamento_slug").notNull(),
+    status: statusTreinamentoEnum("status")
+      .notNull()
+      .default("em_andamento"),
+    iniciadoEm: timestamp("iniciado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+    concluidoEm: timestamp("concluido_em", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    atualizadoEm: timestamp("atualizado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("treinamento_progresso_usuario_slug_key").on(
+      table.usuarioAdminId,
+      table.treinamentoSlug
+    ),
+    index("idx_treinamento_progresso_usuario").on(table.usuarioAdminId),
+    index("idx_treinamento_progresso_status").on(table.status),
+    check(
+      "ck_treinamento_progresso_slug",
+      sql`${table.treinamentoSlug} ~ '^[a-z0-9-]+$'`
+    ),
+    check(
+      "ck_treinamento_progresso_conclusao",
+      sql`(${table.status} = 'concluido' and ${table.concluidoEm} is not null) or (${table.status} = 'em_andamento' and ${table.concluidoEm} is null)`
     ),
   ]
 );

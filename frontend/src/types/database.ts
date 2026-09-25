@@ -28,6 +28,8 @@ export type TipoGastoVeiculo =
   | "pedagio"
   | "outro";
 
+export type StatusTreinamento = "em_andamento" | "concluido";
+
 export interface Setor {
   id: string;
   nome: string;
@@ -114,6 +116,16 @@ export interface VeiculoGasto {
   observacao: string | null;
   cadastrado_por_admin: string | null;
   criado_em: string;
+}
+
+export interface TreinamentoProgresso {
+  id: string;
+  usuario_admin_id: string;
+  treinamento_slug: string;
+  status: StatusTreinamento;
+  iniciado_em: string;
+  concluido_em: string | null;
+  atualizado_em: string;
 }
 
 export interface EntregaHistorico {
