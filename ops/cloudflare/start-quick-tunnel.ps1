@@ -37,4 +37,8 @@ Write-Host "Keep this PowerShell window open during the test."
 Write-Host "Use Ctrl+C to stop the tunnel."
 Write-Host ""
 
-& $cloudflared.Source tunnel --url $origin
+# --protocol http2: forces cloudflared to use HTTP/2 (TCP) instead of the
+# default QUIC (UDP). Some ISPs/routers silently drop the QUIC control
+# connection after the initial handshake, which registers fine but then
+# serves 404s for every request. HTTP/2 avoids that failure mode.
+& $cloudflared.Source tunnel --protocol http2 --url $origin
