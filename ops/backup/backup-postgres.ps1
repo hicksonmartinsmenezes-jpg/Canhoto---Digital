@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
 $configPath = Join-Path $scriptDir ".env.backup"
-$backupRoot = Join-Path (Join-Path $repoRoot "backups") "canhoto"
+$backupRoot = Join-Path (Join-Path $repoRoot "backups") "Canhoto Backups"
 $container = "canhoto_digital_postgres"
 
 function Import-EnvFile([string]$Path) {
