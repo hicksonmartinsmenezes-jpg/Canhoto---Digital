@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Motorista — Canhoto Digital</title>
+<style>
+  :root {
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #0A1F44;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #fff;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+  }
+  .logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 9999px;
+    background: #0C3568;
+    border: 3px solid #FFD200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: .02em;
+  }
+  h1 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 6px;
+  }
+  p.status {
+    font-size: 13px;
+    color: rgba(255,255,255,.65);
+    margin: 0 0 20px;
+    min-height: 18px;
+  }
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    border: 3px solid rgba(255,255,255,.2);
+    border-top-color: #FFD200;
+    margin: 0 auto 20px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .gear {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    background: rgba(255,255,255,.08);
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .panel {
+    display: none;
+    text-align: left;
+  }
+  .panel.aberto { display: block; }
+  .panel label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,.7);
+    margin-bottom: 6px;
+  }
+  .panel input {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.06);
+    color: #fff;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .panel input::placeholder { color: rgba(255,255,255,.35); }
+  .panel button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  .btn-principal {
+    background: #FFD200;
+    color: #0A1F44;
+  }
+  .btn-secundario {
+    background: transparent;
+    color: rgba(255,255,255,.65);
+    border: 1px solid rgba(255,255,255,.2) !important;
+  }
+  .erro {
+    font-size: 12px;
+    color: #FCA5A5;
+    margin: -4px 0 12px;
+    min-height: 14px;
+  }
+</style>
+</head>
+<body>
+  <button class="gear" id="btnGear" aria-label="Configurações">⚙</button>
+
+  <div class="card">
+    <div class="logo">CD</div>
+    <h1 id="titulo">Conectando…</h1>
+    <div class="spinner" id="spinner"></div>
+    <p class="status" id="status">Procurando o servidor da loja</p>
+
+    <div class="panel" id="panel">
+      <label for="campoUrl">Endereço do servidor (URL)</label>
+      <input id="campoUrl" type="url" placeholder="https://exemplo.trycloudflare.com" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      <p class="erro" id="erroPanel"></p>
+      <button class="btn-principal" id="btnSalvar">Salvar e conectar</button>
+      <button class="btn-secundario" id="btnAuto">Usar automático (config da loja)</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  // URL pública e fixa (raw.githubusercontent.com) de um arquivo JSON
+  // {"url": "https://xxxxx.trycloudflare.com"} mantido no repositório do
+  // projeto. Toda vez que o túnel do Cloudflare mudar de endereço, basta
+  // editar esse arquivo no GitHub — os celulares pegam a URL nova sozinhos
+  // na próxima abertura do app. Preencher com o repositório real.
+  var CENTRAL_CONFIG_URL =
+    "https://raw.githubusercontent.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/main/motorista-config.json";
+  var CAMINHO_DESTINO = "/motorista";
+  var CHAVE_OVERRIDE = "motorista_server_url_override";
+  var CHAVE_CACHE = "motorista_server_url_cache";
+
+  var elTitulo = document.getElementById("titulo");
+  var elStatus = document.getElementById("status");
+  var elSpinner = document.getElementById("spinner");
+  var elPanel = document.getElementById("panel");
+  var elCampoUrl = document.getElementById("campoUrl");
+  var elErroPanel = document.getElementById("erroPanel");
+  var elBtnGear = document.getElementById("btnGear");
+  var elBtnSalvar = document.getElementById("btnSalvar");
+  var elBtnAuto = document.getElementById("btnAuto");
+
+  var preferences =
+    window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences
+      ? window.Capacitor.Plugins.Preferences
+      : null;
+
+  function prefGet(chave) {
+    if (preferences) {
+      return preferences.get({ key: chave }).then(function (r) { return r.value || null; });
+    }
+    return Promise.resolve(window.localStorage.getItem(chave));
+  }
+
+  function prefSet(chave, valor) {
+    if (preferences) {
+      return preferences.set({ key: chave, value: valor });
+    }
+    window.localStorage.setItem(chave, valor);
+    return Promise.resolve();
+  }
+
+  function prefRemove(chave) {
+    if (preferences) {
+      return preferences.remove({ key: chave });
+    }
+    window.localStorage.removeItem(chave);
+    return Promise.resolve();
+  }
+
+  function normalizarBase(url) {
+    return url.trim().replace(/\/+$/, "");
+  }
+
+  function abrirPanel(mensagemErro) {
+    elSpinner.style.display = "none";
+    elTitulo.textContent = "Configurar conexão";
+    elStatus.textContent = "";
+    elErroPanel.textContent = mensagemErro || "";
+    elPanel.classList.add("aberto");
+  }
+
+  function fecharPanel() {
+    elPanel.classList.remove("aberto");
+  }
+
+  function conectar(baseUrl) {
+    elStatus.textContent = "Conectando a " + baseUrl.replace(/^https?:\/\//, "") + "…";
+    setTimeout(function () {
+      window.location.replace(normalizarBase(baseUrl) + CAMINHO_DESTINO);
+    }, 350);
+  }
+
+  function buscarConfigCentral() {
+    if (CENTRAL_CONFIG_URL.indexOf("TODO_") === 0) {
+      return Promise.reject(new Error("config central ainda não configurada"));
+    }
+
+    var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timeoutId = controller ? setTimeout(function () { controller.abort(); }, 6000) : null;
+
+    return fetch(CENTRAL_CONFIG_URL + "?t=" + Date.now(), {
+      cache: "no-store",
+      signal: controller ? controller.signal : undefined,
+    })
+      .then(function (resp) {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (!resp.ok) throw new Error("falha ao buscar config (" + resp.status + ")");
+        return resp.json();
+      })
+      .then(function (dados) {
+        if (!dados || typeof dados.url !== "string" || !dados.url) {
+          throw new Error("config central sem campo 'url' válido");
+        }
+        return dados.url;
+      });
+  }
+
+  function iniciar() {
+    prefGet(CHAVE_OVERRIDE).then(function (override) {
+      if (override) {
+        elStatus.textContent = "Usando URL configurada manualmente";
+        conectar(override);
+        return;
+      }
+
+      buscarConfigCentral()
+        .then(function (url) {
+          prefSet(CHAVE_CACHE, url);
+          conectar(url);
+        })
+        .catch(function () {
+          prefGet(CHAVE_CACHE).then(function (cache) {
+            if (cache) {
+              elStatus.textContent = "Sem acesso à config da loja — usando última URL conhecida";
+              conectar(cache);
+            } else {
+              abrirPanel("Não foi possível descobrir o servidor automaticamente. Digite o endereço manualmente.");
+            }
+          });
+        });
+    });
+  }
+
+  elBtnGear.addEventListener("click", function () {
+    prefGet(CHAVE_OVERRIDE).then(function (override) {
+      return override || prefGet(CHAVE_CACHE);
+    }).then(function (valorAtual) {
+      elCampoUrl.value = valorAtual || "";
+      abrirPanel("");
+    });
+  });
+
+  elBtnSalvar.addEventListener("click", function () {
+    var valor = elCampoUrl.value.trim();
+    if (!valor || !/^https?:\/\//.test(valor)) {
+      elErroPanel.textContent = "Digite uma URL válida, começando com https://";
+      return;
+    }
+    prefSet(CHAVE_OVERRIDE, normalizarBase(valor)).then(function () {
+      fecharPanel();
+      elSpinner.style.display = "block";
+      elTitulo.textContent = "Conectando…";
+      conectar(valor);
+    });
+  });
+
+  elBtnAuto.addEventListener("click", function () {
+    prefRemove(CHAVE_OVERRIDE).then(function () {
+      fecharPanel();
+      elSpinner.style.display = "block";
+      elTitulo.textContent = "Conectando…";
+      elStatus.textContent = "Procurando o servidor da loja";
+      iniciar();
+    });
+  });
+
+  iniciar();
+})();
+</script>
+</body>
+</html>

@@ -129,6 +129,13 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // "motorista-manifest.webmanifest" e "motorista-sw.js" precisam ficar de
+    // fora: embora não comecem com "/motorista/", pathname.startsWith(
+    // "/motorista") acima bate com esses nomes de arquivo também (mesmo
+    // prefixo de string), o que forçaria sessão de motorista só pra buscar
+    // o manifest/service worker — quebrando o "Instalar app" pra quem ainda
+    // não logou (ex.: na própria tela /motorista/login, que precisa dos
+    // dois acessíveis sem sessão).
+    "/((?!_next/static|_next/image|favicon.ico|motorista-manifest\\.webmanifest|motorista-sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

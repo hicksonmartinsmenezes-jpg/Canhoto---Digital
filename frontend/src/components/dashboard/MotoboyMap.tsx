@@ -14,6 +14,29 @@ import type { MotoristaEmRota } from "@/lib/data/entregas";
 
 const CENTRO_PADRAO: [number, number] = [-10.9472, -37.0731];
 
+// Acima disso, consideramos a posição desatualizada: o motorista envia a
+// cada 15s quando o app está em primeiro plano, então passado esse limite
+// é bem provável que o celular travou a tela ou trocou de app (o navegador
+// suspende o watchPosition em segundo plano).
+const LIMITE_POSICAO_DESATUALIZADA_MS = 2 * 60 * 1000;
+
+function posicaoDesatualizada(valor: string | null): boolean {
+  if (!valor) return true;
+  return Date.now() - new Date(valor).getTime() > LIMITE_POSICAO_DESATUALIZADA_MS;
+}
+
+function tempoDesdeAtualizacao(valor: string | null): string {
+  if (!valor) return "sem localização";
+
+  const minutos = Math.floor((Date.now() - new Date(valor).getTime()) / 60_000);
+  if (minutos < 1) return "agora mesmo";
+  if (minutos === 1) return "há 1 minuto";
+  if (minutos < 60) return `há ${minutos} minutos`;
+
+  const horas = Math.floor(minutos / 60);
+  return horas === 1 ? "há 1 hora" : `há ${horas} horas`;
+}
+
 function iniciaisDoNome(nome: string): string {
   const partes = nome
     .normalize("NFD")
@@ -28,10 +51,11 @@ function iniciaisDoNome(nome: string): string {
   return `${partes[0][0]}${partes.at(-1)?.[0] ?? ""}`;
 }
 
-function criarIcone(nome: string, selecionado: boolean) {
-  const fundo = selecionado ? "#0A1F44" : "#F59E0B";
+function criarIcone(nome: string, selecionado: boolean, desatualizada: boolean) {
+  const fundo = desatualizada ? "#94A3B8" : selecionado ? "#0A1F44" : "#F59E0B";
   const tamanho = selecionado ? 42 : 36;
   const borda = selecionado ? "3px solid #FFD200" : "3px solid #ffffff";
+  const opacidade = desatualizada ? 0.6 : 1;
 
   return L.divIcon({
     className: "",
@@ -51,6 +75,7 @@ function criarIcone(nome: string, selecionado: boolean) {
         font-weight:800;
         letter-spacing:.02em;
         box-shadow:0 4px 12px rgba(15,23,42,.25);
+        opacity:${opacidade};
       ">
         ${iniciaisDoNome(nome)}
       </div>
@@ -111,10 +136,11 @@ function MotoristaMarker({
 }) {
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
+  const desatualizada = posicaoDesatualizada(motorista.localizacaoAtualizadaEm);
 
   const icon = useMemo(
-    () => criarIcone(motorista.nome, selecionado),
-    [motorista.nome, selecionado]
+    () => criarIcone(motorista.nome, selecionado, desatualizada),
+    [motorista.nome, selecionado, desatualizada]
   );
 
   useEffect(() => {
@@ -213,10 +239,13 @@ function MotoristaMarker({
               paddingTop: 8,
               borderTop: "1px solid #e2e8f0",
               fontSize: 11,
-              color: "#64748b",
+              color: desatualizada ? "#B45309" : "#64748b",
+              fontWeight: desatualizada ? 700 : 400,
             }}
           >
-            Última posição: {formatarAtualizacao(motorista.localizacaoAtualizadaEm)}
+            {desatualizada ? "⚠ Sem atualização " : "Última posição "}
+            {tempoDesdeAtualizacao(motorista.localizacaoAtualizadaEm)}
+            {" "}({formatarAtualizacao(motorista.localizacaoAtualizadaEm)})
             {motorista.precisaoMetros !== null
               ? ` · ±${Math.round(motorista.precisaoMetros)} m`
               : ""}

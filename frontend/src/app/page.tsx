@@ -59,7 +59,6 @@ export default async function DashboardPage() {
             label="Entregues"
             value={stats.entregues.toLocaleString("pt-BR")}
             sub=""
-            variant="accent"
           />
         </div>
 
@@ -68,7 +67,6 @@ export default async function DashboardPage() {
             label="Pendentes"
             value={stats.pendentes.toLocaleString("pt-BR")}
             sub=""
-            variant="accent"
           />
         </div>
 

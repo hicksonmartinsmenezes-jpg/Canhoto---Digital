@@ -239,11 +239,9 @@ export function MotoboyMapCard({
             </div>
           )}
 
-          {motoristas.length === 0 && (
-            <div className="pointer-events-none absolute inset-x-4 bottom-4 z-[500] rounded-xl border border-slate-200 bg-white/95 px-4 py-3 text-center text-xs font-semibold text-slate-600 shadow-sm">
-              Nenhum motorista em rota no momento.
-            </div>
-          )}
+          {/* Sem motoristas em rota: o painel ao lado ("Ninguém em rota")
+              já comunica isso — uma faixa repetindo a mesma mensagem por
+              cima do mapa só duplicava a informação e poluía o mapa vazio. */}
 
           {motoristas.length > 0 && comLocalizacao === 0 && (
             <div className="pointer-events-none absolute inset-x-4 bottom-4 z-[500] rounded-xl border border-slate-200 bg-white/95 px-4 py-3 text-center text-xs font-semibold text-slate-600 shadow-sm">

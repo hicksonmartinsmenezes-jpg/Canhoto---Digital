@@ -38,10 +38,7 @@ export default async function CanhotosPage({ searchParams }: CanhotosPageProps) 
       </div>
 
       <Card className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-5">
-          <h2 className="text-[15px] font-bold">
-            {entregas.length} entregas encontradas
-          </h2>
+        <div className="flex flex-wrap items-center justify-end gap-3 border-b border-slate-200 px-6 py-5">
           {/* Form GET simples: recarrega a página com ?status=..., sem
               precisar de client component pra um filtro tão direto (ver
               princípio "evitar overengineering" no AGENTS.md). */}

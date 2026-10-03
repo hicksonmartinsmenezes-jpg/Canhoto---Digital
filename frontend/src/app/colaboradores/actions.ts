@@ -5,7 +5,11 @@ import { eq, ilike } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
 import { getDb } from "@/lib/db";
-import { codigoErroPostgres, mensagemErroBanco } from "@/lib/db/errors";
+import {
+  codigoErroPostgres,
+  mensagemErroBanco,
+  nomeConstraintPostgres,
+} from "@/lib/db/errors";
 import { colaboradores, setores } from "@/lib/db/schema";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 import { normalizarTelefone } from "@/lib/motorista-auth";
@@ -18,7 +22,11 @@ export interface ColaboradorActionResult {
 
 export interface ColaboradorDados {
   nome: string;
-  email: string;
+  // Não é mais coletado no painel de Colaboradores — o login passa a usar
+  // celular (ver migration 0012_login_colaborador_por_celular.sql). Mantido
+  // opcional só por compatibilidade com registros antigos que já têm
+  // e-mail salvo.
+  email?: string;
   celular: string;
   cargo: string;
   papel: PapelColaborador;
@@ -39,7 +47,7 @@ function validarDados(
   | {
       ok: true;
       nome: string;
-      email: string;
+      email: string | null;
       celular: string;
       cargo: string;
     }
@@ -49,14 +57,17 @@ function validarDados(
     return { ok: false, error: "Informe o nome do colaborador." };
   }
 
-  const email = dados.email.trim().toLowerCase();
-  if (!email) {
-    return { ok: false, error: "Informe o e-mail do colaborador." };
-  }
-  if (!REGEX_EMAIL.test(email)) {
+  // E-mail não é mais obrigatório nem coletado pelo formulário atual — só
+  // valida formato se vier preenchido (edição de registro antigo).
+  const emailBruto = (dados.email ?? "").trim().toLowerCase();
+  if (emailBruto && !REGEX_EMAIL.test(emailBruto)) {
     return { ok: false, error: "Informe um e-mail válido." };
   }
+  const email = emailBruto || null;
 
+  // Celular é o identificador de login em /colaborador/login pra papel
+  // gestor_setor — por isso é obrigatório e precisa ser único (constraint
+  // colaboradores_celular_key).
   const celular = normalizarTelefone(dados.celular);
   if (celular.length !== 10 && celular.length !== 11) {
     return { ok: false, error: "Informe um celular válido, com DDD." };
@@ -171,9 +182,13 @@ export async function criarColaborador(
     });
   } catch (error) {
     if (codigoErroPostgres(error) === "23505") {
+      const constraint = nomeConstraintPostgres(error);
       return {
         ok: false,
-        error: "Esse e-mail já está cadastrado para outro colaborador.",
+        error:
+          constraint === "colaboradores_celular_key"
+            ? "Esse celular já está cadastrado para outro colaborador."
+            : "Esse e-mail já está cadastrado para outro colaborador.",
       };
     }
     return {
@@ -248,9 +263,13 @@ export async function atualizarColaborador(
     }
   } catch (error) {
     if (codigoErroPostgres(error) === "23505") {
+      const constraint = nomeConstraintPostgres(error);
       return {
         ok: false,
-        error: "Esse e-mail já está cadastrado para outro colaborador.",
+        error:
+          constraint === "colaboradores_celular_key"
+            ? "Esse celular já está cadastrado para outro colaborador."
+            : "Esse e-mail já está cadastrado para outro colaborador.",
       };
     }
     return {

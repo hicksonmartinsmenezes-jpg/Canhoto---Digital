@@ -72,7 +72,9 @@ export const colaboradores = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     nome: text("nome").notNull(),
     email: text("email").unique(),
-    celular: text("celular"),
+    // Identificador de login em /colaborador/login (papel gestor_setor) —
+    // ver migration 0012_login_colaborador_por_celular.sql.
+    celular: text("celular").unique(),
     setorId: uuid("setor_id").references(() => setores.id, {
       onDelete: "set null",
     }),

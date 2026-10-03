@@ -19,6 +19,7 @@ import { MotoristaAutoRefresh } from "@/components/motorista/MotoristaAutoRefres
 import { MotoristaEntregasHoje } from "@/components/motorista/MotoristaEntregasHoje";
 import { MotoristaHistorico } from "@/components/motorista/MotoristaHistorico";
 import { MotoristaLocationTracker } from "@/components/motorista/MotoristaLocationTracker";
+import { MotoristaWakeLock } from "@/components/motorista/MotoristaWakeLock";
 import {
   getEntregasDoMotorista,
   getHistoricoDoMotorista,
@@ -96,6 +97,7 @@ export default async function MotoristaPage({
     <div className="min-h-screen bg-[#F5F7FB]">
       <MotoristaAutoRefresh />
       <MotoristaLocationTracker ativo={possuiEntregaEmRota} />
+      <MotoristaWakeLock ativo={possuiEntregaEmRota} />
 
       {view === "entregas" && (
         <header className="relative overflow-hidden bg-gradient-to-br from-[#0C3568] to-[#08264F] px-4 pb-4 pt-5 text-white">

@@ -54,12 +54,6 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
       </div>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-slate-200 px-6 py-5">
-          <h2 className="text-[15px] font-bold">
-            {colaboradores.length} colaboradores cadastrados
-          </h2>
-        </div>
-
         {colaboradores.length === 0 ? (
           <EmptyState
             icon={Users}
@@ -151,10 +145,11 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
             titulo="Novo colaborador"
             dadosIniciais={{
               nome: "",
-              email: "",
               celular: "",
               cargo: "",
-              papel: "colaborador",
+              // "Colaborador" (sem login) foi removido: todo cadastro feito
+              // por aqui agora é Gestor de setor.
+              papel: "gestor_setor",
               ativo: true,
             }}
             mostrarAtivo={false}
@@ -170,7 +165,6 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
             titulo="Editar colaborador"
             dadosIniciais={{
               nome: modal.colaborador.nome,
-              email: modal.colaborador.email ?? "",
               celular: modal.colaborador.celular
                 ? maskPhoneInput(modal.colaborador.celular)
                 : "",
@@ -198,8 +192,6 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
   );
 }
 
-const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function FormModal({
   titulo,
   dadosIniciais,
@@ -216,15 +208,21 @@ function FormModal({
   onSucesso: () => void;
 }) {
   const [nome, setNome] = useState(dadosIniciais.nome);
-  const [email, setEmail] = useState(dadosIniciais.email);
   const [celular, setCelular] = useState(dadosIniciais.celular);
-  const [cargo, setCargo] = useState(dadosIniciais.cargo);
-  const [papel, setPapel] = useState<PapelColaborador>(dadosIniciais.papel);
+  // Campo "Cargo" não é mais editável neste formulário — mantém o valor
+  // original (vazio em "novo", o que já existir em edição) sem alterar.
+  const [cargo] = useState(dadosIniciais.cargo);
   const [ativo, setAtivo] = useState(dadosIniciais.ativo);
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Papel não é mais escolhido no formulário: "Colaborador" (sem login) foi
+  // removido, já que "Gestor de setor" cobre o caso de uso. Um colaborador
+  // já existente com papel "admin" (legado) mantém o papel ao ser editado
+  // em vez de ser rebaixado sem querer.
+  const papel: PapelColaborador =
+    dadosIniciais.papel === "admin" ? "admin" : "gestor_setor";
   const ehGestorDeSetor = papel === "gestor_setor";
   // Só true na criação (mostrarAtivo é o mesmo flag que já diferencia
   // Novo/Editar no componente pai) — na criação de um gestor_setor, a
@@ -234,10 +232,6 @@ function FormModal({
   function salvar() {
     if (!nome.trim()) {
       setErro("Informe o nome do colaborador.");
-      return;
-    }
-    if (!email.trim() || !REGEX_EMAIL.test(email.trim())) {
-      setErro("Informe um e-mail válido.");
       return;
     }
     const celularDigitos = celular.replace(/\D/g, "");
@@ -257,7 +251,6 @@ function FormModal({
     startTransition(async () => {
       const resultado = await onSalvar({
         nome,
-        email,
         celular,
         cargo,
         papel,
@@ -297,59 +290,16 @@ function FormModal({
         className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
       />
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-            E-mail
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-            Celular
-          </label>
-          <input
-            type="tel"
-            value={celular}
-            onChange={(e) => setCelular(maskPhoneInput(e.target.value))}
-            placeholder="(79) 99999-9999"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
-          />
-        </div>
-      </div>
-
       <label className="mb-1.5 mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">
-        Cargo
-        <span className="ml-1 font-medium normal-case text-slate-400">
-          (opcional)
-        </span>
+        Celular
       </label>
       <input
-        type="text"
-        value={cargo}
-        onChange={(e) => setCargo(e.target.value)}
+        type="tel"
+        value={celular}
+        onChange={(e) => setCelular(maskPhoneInput(e.target.value))}
+        placeholder="(79) 99999-9999"
         className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
       />
-
-      <label className="mb-1.5 mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">
-        Papel
-      </label>
-      <select
-        value={papel}
-        onChange={(e) => setPapel(e.target.value as PapelColaborador)}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
-      >
-        {Object.entries(PAPEL_LABEL).map(([valor, rotulo]) => (
-          <option key={valor} value={valor}>
-            {rotulo}
-          </option>
-        ))}
-      </select>
 
       {ehGestorDeSetor && (
         <>
@@ -369,13 +319,6 @@ function FormModal({
             placeholder="Mínimo 4 caracteres"
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
           />
-          <p className="mt-1.5 text-xs text-slate-400">
-            Dá acesso a{" "}
-            <span className="font-semibold text-slate-500">
-              /colaborador/login
-            </span>
-            , escopado ao setor dele.
-          </p>
         </>
       )}
 

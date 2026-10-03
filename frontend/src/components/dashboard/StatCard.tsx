@@ -15,17 +15,14 @@ interface StatCardProps {
   iconBare?: boolean;
   /** Métrica secundária compacta à direita do valor (ex.: "Eficiência 78,6%"). */
   mini?: { label: string; value: string };
-  /** "accent" = card em destaque (fundo sólido #0A1F44 — o mesmo azul do
-   * <aside> da Sidebar — texto branco). Usado pelos 4 StatCards do
-   * Dashboard (24/09/2026, a pedido do Hickson — inicialmente só "Total
-   * de entregas" usava, os outros três eram brancos/"default"). Mesmo
-   * layout/estrutura em ambas as variantes (padrão fixado em 19/08/2026:
-   * label em cima, valor + badges numa linha, sub embaixo) — só muda a
-   * cor. Tanto a borda quanto o fundo usam "!" (Tailwind v4 important
-   * modifier): o `Card` já vem com `border-slate-200 bg-white` fixos,
-   * então sem o "!" a ordem de geração das classes no CSS final decide
-   * quem ganha — não a ordem em que aparecem no className — e o branco
-   * padrão pode vencer silenciosamente. */
+  /** "accent" = card em destaque (gradiente âmbar → laranja, texto branco
+   * sólido) — hoje só o card "Total de entregas" do Dashboard usa. Mesmo
+   * layout/estrutura dos demais cards (padrão fixado em 19/08/2026: label
+   * em cima, valor + badges numa linha, sub embaixo) — só muda a cor. O
+   * gradiente é pintado via `background-image`, então cobre o `bg-white`
+   * do Card sem precisar de "!"; a borda usa "!" (Tailwind v4 important
+   * modifier) porque `border-color` é a mesma propriedade nos dois casos e
+   * só empilhar classe não garante ordem de precedência. */
   variant?: "default" | "accent";
 }
 
@@ -42,10 +39,8 @@ export function StatCard({
   const accent = variant === "accent";
 
   return (
-    // Fundo sólido #0A1F44 na variante "accent" (24/09/2026, a pedido do
-    // Hickson) — mesmo azul do <aside> da Sidebar, texto branco. Passou
-    // antes por um fundo #FFCC29 (mesma sessão) até o Hickson decidir
-    // pelo azul da Sidebar em vez do amarelo.
+    // Fundo sólido #0A1F44 na variante "accent" — mesmo azul do <aside>
+    // da Sidebar, texto branco.
     <Card
       className={`p-[22px] ${accent ? "border-transparent! bg-[#0A1F44]!" : ""}`}
     >

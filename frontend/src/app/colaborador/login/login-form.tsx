@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Loader2, LockKeyhole, LogIn } from "lucide-react";
 import { entrarColaborador } from "./actions";
+import { maskPhoneInput } from "@/lib/format";
 
 type LoginColaboradorFormProps = {
   initialError: string | null;
@@ -11,14 +12,14 @@ type LoginColaboradorFormProps = {
 export default function LoginColaboradorForm({
   initialError,
 }: LoginColaboradorFormProps) {
-  const [email, setEmail] = useState("");
+  const [celular, setCelular] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(initialError);
   const [pending, startTransition] = useTransition();
 
   function entrar() {
-    if (!email.trim()) {
-      setErro("Informe seu e-mail.");
+    if (!celular.trim()) {
+      setErro("Informe seu celular.");
       return;
     }
     if (!senha) {
@@ -28,7 +29,7 @@ export default function LoginColaboradorForm({
 
     setErro(null);
     startTransition(async () => {
-      const resultado = await entrarColaborador(email, senha);
+      const resultado = await entrarColaborador(celular, senha);
       if (resultado.ok) {
         window.location.assign("/");
         return;
@@ -45,16 +46,16 @@ export default function LoginColaboradorForm({
 
         <div className="mt-6">
           <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-            E-mail
+            Celular
           </label>
           <input
-            type="email"
-            placeholder="voce@rildon.com.br"
+            type="tel"
+            placeholder="(79) 99999-9999"
             autoFocus
-            autoComplete="username"
+            autoComplete="tel"
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={celular}
+            onChange={(e) => setCelular(maskPhoneInput(e.target.value))}
           />
         </div>
 

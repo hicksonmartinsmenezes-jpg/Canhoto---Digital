@@ -7,8 +7,13 @@ import { Sidebar } from "@/components/layout/Sidebar";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const areaMotorista = pathname.startsWith("/motorista");
+  // Telas de login (Admin e Gestor de setor) não devem exibir a barra
+  // lateral: antes da autenticação não há sessão, e o menu não pode ficar
+  // visível/clicável nessas rotas (AGENTS.md — falhar fechado em auth).
+  const telaDeLogin =
+    pathname === "/login" || pathname.startsWith("/colaborador/login");
 
-  if (areaMotorista) {
+  if (areaMotorista || telaDeLogin) {
     return (
       <main className="min-h-dvh w-full overflow-x-hidden">
         {children}

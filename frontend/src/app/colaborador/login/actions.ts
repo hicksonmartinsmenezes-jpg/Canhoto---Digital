@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { colaboradores } from "@/lib/db/schema";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
+import { normalizarTelefone } from "@/lib/motorista-auth";
 import {
   definirCookieSessaoColaborador,
   encerrarSessaoColaborador,
@@ -16,10 +17,10 @@ export interface LoginColaboradorResult {
   error?: string;
 }
 
-const ERRO_CREDENCIAIS = "E-mail ou senha inválidos.";
+const ERRO_CREDENCIAIS = "Celular ou senha inválidos.";
 
 export async function entrarColaborador(
-  email: string,
+  celular: string,
   senha: string
 ): Promise<LoginColaboradorResult> {
   const limite = await checarRateLimit(
@@ -34,9 +35,9 @@ export async function entrarColaborador(
     };
   }
 
-  const emailNormalizado = email.trim().toLowerCase();
-  if (!emailNormalizado) {
-    return { ok: false, error: "Informe seu e-mail." };
+  const celularNormalizado = normalizarTelefone(celular);
+  if (!celularNormalizado) {
+    return { ok: false, error: "Informe seu celular." };
   }
   if (!senha) {
     return { ok: false, error: "Informe sua senha." };
@@ -63,7 +64,7 @@ export async function entrarColaborador(
     .from(colaboradores)
     .where(
       and(
-        eq(colaboradores.email, emailNormalizado),
+        eq(colaboradores.celular, celularNormalizado),
         eq(colaboradores.ativo, true)
       )
     )

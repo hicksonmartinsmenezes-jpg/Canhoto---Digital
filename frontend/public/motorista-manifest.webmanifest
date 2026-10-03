@@ -1,0 +1,26 @@
+{
+  "name": "Canhoto Digital — Motorista",
+  "short_name": "Motorista",
+  "description": "App de entregas para motoristas da Rildon Eletropeças: entregas do dia, rota, assinatura e comprovantes.",
+  "start_url": "/motorista",
+  "scope": "/motorista",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0A1F44",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icons/motorista-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/motorista-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

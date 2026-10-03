@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
   Camera,
+  Clock3,
   ExternalLink,
   MapPin,
   PenLine,
@@ -147,6 +148,23 @@ export default async function EntregaDetalhePage({
               <dd className="flex items-center gap-2 font-medium text-slate-800">
                 <UserRound className="size-4 text-slate-400" />
                 {entrega.motoboyNome || "Não informado"}
+              </dd>
+            </div>
+            <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
+              <dt className="font-semibold text-slate-500">
+                Horário de saída
+              </dt>
+              <dd>
+                {entrega.horaSaida ? (
+                  <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                    <Clock3 className="size-4 text-slate-400" />
+                    {entrega.horaSaida.slice(0, 5)}
+                  </span>
+                ) : (
+                  <span className="font-medium text-slate-300">
+                    Ainda não saiu
+                  </span>
+                )}
               </dd>
             </div>
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">

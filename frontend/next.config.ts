@@ -22,10 +22,8 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  devIndicators: {
-    position: "bottom-right",
-  },
-  allowedDevOrigins: ["192.168.0.228", "*.trycloudflare.com"],
+  devIndicators: false,
+  allowedDevOrigins: ["192.168.0.2", "192.168.0.228", "*.trycloudflare.com"],
   turbopack: {
     root: __dirname,
   },

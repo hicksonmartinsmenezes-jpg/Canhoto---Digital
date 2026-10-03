@@ -608,6 +608,9 @@ export interface EntregaDetalhe {
   formaPagamento: FormaPagamento;
   motoboyId: string;
   motoboyNome: string;
+  // "HH:MM:SS" (coluna time) ou null se o motorista ainda não saiu pra
+  // entrega — exibido em destaque na tela de detalhe (ver canhotos/[id]).
+  horaSaida: string | null;
   observacoes: string;
   status: StatusEntrega;
 }
@@ -633,6 +636,7 @@ export async function getEntregaById(
       numeroNfe: entregas.numeroNfe,
       valorPagamento: entregas.valorPagamento,
       formaPagamento: entregas.formaPagamento,
+      horaSaida: entregas.horaSaida,
       observacoes: entregas.observacoes,
       status: entregas.status,
       motoboyId: entregas.motoboyId,
@@ -663,6 +667,7 @@ export async function getEntregaById(
     formaPagamento: entrega.formaPagamento,
     motoboyId: entrega.motoboyId ?? "",
     motoboyNome: entrega.motoboyNome ?? "",
+    horaSaida: entrega.horaSaida,
     observacoes: entrega.observacoes ?? "",
     status: entrega.status,
   };
