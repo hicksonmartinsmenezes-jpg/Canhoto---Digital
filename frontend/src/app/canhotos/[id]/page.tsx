@@ -11,12 +11,15 @@ import {
   SquarePen,
   UserRound,
 } from "lucide-react";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
 import {
   getComprovantesEntrega,
   getEntregaById,
 } from "@/lib/data/entregas";
 import { formatBRL, formatDateBR } from "@/lib/format";
+import {
+  obterSessaoOperador,
+  sessaoPodeAcessarSetor,
+} from "@/lib/sessao-operador";
 import {
   FORMA_PAGAMENTO_LABEL,
   STATUS_BADGE_CLASSES,
@@ -37,8 +40,8 @@ export default async function EntregaDetalhePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await obterAdminAutenticado();
-  if (!admin) redirect("/login");
+  const sessao = await obterSessaoOperador();
+  if (!sessao) redirect("/login");
 
   const { id } = await params;
   const [entrega, comprovantes] = await Promise.all([
@@ -46,7 +49,7 @@ export default async function EntregaDetalhePage({
     getComprovantesEntrega(id),
   ]);
 
-  if (!entrega) notFound();
+  if (!entrega || !sessaoPodeAcessarSetor(sessao, entrega.setorId)) notFound();
 
   const fotos = comprovantes.filter((item) => item.tipo === "foto");
   const comprovantesPix = comprovantes.filter(

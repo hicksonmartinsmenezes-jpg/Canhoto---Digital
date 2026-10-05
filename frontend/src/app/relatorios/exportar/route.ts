@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRelatorioEntregas } from "@/lib/data/entregas";
+import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
 import { arquivarRelatorioCsv } from "@/lib/relatorios-storage";
 import {
   FORMA_PAGAMENTO_LABEL,
@@ -26,6 +27,20 @@ function celulaCsv(valor: string): string {
 }
 
 export async function GET(request: NextRequest) {
+  // Autenticação própria: o proxy só confere a assinatura do cookie e o
+  // relatório carrega dados financeiros — exige sessão válida e aplica o
+  // escopo de setor do gestor_setor.
+  const sessao = await obterSessaoOperador();
+  if (!sessao) {
+    return new NextResponse("Não autorizado.", {
+      status: 401,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   const params = request.nextUrl.searchParams;
 
   const inicioParam = params.get("inicio");
@@ -43,6 +58,7 @@ export async function GET(request: NextRequest) {
     dataFim,
     status,
     formaPagamento,
+    setorId: setorIdParaFiltro(sessao),
   });
 
   const cabecalho = ["Código", "Data", "Cliente", "Valor", "Forma de pagamento", "Motorista", "Situação"];

@@ -18,6 +18,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { sairOperador } from "@/app/sair/actions";
+import type { PapelPortal } from "@/lib/papel-portal";
 
 // Estrutura de navegação do Portal Web Admin — Canhoto Digital.
 // Escopo confirmado (schema v2, 18/08/2026): entrega ao cliente externo via
@@ -68,8 +69,17 @@ const NAV_ITEMS = [
 // Classe "group": deixa a marca em círculo (filha, some no hover) e o
 // cabeçalho aberto (hambúrguer + logo, aparece no hover) fazerem crossfade
 // via `group-hover:`, já que `peer-hover:` só funciona entre irmãos.
-export function Sidebar() {
+export function Sidebar({ papel }: { papel: PapelPortal }) {
   const pathname = usePathname();
+  // gestor_setor não abre Cadastros nem Veículos (telas só do Admin — o
+  // bloqueio de verdade está nas páginas; aqui é só para não mostrar link
+  // que levaria a um redirecionamento).
+  const itensMenu =
+    papel === "gestor_setor"
+      ? NAV_ITEMS.filter(
+          (item) => item.type !== "group" && item.href !== "/veiculos"
+        )
+      : NAV_ITEMS;
   const cadastrosItem = NAV_ITEMS.find((item) => item.type === "group")!;
   const cadastrosAtivo = cadastrosItem.children.some((child) =>
     pathname.startsWith(child.href)
@@ -125,7 +135,7 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 space-y-1 px-2 py-2">
-          {NAV_ITEMS.map((item) => {
+          {itensMenu.map((item) => {
             if (item.type === "link") {
               const Icon = item.icon;
               const isActive =

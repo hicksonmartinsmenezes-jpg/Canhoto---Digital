@@ -137,8 +137,12 @@ export async function conferirCaixa(
   entregaId: string,
   colaboradorId: string
 ): Promise<ConferirCaixaResult> {
-  if (!(await obterOperadorAutenticado())) {
+  const operador = await obterOperadorAutenticado();
+  if (!operador) {
     return { ok: false, error: "Sessão inválida ou expirada." };
+  }
+  if (operador.tipo === "gestor_setor" && !operador.setorId) {
+    return { ok: false, error: "Entrega não encontrada." };
   }
 
   const limite = await checarRateLimit("conferirCaixa");
@@ -182,7 +186,11 @@ export async function conferirCaixa(
       .where(
         and(
           eq(entregas.id, entregaId),
-          isNull(entregas.caixaConfirmouEm)
+          isNull(entregas.caixaConfirmouEm),
+          // gestor_setor só confere caixa de entrega do próprio setor.
+          operador.tipo === "gestor_setor" && operador.setorId
+            ? eq(entregas.setorId, operador.setorId)
+            : undefined
         )
       )
       .returning({ id: entregas.id });

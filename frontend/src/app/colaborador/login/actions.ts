@@ -5,7 +5,13 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { colaboradores } from "@/lib/db/schema";
-import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
+import {
+  checarRateLimit,
+  contaBloqueadaPorFalhas,
+  limparFalhasLogin,
+  RATE_LIMIT_ESTRITO,
+  registrarFalhaLogin,
+} from "@/lib/rate-limit";
 import { normalizarTelefone } from "@/lib/motorista-auth";
 import {
   definirCookieSessaoColaborador,
@@ -18,6 +24,12 @@ export interface LoginColaboradorResult {
 }
 
 const ERRO_CREDENCIAIS = "Celular ou senha inválidos.";
+const ERRO_CONTA_BLOQUEADA =
+  "Muitas tentativas para este celular — aguarde alguns minutos e tente de novo.";
+
+// Hash bcrypt fictício (custo 10) para igualar o tempo de resposta quando o
+// celular não existe ou não é gestor de setor.
+const HASH_FICTICIO = bcrypt.hashSync("senha-fictícia-sem-uso", 10);
 
 export async function entrarColaborador(
   celular: string,
@@ -44,6 +56,10 @@ export async function entrarColaborador(
   }
   if (Buffer.byteLength(senha, "utf8") > 72) {
     return { ok: false, error: ERRO_CREDENCIAIS };
+  }
+
+  if (contaBloqueadaPorFalhas("entrarColaborador", celularNormalizado)) {
+    return { ok: false, error: ERRO_CONTA_BLOQUEADA };
   }
 
   const db = getDb();
@@ -74,18 +90,20 @@ export async function entrarColaborador(
   // logar aqui — um colaborador comum (papel "colaborador") cadastrado só
   // como registro/diretório não tem acesso, mesmo que por algum motivo
   // tenha um senha_hash preenchido.
-  if (
-    !colaborador ||
-    colaborador.papel !== "gestor_setor" ||
-    !colaborador.senhaHash
-  ) {
-    return { ok: false, error: ERRO_CREDENCIAIS };
-  }
+  const elegivel =
+    colaborador &&
+    colaborador.papel === "gestor_setor" &&
+    Boolean(colaborador.senhaHash);
 
-  const senhaValida = await bcrypt.compare(senha, colaborador.senhaHash);
-  if (!senhaValida) {
+  const senhaValida = await bcrypt.compare(
+    senha,
+    (elegivel && colaborador?.senhaHash) || HASH_FICTICIO
+  );
+  if (!elegivel || !colaborador || !senhaValida) {
+    registrarFalhaLogin("entrarColaborador", celularNormalizado);
     return { ok: false, error: ERRO_CREDENCIAIS };
   }
+  limparFalhasLogin("entrarColaborador", celularNormalizado);
 
   const sessaoCriada = await definirCookieSessaoColaborador(
     colaborador.id,

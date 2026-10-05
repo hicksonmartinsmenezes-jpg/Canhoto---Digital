@@ -1,9 +1,15 @@
 import { readFile } from "node:fs/promises";
 import { eq } from "drizzle-orm";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
 import { resolverArquivoComprovante } from "@/lib/comprovantes-storage";
 import { getDb } from "@/lib/db";
-import { entregaAnexos } from "@/lib/db/schema";
+import { entregaAnexos, entregas } from "@/lib/db/schema";
+import {
+  obterSessaoOperador,
+  sessaoPodeAcessarSetor,
+} from "@/lib/sessao-operador";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +17,8 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const admin = await obterAdminAutenticado();
-  if (!admin) {
+  const sessao = await obterSessaoOperador();
+  if (!sessao) {
     return new Response("Não autorizado.", {
       status: 401,
       headers: { "Cache-Control": "no-store" },
@@ -20,6 +26,12 @@ export async function GET(
   }
 
   const { id } = await params;
+  if (!UUID_RE.test(id)) {
+    return new Response("Comprovante não encontrado.", {
+      status: 404,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
   const db = getDb();
 
   if (!db) {
@@ -33,13 +45,16 @@ export async function GET(
     .select({
       tipo: entregaAnexos.tipo,
       arquivoUrl: entregaAnexos.arquivoUrl,
+      setorId: entregas.setorId,
     })
     .from(entregaAnexos)
+    .innerJoin(entregas, eq(entregaAnexos.entregaId, entregas.id))
     .where(eq(entregaAnexos.id, id))
     .limit(1);
 
   if (
     !anexo ||
+    !sessaoPodeAcessarSetor(sessao, anexo.setorId) ||
     (anexo.tipo !== "foto" &&
       anexo.tipo !== "comprovante_pix" &&
       anexo.tipo !== "assinatura_cliente")

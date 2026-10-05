@@ -79,12 +79,21 @@ export async function atualizarEntrega(
       cep: entregas.cep,
       latitude: entregas.latitude,
       longitude: entregas.longitude,
+      setorId: entregas.setorId,
     })
     .from(entregas)
     .where(eq(entregas.id, id))
     .limit(1);
 
   if (!dadosAtuais) {
+    return { ok: false, error: "Entrega não encontrada." };
+  }
+
+  // gestor_setor só edita entregas do próprio setor (o id vem do cliente).
+  if (
+    operador.tipo === "gestor_setor" &&
+    (!operador.setorId || dadosAtuais.setorId !== operador.setorId)
+  ) {
     return { ok: false, error: "Entrega não encontrada." };
   }
 

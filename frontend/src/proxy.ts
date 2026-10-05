@@ -11,17 +11,8 @@ import {
   MOTORISTA_COOKIE_NAME,
   verificarTokenSessao,
 } from "@/lib/motorista-session-core";
-import { hostEhPublicoMotorista } from "@/lib/public-motorista-host";
-
-function hostnameDaRequisicao(request: NextRequest): string {
-  const encaminhado = request.headers.get("x-forwarded-host");
-  const host = (encaminhado || request.headers.get("host") || "")
-    .split(",")[0]
-    .trim()
-    .split(":")[0]
-    .toLowerCase();
-  return host;
-}
+import { authBypassAtivo } from "@/lib/auth-bypass";
+import { requisicaoEhPublicaMotorista } from "@/lib/public-motorista-host";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -29,8 +20,8 @@ export async function proxy(request: NextRequest) {
   // Hostnames públicos dos motoristas (hostname configurado ou Quick Tunnel
   // *.trycloudflare.com) nunca expõem o Portal Admin. A mesma instância Next.js
   // continua acessível internamente pelo IP/nome da máquina da loja.
-  const hostPublicoMotorista = hostEhPublicoMotorista(
-    hostnameDaRequisicao(request),
+  const hostPublicoMotorista = requisicaoEhPublicaMotorista(
+    request.headers,
     process.env.PUBLIC_MOTORISTA_HOST
   );
   if (hostPublicoMotorista && !pathname.startsWith("/motorista")) {
@@ -59,17 +50,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (
-    process.env.CI === "true" &&
-    process.env.E2E_AUTH_BYPASS === "true"
-  ) {
-    return NextResponse.next();
-  }
-
-  if (
-    process.env.NODE_ENV !== "production" &&
-    process.env.DEV_AUTH_BYPASS === "true"
-  ) {
+  if (authBypassAtivo()) {
     return NextResponse.next();
   }
 

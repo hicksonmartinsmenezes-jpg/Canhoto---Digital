@@ -48,9 +48,14 @@ export interface MotoristaEmRota {
   localizacaoAtualizadaEm: string | null;
 }
 
-export async function getMotoristasEmRota(): Promise<MotoristaEmRota[]> {
+// setorId: undefined = Admin (tudo); null = sem acesso (nada); uuid = só
+// entregas desse setor. Mesmo contrato de getDashboardStats.
+export async function getMotoristasEmRota(
+  setorId?: string | null
+): Promise<MotoristaEmRota[]> {
   const db = getDb();
   if (!db) return [];
+  if (setorId === null) return [];
 
   const hoje = paraChaveDiaLocal(new Date());
 
@@ -79,7 +84,8 @@ export async function getMotoristasEmRota(): Promise<MotoristaEmRota[]> {
         eq(entregas.status, "pendente"),
         isNotNull(entregas.horaSaida),
         isNotNull(entregas.motoboyId),
-        eq(motoboys.ativo, true)
+        eq(motoboys.ativo, true),
+        setorId ? eq(entregas.setorId, setorId) : undefined
       )
     )
     .orderBy(asc(motoboys.nome), asc(entregas.numero));
@@ -191,7 +197,10 @@ function paraChaveDiaLocal(d: Date): string {
   return `${ano}-${mes}-${dia}`;
 }
 
-export async function getEntregasPorDia(dias = 7): Promise<EntregaPorDia[]> {
+export async function getEntregasPorDia(
+  dias = 7,
+  setorId?: string | null
+): Promise<EntregaPorDia[]> {
   const hoje = new Date();
   const inicio = new Date(hoje);
   inicio.setDate(inicio.getDate() - (dias - 1));
@@ -204,14 +213,15 @@ export async function getEntregasPorDia(dias = 7): Promise<EntregaPorDia[]> {
   }
 
   const db = getDb();
-  if (db) {
+  if (db && setorId !== null) {
     const rows = await db
       .select({ data: entregas.data })
       .from(entregas)
       .where(
         and(
           gte(entregas.data, paraChaveDiaLocal(inicio)),
-          lte(entregas.data, paraChaveDiaLocal(hoje))
+          lte(entregas.data, paraChaveDiaLocal(hoje)),
+          setorId ? eq(entregas.setorId, setorId) : undefined
         )
       );
 
@@ -242,21 +252,27 @@ function pluralEntregas(n: number): string {
   return n === 1 ? "1 entrega" : `${n} entregas`;
 }
 
-export async function getAlertas(): Promise<Alerta[]> {
+export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
   const db = getDb();
   if (!db) return [];
+  if (setorId === null) return [];
+  const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
   const [aguardandoSaida, semNfe] = await Promise.all([
     db
       .select({ total: count() })
       .from(entregas)
       .where(
-        and(eq(entregas.status, "pendente"), isNull(entregas.horaSaida))
+        and(
+          eq(entregas.status, "pendente"),
+          isNull(entregas.horaSaida),
+          filtroSetor
+        )
       ),
     db
       .select({ total: count() })
       .from(entregas)
-      .where(isNull(entregas.numeroNfe)),
+      .where(and(isNull(entregas.numeroNfe), filtroSetor)),
   ]);
 
   const aguardandoSaidaTotal = aguardandoSaida[0]?.total ?? 0;
@@ -300,10 +316,13 @@ export interface AtividadeItem {
 // camada de escrita na mesma transação da mudança. Isso permite registrar o
 // ator real (colaborador ou motoboy) em vez de inferi-lo por um trigger.
 export async function getAtividadeRecente(
-  limit = 4
+  limit = 4,
+  setorId?: string | null
 ): Promise<AtividadeItem[]> {
   const db = getDb();
   if (!db) return [];
+  if (setorId === null) return [];
+  const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
   const [cadastros, mudancasStatus] = await Promise.all([
     db
@@ -324,6 +343,7 @@ export async function getAtividadeRecente(
         usuariosAdmin,
         eq(entregas.cadastradoPorAdmin, usuariosAdmin.id)
       )
+      .where(filtroSetor)
       .orderBy(desc(entregas.criadoEm))
       .limit(limit),
     db
@@ -335,6 +355,7 @@ export async function getAtividadeRecente(
       })
       .from(entregaHistorico)
       .innerJoin(entregas, eq(entregaHistorico.entregaId, entregas.id))
+      .where(filtroSetor)
       .orderBy(desc(entregaHistorico.alteradoEm))
       .limit(limit),
   ]);
@@ -462,6 +483,8 @@ export interface RelatorioFiltros {
   dataFim?: string;
   status?: StatusEntrega;
   formaPagamento?: FormaPagamento;
+  // undefined = Admin (tudo); null = sem acesso (vazio); uuid = só o setor.
+  setorId?: string | null;
 }
 
 export interface RelatorioEntregaItem {
@@ -511,6 +534,7 @@ export async function getRelatorioEntregas(
 ): Promise<RelatorioEntregas> {
   const db = getDb();
   if (!db) return relatorioVazio();
+  if (filtros.setorId === null) return relatorioVazio();
 
   const rows = await db
     .select({
@@ -536,7 +560,8 @@ export async function getRelatorioEntregas(
           : undefined,
         filtros.formaPagamento
           ? eq(entregas.formaPagamento, filtros.formaPagamento)
-          : undefined
+          : undefined,
+        filtros.setorId ? eq(entregas.setorId, filtros.setorId) : undefined
       )
     )
     .orderBy(desc(entregas.data), desc(entregas.numero));
@@ -613,6 +638,7 @@ export interface EntregaDetalhe {
   horaSaida: string | null;
   observacoes: string;
   status: StatusEntrega;
+  setorId: string | null;
 }
 
 export async function getEntregaById(
@@ -641,6 +667,7 @@ export async function getEntregaById(
       status: entregas.status,
       motoboyId: entregas.motoboyId,
       motoboyNome: motoboys.nome,
+      setorId: entregas.setorId,
     })
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
@@ -670,6 +697,7 @@ export async function getEntregaById(
     horaSaida: entrega.horaSaida,
     observacoes: entrega.observacoes ?? "",
     status: entrega.status,
+    setorId: entrega.setorId,
   };
 }
 

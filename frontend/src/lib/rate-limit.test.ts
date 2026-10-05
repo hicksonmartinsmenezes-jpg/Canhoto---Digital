@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { avaliarJanela } from "./rate-limit-core";
+import {
+  avaliarJanela,
+  contarNaJanela,
+  escolherIpDoCliente,
+  registrarOcorrencia,
+} from "./rate-limit-core";
+
+function cab(valores: Record<string, string>) {
+  const mapa = new Map(Object.entries(valores));
+  return { get: (nome: string) => mapa.get(nome) ?? null };
+}
 
 // Testa só o núcleo puro (avaliarJanela, em rate-limit-core.ts) —
 // checarRateLimit (em rate-limit.ts) depende de "server-only" e
@@ -45,5 +55,37 @@ describe("avaliarJanela", () => {
 
     const outroIp = avaliarJanela(registros, "criarEntrega:2.2.2.2", 0, 1, 60_000);
     expect(outroIp.permitido).toBe(true);
+  });
+});
+
+describe("contagem de falhas por conta", () => {
+  it("conta só ocorrências dentro da janela", () => {
+    const registros = new Map();
+    registrarOcorrencia(registros, "login:79", 0, 1000);
+    registrarOcorrencia(registros, "login:79", 500, 1000);
+    expect(contarNaJanela(registros, "login:79", 600, 1000)).toBe(2);
+    expect(contarNaJanela(registros, "login:79", 1200, 1000)).toBe(1);
+    expect(contarNaJanela(registros, "outra", 600, 1000)).toBe(0);
+  });
+});
+
+describe("escolherIpDoCliente", () => {
+  it("prefere cf-connecting-ip", () => {
+    expect(
+      escolherIpDoCliente(
+        cab({ "cf-connecting-ip": "203.0.113.9", "x-forwarded-for": "1.1.1.1" })
+      )
+    ).toBe("203.0.113.9");
+  });
+
+  it("usa a última entrada de x-forwarded-for, não a primeira (forjável)", () => {
+    expect(
+      escolherIpDoCliente(cab({ "x-forwarded-for": "9.9.9.9, 198.51.100.7" }))
+    ).toBe("198.51.100.7");
+  });
+
+  it("cai para x-real-ip e depois 'desconhecido'", () => {
+    expect(escolherIpDoCliente(cab({ "x-real-ip": "10.0.0.5" }))).toBe("10.0.0.5");
+    expect(escolherIpDoCliente(cab({}))).toBe("desconhecido");
   });
 });

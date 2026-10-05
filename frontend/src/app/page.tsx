@@ -21,11 +21,8 @@ export default async function DashboardPage() {
   const sessao = await obterSessaoOperador();
   const setorId = setorIdParaFiltro(sessao);
 
-  // Alertas, Atividade recente, o gráfico por dia e o mapa de motoristas
-  // ainda não são escopados por setor (Issue seguinte, se for preciso) —
-  // por enquanto eles continuam mostrando a operação inteira mesmo pra um
-  // gestor_setor logado. Por enquanto, só os números principais
-  // (StatCards) já respeitam o setor.
+  // Tudo no Dashboard (números, alertas, atividade, gráfico e mapa) respeita
+  // o setor do gestor_setor; sem sessão válida nada é mostrado.
   const [
     stats,
     alertas,
@@ -34,10 +31,10 @@ export default async function DashboardPage() {
     motoristasEmRota,
   ] = await Promise.all([
     getDashboardStats(setorId),
-    getAlertas(),
-    getAtividadeRecente(4),
-    getEntregasPorDia(90),
-    getMotoristasEmRota(),
+    getAlertas(setorId),
+    getAtividadeRecente(4, setorId),
+    getEntregasPorDia(90, setorId),
+    getMotoristasEmRota(setorId),
   ]);
 
   return (
