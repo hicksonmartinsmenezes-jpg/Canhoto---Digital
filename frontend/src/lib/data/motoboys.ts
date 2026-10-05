@@ -36,9 +36,10 @@ export async function getMotoboysList(): Promise<MotoboyListItem[]> {
   const db = getDb();
   if (!db) return [];
 
-  const inicioMes = new Date();
-  inicioMes.setDate(1);
-  const inicioMesStr = inicioMes.toISOString().slice(0, 10);
+  // Dia 1 do mês em horário LOCAL — toISOString() converte pra UTC e, à
+  // noite (UTC-3), empurrava o início do mês pro dia 2.
+  const hoje = new Date();
+  const inicioMesStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`;
 
   const [lista, contagens] = await Promise.all([
     db

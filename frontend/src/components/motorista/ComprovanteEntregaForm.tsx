@@ -217,7 +217,18 @@ export function ComprovanteEntregaForm({
       }
       formData.set("assinatura", assinatura);
 
-      const resultado = await confirmarEntrega(entregaId, formData);
+      // Sem sinal/4G caindo é comum na rua: se o envio falhar por rede, a
+      // exceção não pode derrubar a tela e fazer o motorista perder a foto
+      // e a assinatura já coletadas — mostra o aviso e deixa tentar de novo.
+      let resultado: Awaited<ReturnType<typeof confirmarEntrega>>;
+      try {
+        resultado = await confirmarEntrega(entregaId, formData);
+      } catch {
+        setErro(
+          "Sem conexão com o servidor. Confira o sinal e toque em confirmar de novo — a foto e a assinatura foram mantidas."
+        );
+        return;
+      }
 
       if (!resultado.ok) {
         setErro(resultado.error ?? "Não foi possível confirmar a entrega.");
