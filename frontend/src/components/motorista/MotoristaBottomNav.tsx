@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Clock3, Package, UserRound } from "lucide-react";
 
@@ -29,12 +31,16 @@ const ITENS: Array<{
   },
 ];
 
+// Com `onSelecionar` as abas trocam na hora no próprio aparelho (sem ir ao
+// servidor); sem ele continuam sendo links normais.
 export function MotoristaBottomNav({
   ativo,
   pendentes = 0,
+  onSelecionar,
 }: {
   ativo: MotoristaView;
   pendentes?: number;
+  onSelecionar?: (view: MotoristaView) => void;
 }) {
   return (
     <nav
@@ -49,6 +55,35 @@ export function MotoristaBottomNav({
           const Icon = item.icon;
           const selecionado = ativo === item.id;
           const mostrarBadge = item.id === "entregas" && pendentes > 0;
+
+          if (onSelecionar) {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={selecionado ? "page" : undefined}
+                onClick={() => onSelecionar(item.id)}
+                className={`relative flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] font-extrabold transition ${
+                selecionado
+                  ? "text-[#1768D8]"
+                  : "text-[#59708E] hover:bg-slate-50 hover:text-[#0A1F44]"
+              }`}
+              >
+              <span className="relative">
+                <Icon className="size-5 stroke-[2.2]" />
+                {mostrarBadge && (
+                  <span className="absolute -right-3 -top-2 grid min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-black leading-5 text-white">
+                    {pendentes > 9 ? "9+" : pendentes}
+                  </span>
+                )}
+              </span>
+              <span>{item.label}</span>
+              {selecionado && (
+                <span className="absolute bottom-0 h-1 w-12 rounded-full bg-[#1768D8]" />
+              )}
+              </button>
+            );
+          }
 
           return (
             <Link

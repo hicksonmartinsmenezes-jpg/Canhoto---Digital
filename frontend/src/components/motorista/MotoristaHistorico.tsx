@@ -154,7 +154,7 @@ export function MotoristaHistorico({
           />
         </div>
 
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-0.5">
+        <div data-no-swipe className="mt-3 flex gap-2 overflow-x-auto pb-0.5">
           {PERIODOS.map((item) => {
             const ativo = periodo === item.id;
 
