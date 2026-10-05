@@ -11,7 +11,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className="h-full antialiased">
+    // suppressHydrationWarning: dentro do app nativo (Capacitor), o Android
+    // injeta variáveis --safe-area-inset-* no style do <html> antes do React
+    // hidratar. É esperado e inofensivo; sem isso o dev overlay mostra erro.
+    <html lang="pt-BR" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full bg-slate-50 text-[#0A1F44] font-sans">
         <AppShell>{children}</AppShell>
       </body>
