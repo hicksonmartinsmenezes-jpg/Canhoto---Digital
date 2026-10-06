@@ -215,6 +215,7 @@
           Salvar e conectar
         </button>
         <button class="botao botao-secundario" id="btnAuto" type="button">Usar automático (config da loja)</button>
+        <button class="botao botao-secundario" id="btnAbrirSalvo" type="button" style="display:none">Abrir o app salvo (sem conexão)</button>
       </div>
     </div>
   </div>
@@ -245,6 +246,7 @@
   var elBtnAlterar = document.getElementById("btnAlterar");
   var elBtnSalvar = document.getElementById("btnSalvar");
   var elBtnAuto = document.getElementById("btnAuto");
+  var elBtnAbrirSalvo = document.getElementById("btnAbrirSalvo");
 
   var preferences =
     window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences
@@ -311,6 +313,14 @@
     elTelaSplash.classList.remove("ativa");
     elTelaConfig.classList.add("ativa");
     elSubtitulo.textContent = subtitulo || "Informe o endereço do servidor da loja.";
+    // Já abriu o app neste aparelho: dá para abrir a cópia guardada, mesmo sem
+    // conexão (o app guarda a lista do dia e deixa finalizar entregas offline).
+    elBtnAbrirSalvo.style.display = "none";
+    urlSalva().then(function (url) {
+      if (url && elTelaConfig.classList.contains("ativa")) {
+        elBtnAbrirSalvo.style.display = "";
+      }
+    });
     elCampoUrl.value = valorCampo || "";
     if (mensagemErro) {
       elAviso.textContent = mensagemErro;
@@ -319,6 +329,27 @@
       elAviso.textContent = "";
       elAviso.classList.remove("visivel");
     }
+  }
+
+  // Último endereço usado neste aparelho (digitado ou vindo da config da loja).
+  function urlSalva() {
+    return prefGet(CHAVE_OVERRIDE).then(function (override) {
+      var valido = normalizarBase(override);
+      if (valido) return valido;
+      return prefGet(CHAVE_CACHE).then(function (cache) {
+        return normalizarBase(cache);
+      });
+    });
+  }
+
+  // Abre direto, sem testar o servidor: o app do motorista guarda as telas no
+  // aparelho e funciona sem internet.
+  function abrirDireto(base) {
+    tentativaAtual++;
+    mostrarSplash("Sem conexão — abrindo o app salvo…");
+    setTimeout(function () {
+      window.location.replace(base + CAMINHO_DESTINO);
+    }, 300);
   }
 
   // Testa se o servidor responde de verdade (e não a página de erro do Cloudflare).
@@ -364,6 +395,11 @@
       }, 150);
     }).catch(function () {
       if (minhaTentativa !== tentativaAtual) return;
+      // Sem internet no aparelho: abre a cópia guardada em vez de pedir endereço.
+      if (navigator.onLine === false) {
+        abrirDireto(base);
+        return;
+      }
       mostrarConfig("", base, "Informe o endereço atual do servidor da loja.");
     });
   }
@@ -391,6 +427,19 @@
   function iniciar() {
     mostrarSplash("Procurando o servidor da loja…");
     var minhaTentativa = tentativaAtual;
+
+    // Aparelho sem internet: nem tenta achar o servidor, abre o app salvo.
+    if (navigator.onLine === false) {
+      urlSalva().then(function (url) {
+        if (minhaTentativa !== tentativaAtual) return;
+        if (url) {
+          abrirDireto(url);
+        } else {
+          mostrarConfig("Sem internet e nenhum servidor salvo neste aparelho. Conecte-se uma vez para configurar.");
+        }
+      });
+      return;
+    }
 
     prefGet(CHAVE_OVERRIDE).then(function (override) {
       if (minhaTentativa !== tentativaAtual) return;
@@ -442,6 +491,12 @@
 
   elCampoUrl.addEventListener("keydown", function (e) {
     if (e.key === "Enter") elBtnSalvar.click();
+  });
+
+  elBtnAbrirSalvo.addEventListener("click", function () {
+    urlSalva().then(function (url) {
+      if (url) abrirDireto(url);
+    });
   });
 
   elBtnAuto.addEventListener("click", function () {

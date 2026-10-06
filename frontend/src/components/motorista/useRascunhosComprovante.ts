@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { confirmarEntrega } from "@/app/motorista/actions";
+import { EVENTO_CONEXAO_RESTAURADA } from "@/lib/conexao-servidor";
+import { esquecerPaginaGuardada } from "@/lib/offline-cache";
 import {
   apagarRascunho,
   atualizarRascunho,
@@ -121,6 +123,8 @@ export function useRascunhosComprovante(entregaId?: string) {
         }
         if (resultado.estado === "enviado" || resultado.estado === "expirado") {
           mudouAlgo = true;
+          // A cópia guardada desta entrega ainda mostra o formulário.
+          await esquecerPaginaGuardada(`/motorista/entregas/${alvo.entregaId}`);
         }
       }
 
@@ -139,6 +143,7 @@ export function useRascunhosComprovante(entregaId?: string) {
       if (document.visibilityState === "visible") void processar();
     };
     window.addEventListener("online", aoVoltarRede);
+    window.addEventListener(EVENTO_CONEXAO_RESTAURADA, aoVoltarRede);
     document.addEventListener("visibilitychange", aoVoltarParaApp);
 
     const intervalo = window.setInterval(() => {
@@ -148,6 +153,7 @@ export function useRascunhosComprovante(entregaId?: string) {
     return () => {
       montadoRef.current = false;
       window.removeEventListener("online", aoVoltarRede);
+    window.removeEventListener(EVENTO_CONEXAO_RESTAURADA, aoVoltarRede);
       document.removeEventListener("visibilitychange", aoVoltarParaApp);
       window.clearInterval(intervalo);
       liberarUrls();

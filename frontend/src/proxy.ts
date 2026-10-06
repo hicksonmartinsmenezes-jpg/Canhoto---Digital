@@ -32,7 +32,11 @@ export async function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith("/motorista")) {
-    if (pathname === "/motorista/login") return NextResponse.next();
+    // /motorista/offline é uma página fixa, sem dados: precisa abrir mesmo
+    // sem sessão para o service worker guardá-la na instalação.
+    if (pathname === "/motorista/login" || pathname === "/motorista/offline") {
+      return NextResponse.next();
+    }
 
     const segredo = process.env.MOTORISTA_SESSION_SECRET;
     const token = request.cookies.get(MOTORISTA_COOKIE_NAME)?.value;

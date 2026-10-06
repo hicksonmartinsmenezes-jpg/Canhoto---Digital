@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { MotoristaConexaoAviso } from "@/components/motorista/MotoristaConexaoAviso";
 import { MotoristaServiceWorkerRegister } from "@/components/motorista/MotoristaServiceWorkerRegister";
 
 // Metadata só deste segmento (/motorista e sub-rotas) — faz o site virar
@@ -38,6 +39,7 @@ export default function MotoristaLayout({
   return (
     <>
       <MotoristaServiceWorkerRegister />
+      <MotoristaConexaoAviso />
       {children}
     </>
   );

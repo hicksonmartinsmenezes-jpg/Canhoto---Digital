@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { obterEstadoConexao } from "@/lib/conexao-servidor";
 
 // Antes: a cada 10 s (e a cada foco/visibilidade) a página inteira era
 // renderizada de novo no servidor, e os toques do motorista ficavam na fila
@@ -18,6 +19,9 @@ export function MotoristaAutoRefresh() {
 
     function atualizarSeVisivel() {
       if (document.visibilityState !== "visible") return;
+      // Sem conexão a atualização falharia e o Next recarregaria a página
+      // inteira, perdendo a foto/assinatura que ainda não foram finalizadas.
+      if (obterEstadoConexao() !== "ok") return;
       const agora = Date.now();
       if (agora - ultimaAtualizacaoRef.current < INTERVALO_MINIMO_MS) return;
       ultimaAtualizacaoRef.current = agora;

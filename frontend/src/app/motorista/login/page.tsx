@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Loader2, LockKeyhole, LogIn, Phone } from "lucide-react";
 import { maskPhoneInput } from "@/lib/format";
+import { limparPaginasGuardadas } from "@/lib/offline-cache";
 import { loginMotorista } from "./actions";
 
 export default function MotoristaLoginPage() {
@@ -10,6 +11,12 @@ export default function MotoristaLoginPage() {
   const [pin, setPin] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Quem chega ao login saiu da conta ou teve a sessão vencida: as telas
+  // guardadas para uso sem internet eram de outra sessão e são apagadas.
+  useEffect(() => {
+    void limparPaginasGuardadas();
+  }, []);
 
   function entrar() {
     if (!telefone.trim()) {

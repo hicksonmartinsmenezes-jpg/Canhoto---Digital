@@ -16,6 +16,7 @@ import { MotoristaTabs } from "@/components/motorista/MotoristaTabs";
 import { MotoristaAutoRefresh } from "@/components/motorista/MotoristaAutoRefresh";
 import { MotoristaEntregasHoje } from "@/components/motorista/MotoristaEntregasHoje";
 import { MotoristaEnvioPendente } from "@/components/motorista/MotoristaEnvioPendente";
+import { MotoristaPreparoOffline } from "@/components/motorista/MotoristaPreparoOffline";
 import { MotoristaHistorico } from "@/components/motorista/MotoristaHistorico";
 import { MotoristaLocationTracker } from "@/components/motorista/MotoristaLocationTracker";
 import { MotoristaWakeLock } from "@/components/motorista/MotoristaWakeLock";
@@ -101,6 +102,11 @@ export default async function MotoristaPage({
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
       <MotoristaAutoRefresh />
+      <MotoristaPreparoOffline
+        entregaIds={entregas
+          .filter((entrega) => entrega.status === "pendente")
+          .map((entrega) => entrega.id)}
+      />
       <MotoristaLocationTracker ativo={possuiEntregaEmRota} />
       <MotoristaWakeLock ativo={possuiEntregaEmRota} />
 
