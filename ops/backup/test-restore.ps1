@@ -240,6 +240,12 @@ try {
     )
     $rootPrefix = $root + [IO.Path]::DirectorySeparatorChar
 
+    $declaredMissing = @()
+    if ($manifest.PSObject.Properties.Name -contains "missingUploads") {
+        $declaredMissing = @($manifest.missingUploads.files)
+    }
+    $missingKnown = 0
+
     foreach ($relativeRaw in $attachmentPaths) {
         $relative = "$relativeRaw".Trim()
         if (-not $relative) { continue }
@@ -252,8 +258,19 @@ try {
         }
 
         if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            # Arquivo que o backup JÁ registrou como faltando na origem (manifest
+            # missingUploads) não reprova o teste — continua aparecendo como
+            # aviso. Qualquer outro arquivo faltando indica backup incompleto.
+            if ($declaredMissing -contains $relative) {
+                $missingKnown++
+                continue
+            }
             throw "Database attachment has no matching restored file: $relative"
         }
+    }
+
+    if ($missingKnown -gt 0) {
+        Write-Warning "$missingKnown attachment(s) were already missing on the source machine when this backup was made (see missingUploads in manifest.json)."
     }
 
     $restoredReports = @()
