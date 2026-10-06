@@ -15,6 +15,7 @@ import {
   isNull,
   lte,
   ne,
+  sql,
 } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
@@ -355,7 +356,14 @@ export async function getAtividadeRecente(
       })
       .from(entregaHistorico)
       .innerJoin(entregas, eq(entregaHistorico.entregaId, entregas.id))
-      .where(filtroSetor)
+      .where(
+        and(
+          // Linhas de auditoria (só dados alterados, mesmo status) não são
+          // "cliente confirmou"/"cancelada" — ficam fora do feed.
+          sql`${entregaHistorico.statusAnterior} is distinct from ${entregaHistorico.statusNovo}`,
+          filtroSetor
+        )
+      )
       .orderBy(desc(entregaHistorico.alteradoEm))
       .limit(limit),
   ]);
@@ -421,9 +429,7 @@ export interface EntregaListItem {
   valor: string;
   formaPagamento: FormaPagamento;
   motoboy: string | null;
-  caixa: string | null;
   status: StatusEntrega;
-  pendenteConferencia: boolean;
 }
 
 export async function getEntregas(
@@ -451,11 +457,9 @@ export async function getEntregas(
       formaPagamento: entregas.formaPagamento,
       status: entregas.status,
       motoboyNome: motoboys.nome,
-      caixaNome: colaboradores.nome,
     })
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
-    .leftJoin(colaboradores, eq(entregas.caixaId, colaboradores.id))
     .where(filtros.length > 0 ? and(...filtros) : undefined)
     .orderBy(desc(entregas.numero));
 
@@ -469,12 +473,7 @@ export async function getEntregas(
     valor: formatBRL(Number(entrega.valorPagamento)),
     formaPagamento: entrega.formaPagamento,
     motoboy: entrega.motoboyNome,
-    caixa: entrega.caixaNome,
     status: entrega.status,
-    pendenteConferencia:
-      entrega.status === "entregue" &&
-      entrega.formaPagamento !== "prazo" &&
-      entrega.caixaNome === null,
   }));
 }
 
@@ -852,5 +851,53 @@ export async function getEntregasDoMotorista(
     status: entrega.status,
     horaSaida: entrega.horaSaida,
     clienteAssinouEm: entrega.clienteAssinouEm,
+  }));
+}
+
+export interface HistoricoEntregaItem {
+  id: string;
+  alteradoEm: string;
+  responsavel: string;
+  statusAnterior: StatusEntrega | null;
+  statusNovo: StatusEntrega;
+  observacao: string | null;
+}
+
+export async function getHistoricoEntrega(
+  entregaId: string
+): Promise<HistoricoEntregaItem[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      id: entregaHistorico.id,
+      alteradoEm: entregaHistorico.alteradoEm,
+      statusAnterior: entregaHistorico.statusAnterior,
+      statusNovo: entregaHistorico.statusNovo,
+      observacao: entregaHistorico.observacao,
+      colaboradorNome: colaboradores.nome,
+      motoboyNome: motoboys.nome,
+      adminId: entregaHistorico.alteradoPorAdmin,
+    })
+    .from(entregaHistorico)
+    .leftJoin(colaboradores, eq(entregaHistorico.alteradoPor, colaboradores.id))
+    .leftJoin(motoboys, eq(entregaHistorico.alteradoPorMotoboy, motoboys.id))
+    .where(eq(entregaHistorico.entregaId, entregaId))
+    .orderBy(desc(entregaHistorico.alteradoEm));
+
+  return rows.map((linha) => ({
+    id: linha.id,
+    alteradoEm: linha.alteradoEm,
+    responsavel:
+      linha.colaboradorNome ??
+      (linha.motoboyNome
+        ? `${linha.motoboyNome} (motorista)`
+        : linha.adminId
+          ? "Administrador"
+          : "Sistema"),
+    statusAnterior: linha.statusAnterior,
+    statusNovo: linha.statusNovo,
+    observacao: linha.observacao,
   }));
 }

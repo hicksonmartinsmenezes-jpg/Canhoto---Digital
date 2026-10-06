@@ -1,13 +1,18 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
-import { entregaHistorico, entregas } from "@/lib/db/schema";
+import { entregaHistorico, entregas, motoboys } from "@/lib/db/schema";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { geocodificarEntregaGratis } from "@/lib/geocodificacao-gratis";
+import {
+  descreverAlteracoes,
+  observacaoDeAlteracoes,
+  type NomesMotoboy,
+} from "@/lib/auditoria-entrega";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 export interface AtualizarEntregaInput {
@@ -24,6 +29,9 @@ export interface AtualizarEntregaInput {
   observacoes: string;
   status: StatusEntrega;
 }
+
+const ERRO_CONCLUIDA_SO_ADMIN =
+  "Entrega já concluída: só o administrador pode alterar os dados.";
 
 export interface AtualizarEntregaResult {
   ok: boolean;
@@ -80,6 +88,7 @@ export async function atualizarEntrega(
       latitude: entregas.latitude,
       longitude: entregas.longitude,
       setorId: entregas.setorId,
+      status: entregas.status,
     })
     .from(entregas)
     .where(eq(entregas.id, id))
@@ -95,6 +104,12 @@ export async function atualizarEntrega(
     (!operador.setorId || dadosAtuais.setorId !== operador.setorId)
   ) {
     return { ok: false, error: "Entrega não encontrada." };
+  }
+
+  // Entrega concluída mexe com o caixa: só o Admin corrige, e tudo que ele
+  // muda fica no histórico (ver descreverAlteracoes abaixo).
+  if (operador.tipo === "gestor_setor" && dadosAtuais.status === "entregue") {
+    return { ok: false, error: ERRO_CONCLUIDA_SO_ADMIN };
   }
 
   const enderecoNovo = input.endereco.trim();
@@ -127,7 +142,14 @@ export async function atualizarEntrega(
   try {
     const resultadoTransacao = await db.transaction(async (tx) => {
       const [atual] = await tx
-        .select({ status: entregas.status })
+        .select({
+          status: entregas.status,
+          data: entregas.data,
+          clienteNome: entregas.clienteNome,
+          valorPagamento: entregas.valorPagamento,
+          formaPagamento: entregas.formaPagamento,
+          motoboyId: entregas.motoboyId,
+        })
         .from(entregas)
         .where(eq(entregas.id, id))
         .limit(1);
@@ -179,7 +201,41 @@ export async function atualizarEntrega(
         return { ok: false as const, error: "Entrega não encontrada." };
       }
 
-      if (atual.status !== input.status) {
+      const motoboyNovo = input.motoboyId || null;
+      const motoboyMudou = (atual.motoboyId ?? null) !== motoboyNovo;
+      const nomes: NomesMotoboy = {};
+      if (motoboyMudou) {
+        const ids = [atual.motoboyId, motoboyNovo].filter(
+          (v): v is string => Boolean(v)
+        );
+        if (ids.length > 0) {
+          const linhas = await tx
+            .select({ id: motoboys.id, nome: motoboys.nome })
+            .from(motoboys)
+            .where(inArray(motoboys.id, ids));
+          for (const linha of linhas) nomes[linha.id] = linha.nome;
+        }
+      }
+
+      const mudancas = descreverAlteracoes(
+        {
+          data: atual.data,
+          clienteNome: atual.clienteNome,
+          valorPagamento: Number(atual.valorPagamento),
+          formaPagamento: atual.formaPagamento,
+          motoboyId: atual.motoboyId,
+        },
+        {
+          data: input.data,
+          clienteNome,
+          valorPagamento: input.valorPagamento,
+          formaPagamento,
+          motoboyId: motoboyNovo,
+        },
+        nomes
+      );
+
+      if (atual.status !== input.status || mudancas.length > 0) {
         await tx.insert(entregaHistorico).values({
           entregaId: id,
           statusAnterior: atual.status,
@@ -189,6 +245,9 @@ export async function atualizarEntrega(
             operador.tipo === "admin" && !operador.colaboradorId
               ? operador.usuarioAdminId
               : null,
+          ...(mudancas.length > 0
+            ? { observacao: observacaoDeAlteracoes(mudancas) }
+            : {}),
         });
       }
 

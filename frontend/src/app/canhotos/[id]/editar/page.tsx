@@ -25,6 +25,11 @@ export default async function EditarEntregaPage({
 
   if (!entrega || !sessaoPodeAcessarSetor(sessao, entrega.setorId)) notFound();
 
+  // Entrega concluída: só o Admin corrige (a action também bloqueia).
+  if (sessao.tipo !== "admin" && entrega.status === "entregue") {
+    redirect(`/canhotos/${entrega.id}`);
+  }
+
   return (
     <div>
       <div className="mb-7">
@@ -33,6 +38,8 @@ export default async function EditarEntregaPage({
         </h1>
         <p className="mt-1 text-sm text-slate-500">
           Ajuste os dados da entrega ou atualize a situação.
+          {entrega.status === "entregue" &&
+            " Entrega concluída: alterações de valor, pagamento, cliente, motorista ou data ficam registradas no histórico."}
         </p>
       </div>
 
