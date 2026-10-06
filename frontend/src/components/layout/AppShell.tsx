@@ -2,8 +2,15 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { Sidebar } from "@/components/layout/Sidebar";
+import dynamic from "next/dynamic";
 import type { PapelPortal } from "@/lib/papel-portal";
+
+// Carregado sob demanda: o app do motorista (celular, internet móvel) nunca
+// renderiza a barra lateral, então não deve baixar a biblioteca de animação
+// (motion) e os ícones dela (~50 KB comprimidos a cada primeira abertura).
+const Sidebar = dynamic(() =>
+  import("@/components/layout/Sidebar").then((m) => m.Sidebar)
+);
 
 export function AppShell({
   children,

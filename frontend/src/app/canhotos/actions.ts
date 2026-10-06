@@ -176,6 +176,12 @@ export async function conferirCaixa(
     return { ok: false, error: "Colaborador inválido ou inativo." };
   }
 
+  // gestor_setor só confere caixa de entrega do próprio setor.
+  const filtroSetor =
+    operador.tipo === "gestor_setor" && operador.setorId
+      ? eq(entregas.setorId, operador.setorId)
+      : undefined;
+
   try {
     const [atualizada] = await db
       .update(entregas)
@@ -186,16 +192,35 @@ export async function conferirCaixa(
       .where(
         and(
           eq(entregas.id, entregaId),
+          // Só entrega concluída tem caixa a conferir; antes dava para
+          // "conferir" uma entrega pendente ou cancelada.
+          eq(entregas.status, "entregue"),
           isNull(entregas.caixaConfirmouEm),
-          // gestor_setor só confere caixa de entrega do próprio setor.
-          operador.tipo === "gestor_setor" && operador.setorId
-            ? eq(entregas.setorId, operador.setorId)
-            : undefined
+          filtroSetor
         )
       )
       .returning({ id: entregas.id });
 
     if (!atualizada) {
+      // Descobre o motivo real em vez de culpar sempre "outra pessoa".
+      const [atual] = await db
+        .select({
+          status: entregas.status,
+          caixaConfirmouEm: entregas.caixaConfirmouEm,
+        })
+        .from(entregas)
+        .where(and(eq(entregas.id, entregaId), filtroSetor))
+        .limit(1);
+
+      if (!atual) {
+        return { ok: false, error: "Entrega não encontrada." };
+      }
+      if (atual.status !== "entregue") {
+        return {
+          ok: false,
+          error: "Só é possível conferir o caixa de uma entrega já concluída.",
+        };
+      }
       return {
         ok: false,
         error: "Essa entrega já foi conferida por outra pessoa.",

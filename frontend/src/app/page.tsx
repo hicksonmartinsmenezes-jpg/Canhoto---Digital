@@ -39,7 +39,12 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" beta alertas={alertas} />
+      <PageHeader
+        title="Dashboard"
+        beta
+        alertas={alertas}
+        mostrarTreinamento={sessao?.tipo === "admin"}
+      />
 
       <div className="grid grid-cols-12 gap-5">
         <div className="col-span-12 sm:col-span-6 xl:col-span-3">

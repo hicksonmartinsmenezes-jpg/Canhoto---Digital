@@ -9,6 +9,9 @@ interface ModalProps {
   /** Largura do painel — a maioria dos diálogos de confirmação/edição do
    * sistema usa "sm" (max-w-sm); casos maiores podem pedir "lg". */
   size?: "sm" | "lg";
+  /** Impede fechar por Esc ou clique no fundo (ex.: enquanto um PIN que só
+   * aparece uma vez está na tela). O fechamento passa a ser só por botão. */
+  bloquearFechar?: boolean;
 }
 
 // Casca visual (backdrop + painel) reaproveitada por todo modal do sistema
@@ -24,14 +27,19 @@ interface ModalProps {
 // hover/scroll), então uma entrada com leve "spring" é apropriada — mas
 // sem bounce (é uma ação utilitária, não celebrativa) e a saída é mais
 // sutil/rápida que a entrada, como recomenda a skill de Motion Principles.
-export function Modal({ onClose, children, size = "sm" }: ModalProps) {
+export function Modal({
+  onClose,
+  children,
+  size = "sm",
+  bloquearFechar = false,
+}: ModalProps) {
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !bloquearFechar) onClose();
     }
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [onClose]);
+  }, [onClose, bloquearFechar]);
 
   return (
     <motion.div
@@ -41,10 +49,12 @@ export function Modal({ onClose, children, size = "sm" }: ModalProps) {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.18 }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !bloquearFechar) onClose();
       }}
     >
       <motion.div
+        role="dialog"
+        aria-modal="true"
         className={`w-full ${size === "lg" ? "max-w-lg" : "max-w-sm"} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl`}
         initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}

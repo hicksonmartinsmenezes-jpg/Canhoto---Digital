@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRelatorioEntregas } from "@/lib/data/entregas";
 import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
+import { linhaCsv, SEPARADOR_CSV } from "@/lib/csv";
 import { arquivarRelatorioCsv } from "@/lib/relatorios-storage";
 import {
   FORMA_PAGAMENTO_LABEL,
@@ -16,16 +17,6 @@ import {
 // o jeito mais simples de disparar o download do navegador sem
 // JavaScript extra no client.
 //
-// Escapa célula pro formato CSV (RFC 4180): envolve em aspas e duplica
-// aspas internas sempre que o valor contém separador, aspas ou quebra de
-// linha — nome de cliente é texto livre e pode conter vírgula.
-function celulaCsv(valor: string): string {
-  if (/[",\n]/.test(valor)) {
-    return `"${valor.replace(/"/g, '""')}"`;
-  }
-  return valor;
-}
-
 export async function GET(request: NextRequest) {
   // Autenticação própria: o proxy só confere a assinatura do cookie e o
   // relatório carrega dados financeiros — exige sessão válida e aplica o
@@ -63,7 +54,7 @@ export async function GET(request: NextRequest) {
 
   const cabecalho = ["Código", "Data", "Cliente", "Valor", "Forma de pagamento", "Motorista", "Situação"];
   const linhas = itens.map((item) =>
-    [
+    linhaCsv([
       item.numero,
       item.data,
       item.cliente,
@@ -71,38 +62,30 @@ export async function GET(request: NextRequest) {
       FORMA_PAGAMENTO_LABEL[item.formaPagamento],
       item.motoboy ?? "",
       STATUS_LABEL[item.status],
-    ]
-      .map(celulaCsv)
-      .join(",")
+    ])
   );
 
   // BOM UTF-8 no início: sem isso o Excel (bem comum aqui, ver pt-BR) lê
   // acentos como caracteres corrompidos ao abrir o CSV direto.
-  const csv = "﻿" + [cabecalho.join(","), ...linhas].join("\r\n") + "\r\n";
+  const csv = "﻿" + [cabecalho.join(SEPARADOR_CSV), ...linhas].join("\r\n") + "\r\n";
 
   const nomeBase = `relatorio-entregas${dataInicio ? `_${dataInicio}` : ""}${dataFim ? `_a_${dataFim}` : ""}`;
   const nomeArquivo = `${nomeBase}.csv`;
 
+  // O arquivamento em disco é uma cópia de segurança: se falhar (disco
+  // cheio, permissão), o usuário ainda recebe o relatório — só registramos
+  // o erro para a manutenção ver.
   try {
     await arquivarRelatorioCsv(nomeBase, csv);
   } catch (error) {
     console.error("Falha ao arquivar relatório CSV localmente.", error);
-    return new NextResponse(
-      "Não foi possível arquivar o relatório localmente. Tente novamente.",
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-store",
-        },
-      }
-    );
   }
 
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${nomeArquivo}"`,
+      "Cache-Control": "private, no-store",
     },
   });
 }

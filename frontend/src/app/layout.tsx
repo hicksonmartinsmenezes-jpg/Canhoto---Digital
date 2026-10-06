@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import "leaflet/dist/leaflet.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { obterPapelPortal } from "@/lib/papel-portal";
 import "./globals.css";

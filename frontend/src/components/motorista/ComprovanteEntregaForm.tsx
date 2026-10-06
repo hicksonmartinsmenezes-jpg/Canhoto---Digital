@@ -11,6 +11,7 @@ import {
   ReceiptText,
 } from "lucide-react";
 import { confirmarEntrega } from "@/app/motorista/actions";
+import { comprimirImagem } from "@/lib/comprimir-imagem";
 import type { FormaPagamento } from "@/types/database";
 
 const TAMANHO_MAX_FOTO = 8 * 1024 * 1024;
@@ -33,6 +34,25 @@ export function ComprovanteEntregaForm({
   const [temAssinatura, setTemAssinatura] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Foto sendo reduzida no aparelho (leva ~1 s): segura o botão Finalizar.
+  const [preparandoImagem, setPreparandoImagem] = useState(false);
+  const selecaoFotoRef = useRef(0);
+  const selecaoPixRef = useRef(0);
+  const preparosEmAndamentoRef = useRef(0);
+
+  async function prepararImagem(
+    arquivo: File,
+    opcoes?: Parameters<typeof comprimirImagem>[1]
+  ): Promise<File> {
+    preparosEmAndamentoRef.current += 1;
+    setPreparandoImagem(true);
+    try {
+      return await comprimirImagem(arquivo, opcoes);
+    } finally {
+      preparosEmAndamentoRef.current -= 1;
+      if (preparosEmAndamentoRef.current === 0) setPreparandoImagem(false);
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -151,8 +171,9 @@ export function ComprovanteEntregaForm({
     return null;
   }
 
-  function selecionarFotoEntrega(arquivo: File | undefined) {
+  async function selecionarFotoEntrega(arquivo: File | undefined) {
     setErro(null);
+    const selecao = ++selecaoFotoRef.current;
 
     if (!arquivo) {
       setFotoEntrega(null);
@@ -160,18 +181,23 @@ export function ComprovanteEntregaForm({
       return;
     }
 
-    const erroImagem = validarImagem(arquivo);
+    const reduzida = await prepararImagem(arquivo);
+    // Se o motorista escolheu outra foto enquanto esta era reduzida, descarta.
+    if (selecao !== selecaoFotoRef.current) return;
+
+    const erroImagem = validarImagem(reduzida);
     if (erroImagem) {
       setErro(erroImagem);
       return;
     }
 
-    setFotoEntrega(arquivo);
-    setFotoEntregaUrl(URL.createObjectURL(arquivo));
+    setFotoEntrega(reduzida);
+    setFotoEntregaUrl(URL.createObjectURL(reduzida));
   }
 
-  function selecionarComprovantePix(arquivo: File | undefined) {
+  async function selecionarComprovantePix(arquivo: File | undefined) {
     setErro(null);
+    const selecao = ++selecaoPixRef.current;
 
     if (!arquivo) {
       setComprovantePix(null);
@@ -179,18 +205,30 @@ export function ComprovanteEntregaForm({
       return;
     }
 
-    const erroImagem = validarImagem(arquivo);
+    // Comprovante tem texto pequeno: resolução um pouco maior que a da foto.
+    const reduzida = await prepararImagem(arquivo, {
+      ladoMaximo: 2000,
+      qualidade: 0.85,
+    });
+    if (selecao !== selecaoPixRef.current) return;
+
+    const erroImagem = validarImagem(reduzida);
     if (erroImagem) {
       setErro(erroImagem);
       return;
     }
 
-    setComprovantePix(arquivo);
-    setComprovantePixUrl(URL.createObjectURL(arquivo));
+    setComprovantePix(reduzida);
+    setComprovantePixUrl(URL.createObjectURL(reduzida));
   }
 
   function confirmar() {
     setErro(null);
+
+    if (preparandoImagem) {
+      setErro("Aguarde a foto terminar de ser preparada.");
+      return;
+    }
 
     if (!fotoEntrega) {
       setErro("Tire uma foto da entrega antes de finalizar.");
@@ -351,7 +389,7 @@ export function ComprovanteEntregaForm({
 
       <button
         type="button"
-        disabled={pending}
+        disabled={pending || preparandoImagem}
         onClick={confirmar}
         className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#15924A] px-4 py-3.5 text-sm font-black text-white transition hover:bg-[#117D3F] disabled:cursor-not-allowed disabled:opacity-60"
       >
@@ -359,6 +397,11 @@ export function ComprovanteEntregaForm({
           <>
             <Loader2 className="size-4 animate-spin" />
             Finalizando...
+          </>
+        ) : preparandoImagem ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Preparando foto...
           </>
         ) : (
           <>

@@ -23,8 +23,13 @@ export default function MotoristaLoginPage() {
 
     setErro(null);
     startTransition(async () => {
-      const resultado = await loginMotorista(telefone, pin);
-      setErro(resultado.error ?? "Não foi possível entrar.");
+      try {
+        const resultado = await loginMotorista(telefone, pin);
+        setErro(resultado.error ?? "Não foi possível entrar.");
+      } catch {
+        // Falha de rede (o sucesso redireciona e não chega aqui).
+        setErro("Sem conexão com o servidor. Confira o sinal e tente de novo.");
+      }
     });
   }
 

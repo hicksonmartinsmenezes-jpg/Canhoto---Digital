@@ -107,15 +107,27 @@ export function EntregaMotoristaDetalheView({
     setErro(null);
 
     startTransition(async () => {
-      const resultado = await iniciarEntrega(entrega.id);
+      let resultado: Awaited<ReturnType<typeof iniciarEntrega>>;
+      try {
+        resultado = await iniciarEntrega(entrega.id);
+      } catch {
+        // Sinal fraco: sem isso a exceção virava tela de erro.
+        setErro(
+          "Sem conexão com o servidor. Confira o sinal e toque em iniciar de novo."
+        );
+        return;
+      }
 
       if (!resultado.ok) {
         setErro(resultado.error ?? "Não foi possível iniciar a entrega.");
         return;
       }
 
-      await registrarLocalizacaoAtual();
+      // A entrega já começou: atualiza a tela agora e manda a posição em
+      // segundo plano (antes o botão ficava "Iniciando…" até 15 s esperando
+      // o GPS).
       router.refresh();
+      void registrarLocalizacaoAtual();
     });
   }
 

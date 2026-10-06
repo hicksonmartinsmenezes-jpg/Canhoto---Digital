@@ -547,6 +547,31 @@ export async function confirmarEntrega(
     };
   }
 
+  // Sem mais entregas em rota, apaga a última posição guardada: o painel
+  // não deve continuar mostrando o motorista "em rota" num ponto antigo.
+  // Best-effort — a entrega já foi confirmada, falhar aqui não pode desfazê-la.
+  try {
+    const [aindaEmRota] = await db
+      .select({ id: entregas.id })
+      .from(entregas)
+      .where(
+        and(
+          eq(entregas.motoboyId, acesso.motoboyId),
+          eq(entregas.status, "pendente"),
+          isNotNull(entregas.horaSaida)
+        )
+      )
+      .limit(1);
+
+    if (!aindaEmRota) {
+      await db
+        .delete(motoboyLocalizacoes)
+        .where(eq(motoboyLocalizacoes.motoboyId, acesso.motoboyId));
+    }
+  } catch (error) {
+    console.error("confirmarEntrega: falha ao limpar localização", error);
+  }
+
   revalidatePath("/motorista");
   revalidatePath("/canhotos");
   revalidatePath("/");

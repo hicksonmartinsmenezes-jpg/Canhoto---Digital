@@ -148,6 +148,9 @@ export function AdicionarEntregaWizard({
   }
 
   function salvar() {
+    // Trava contra clique/Enter repetido: sem isso dois envios seguidos
+    // criavam entregas duplicadas.
+    if (pending) return;
     setErro(null);
     startTransition(async () => {
       const resultado = await criarEntrega({
@@ -184,15 +187,26 @@ export function AdicionarEntregaWizard({
   function aoPressionarTecla(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key !== "Enter") return;
     const alvo = e.target as HTMLElement;
-    if (alvo.tagName === "TEXTAREA") return;
-
-    if (e.ctrlKey || e.metaKey || step === 3) {
+    // Em botões/links o Enter já faz o clique deles ("Voltar", "Cancelar"...);
+    // interceptar aqui avançava ou salvava sem a pessoa querer.
+    if (alvo.tagName === "TEXTAREA" || alvo.tagName === "BUTTON" || alvo.tagName === "A") {
+      return;
+    }
+    if (pending) {
       e.preventDefault();
-      if (step === 3) salvar();
+      return;
+    }
+
+    // Na revisão (etapa 3) não há campo de texto: Enter solto não salva,
+    // só Ctrl/Cmd+Enter (ou o botão "Confirmar e salvar").
+    if (step === 3) {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) salvar();
       return;
     }
 
     e.preventDefault();
+    if (e.ctrlKey || e.metaKey) return;
     if (step === 1) irParaEtapa2();
     else if (step === 2) irParaEtapa3();
   }
