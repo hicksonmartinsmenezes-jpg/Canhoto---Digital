@@ -33,6 +33,12 @@ export async function sairMotorista(): Promise<void> {
 export interface AcaoEntregaResult {
   ok: boolean;
   error?: string;
+  /**
+   * Só em confirmarEntrega: a entrega já estava concluída por este motorista
+   * (reenvio depois que a resposta do envio anterior se perdeu). Nada foi
+   * gravado de novo; para o app é sucesso.
+   */
+  jaConcluida?: boolean;
 }
 
 const ERRO_BANCO =
@@ -59,6 +65,29 @@ function dataLocalAtual(): string {
   const mes = String(agora.getMonth() + 1).padStart(2, "0");
   const dia = String(agora.getDate()).padStart(2, "0");
   return `${ano}-${mes}-${dia}`;
+}
+
+// Reenvio seguro: se a resposta de um envio anterior se perdeu (sinal caiu
+// depois do servidor gravar), o app tenta de novo e a entrega já está
+// "entregue". Isso não é erro — confere que é desta mesma motorista antes.
+async function entregaJaConcluidaPeloMotorista(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  entregaId: string,
+  motoboyId: string
+): Promise<boolean> {
+  const [concluida] = await db
+    .select({ id: entregas.id })
+    .from(entregas)
+    .where(
+      and(
+        eq(entregas.id, entregaId),
+        eq(entregas.motoboyId, motoboyId),
+        eq(entregas.status, "entregue")
+      )
+    )
+    .limit(1);
+
+  return Boolean(concluida);
 }
 
 function uuidValido(valor: string): boolean {
@@ -352,6 +381,12 @@ export async function confirmarEntrega(
       .limit(1);
 
     if (!entregaConfirmavel) {
+      if (
+        await entregaJaConcluidaPeloMotorista(db, entregaId, acesso.motoboyId)
+      ) {
+        return { ok: true, jaConcluida: true };
+      }
+
       return {
         ok: false,
         error: "Entrega não encontrada, já concluída ou ainda não iniciada.",
@@ -534,6 +569,18 @@ export async function confirmarEntrega(
     ]);
 
     if (error instanceof Error && error.message === "ENTREGA_NAO_CONFIRMAVEL") {
+      // Dois envios simultâneos da mesma entrega (ex.: reenvio automático
+      // junto com o toque do motorista): o que chegou depois não é erro.
+      try {
+        if (
+          await entregaJaConcluidaPeloMotorista(db, entregaId, acesso.motoboyId)
+        ) {
+          return { ok: true, jaConcluida: true };
+        }
+      } catch {
+        // cai no erro genérico abaixo
+      }
+
       return {
         ok: false,
         error: "Entrega já concluída ou não está mais disponível.",

@@ -15,6 +15,7 @@ import { type MotoristaView } from "@/components/motorista/MotoristaBottomNav";
 import { MotoristaTabs } from "@/components/motorista/MotoristaTabs";
 import { MotoristaAutoRefresh } from "@/components/motorista/MotoristaAutoRefresh";
 import { MotoristaEntregasHoje } from "@/components/motorista/MotoristaEntregasHoje";
+import { MotoristaEnvioPendente } from "@/components/motorista/MotoristaEnvioPendente";
 import { MotoristaHistorico } from "@/components/motorista/MotoristaHistorico";
 import { MotoristaLocationTracker } from "@/components/motorista/MotoristaLocationTracker";
 import { MotoristaWakeLock } from "@/components/motorista/MotoristaWakeLock";
@@ -227,6 +228,7 @@ export default async function MotoristaPage({
         conteudos={{
           entregas: (
           <>
+            <MotoristaEnvioPendente />
             <section className="border-b border-slate-200 bg-white px-4 py-3">
               <div className="flex items-center justify-between gap-4">
                 <div>

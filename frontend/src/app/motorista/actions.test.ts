@@ -35,7 +35,7 @@ vi.mock("@/lib/motorista-session", () => ({
 }));
 
 import { revalidatePath } from "next/cache";
-import { writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import { getDb } from "@/lib/db";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { motoristaPodeAcessarEntrega } from "@/lib/motorista-authorization";
@@ -43,6 +43,7 @@ import { confirmarEntrega, iniciarEntrega } from "./actions";
 
 const revalidatePathMock = vi.mocked(revalidatePath);
 const writeFileMock = vi.mocked(writeFile);
+const rmMock = vi.mocked(rm);
 const getDbMock = vi.mocked(getDb);
 const checarRateLimitMock = vi.mocked(checarRateLimit);
 const motoristaPodeAcessarEntregaMock = vi.mocked(
@@ -356,9 +357,22 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
+  it("reenvio de entrega já concluída pelo próprio motorista é sucesso e não grava nada", async () => {
+    const { tx } = configurarDb({
+      selectResultados: [[], [{ id: ENTREGA_ID }]],
+    });
+
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+    ).resolves.toEqual({ ok: true, jaConcluida: true });
+
+    expect(writeFileMock).not.toHaveBeenCalled();
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
   it("não confirma entrega que já não está disponível para conclusão", async () => {
     configurarDb({
-      selectResultados: [[]],
+      selectResultados: [[], []],
     });
 
     await expect(
@@ -369,6 +383,22 @@ describe("ações do motorista com PostgreSQL local", () => {
     });
 
     expect(writeFileMock).not.toHaveBeenCalled();
+  });
+
+  it("envio simultâneo: se outro envio concluiu primeiro, devolve sucesso e apaga os arquivos extras", async () => {
+    configurarDb({
+      selectResultados: [
+        [{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }],
+        [{ id: ENTREGA_ID }],
+      ],
+      transacaoResultados: [[]],
+    });
+
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+    ).resolves.toEqual({ ok: true, jaConcluida: true });
+
+    expect(rmMock).toHaveBeenCalled();
   });
 
   it("não acessa o banco quando a entrega pertence a outro motorista", async () => {
@@ -383,7 +413,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("revalida as telas após confirmar a entrega", async () => {
     configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }]],
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
     });
 
     await confirmarEntrega(ENTREGA_ID, criarFormDataEntrega());

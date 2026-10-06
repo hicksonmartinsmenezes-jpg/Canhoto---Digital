@@ -12,6 +12,12 @@ import {
 } from "lucide-react";
 import { confirmarEntrega } from "@/app/motorista/actions";
 import { comprimirImagem } from "@/lib/comprimir-imagem";
+import { salvarRascunho } from "@/lib/comprovante-pendente";
+import { ComprovanteGuardadoPainel } from "@/components/motorista/ComprovanteGuardadoPainel";
+import {
+  enviarRascunhoSalvo,
+  useRascunhosComprovante,
+} from "@/components/motorista/useRascunhosComprovante";
 import type { FormaPagamento } from "@/types/database";
 
 const TAMANHO_MAX_FOTO = 8 * 1024 * 1024;
@@ -19,11 +25,18 @@ const TAMANHO_MAX_FOTO = 8 * 1024 * 1024;
 export function ComprovanteEntregaForm({
   entregaId,
   formaPagamento,
+  rotulo,
 }: {
   entregaId: string;
   formaPagamento: FormaPagamento;
+  /** Identifica a entrega no aviso da lista quando o envio fica pendente. */
+  rotulo?: string;
 }) {
   const router = useRouter();
+  const { rascunhos, enviando, enviarAgora, descartar, recarregar } =
+    useRascunhosComprovante(entregaId);
+  const rascunhoGuardado = rascunhos[0] ?? null;
+  const temRascunhoGuardado = rascunhoGuardado !== null;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const desenhandoRef = useRef(false);
   const assinaturaMarcadaRef = useRef(false);
@@ -67,6 +80,9 @@ export function ComprovanteEntregaForm({
   }, [comprovantePixUrl]);
 
   useEffect(() => {
+    // Com um comprovante guardado o formulário não aparece (sem canvas);
+    // ao descartar, o canvas volta e precisa ser preparado de novo.
+    if (temRascunhoGuardado) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -86,7 +102,7 @@ export function ComprovanteEntregaForm({
     contexto.lineWidth = 2.25 * escala;
     contexto.lineCap = "round";
     contexto.lineJoin = "round";
-  }, []);
+  }, [temRascunhoGuardado]);
 
   function pontoNoCanvas(evento: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = evento.currentTarget;
@@ -248,6 +264,30 @@ export function ComprovanteEntregaForm({
         return;
       }
 
+      // 1) Guarda tudo no aparelho ANTES de enviar: se o sinal cair, o app for
+      //    fechado ou a página recarregar, a foto e a assinatura não se perdem.
+      const guardado = await salvarRascunho({
+        entregaId,
+        rotulo: rotulo ?? null,
+        fotoEntrega,
+        comprovantePix: formaPagamento === "pix" ? comprovantePix : null,
+        assinatura,
+      });
+
+      if (guardado) {
+        // 2) Envia o que foi guardado. Se não der agora, o painel de
+        //    "comprovante guardado" assume e reenvia sozinho.
+        const resultado = await enviarRascunhoSalvo(entregaId);
+        await recarregar();
+
+        if (resultado.estado === "enviado") {
+          router.refresh();
+        }
+        return;
+      }
+
+      // O aparelho não permitiu guardar (navegação restrita): envio direto,
+      // mantendo a foto e a assinatura na tela se falhar.
       const formData = new FormData();
       formData.set("fotoEntrega", fotoEntrega);
       if (formaPagamento === "pix" && comprovantePix) {
@@ -255,9 +295,6 @@ export function ComprovanteEntregaForm({
       }
       formData.set("assinatura", assinatura);
 
-      // Sem sinal/4G caindo é comum na rua: se o envio falhar por rede, a
-      // exceção não pode derrubar a tela e fazer o motorista perder a foto
-      // e a assinatura já coletadas — mostra o aviso e deixa tentar de novo.
       let resultado: Awaited<ReturnType<typeof confirmarEntrega>>;
       try {
         resultado = await confirmarEntrega(entregaId, formData);
@@ -275,6 +312,30 @@ export function ComprovanteEntregaForm({
 
       router.refresh();
     });
+  }
+
+  function descartarGuardado() {
+    void descartar(entregaId).then(() => {
+      // Recomeça do zero: o que estava na tela foi para o rascunho apagado.
+      setFotoEntrega(null);
+      setFotoEntregaUrl(null);
+      setComprovantePix(null);
+      setComprovantePixUrl(null);
+      assinaturaMarcadaRef.current = false;
+      setTemAssinatura(false);
+      setErro(null);
+    });
+  }
+
+  if (rascunhoGuardado) {
+    return (
+      <ComprovanteGuardadoPainel
+        rascunho={rascunhoGuardado}
+        enviando={enviando.includes(entregaId)}
+        onEnviarAgora={() => void enviarAgora(entregaId)}
+        onDescartar={descartarGuardado}
+      />
+    );
   }
 
   return (

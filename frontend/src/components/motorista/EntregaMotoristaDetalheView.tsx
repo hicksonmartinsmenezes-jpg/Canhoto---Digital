@@ -22,6 +22,7 @@ import {
   iniciarEntrega,
 } from "@/app/motorista/actions";
 import { ComprovanteEntregaForm } from "@/components/motorista/ComprovanteEntregaForm";
+import { ComprovanteGuardadoSemFormulario } from "@/components/motorista/ComprovanteGuardadoSemFormulario";
 import type { EntregaMotoristaDetalhe } from "@/lib/data/motorista-entregas";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 
@@ -379,9 +380,12 @@ export function EntregaMotoristaDetalheView({
           <ComprovanteEntregaForm
             entregaId={entrega.id}
             formaPagamento={entrega.formaPagamento}
+            rotulo={`${entrega.numero} · ${entrega.clienteNome}`}
           />
         </section>
       )}
+
+      {!emRota && <ComprovanteGuardadoSemFormulario entregaId={entrega.id} />}
 
       {entregue && (
         <div className="flex items-center justify-center gap-2 rounded-2xl bg-[#E8F7EF] px-4 py-4 text-sm font-black text-[#15924A]">
