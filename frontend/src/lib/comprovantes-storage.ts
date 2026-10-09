@@ -9,6 +9,8 @@ const MIME_POR_EXTENSAO: Record<string, string> = {
   ".webp": "image/webp",
   ".heic": "image/heic",
   ".heif": "image/heif",
+  ".xml": "application/xml",
+  ".pdf": "application/pdf",
 };
 
 export function diretorioRaizUploads(): string {

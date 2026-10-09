@@ -11,10 +11,13 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   isNotNull,
   isNull,
+  lt,
   lte,
   ne,
+  or,
   sql,
 } from "drizzle-orm";
 import { getDb } from "@/lib/db";
@@ -29,6 +32,7 @@ import {
 } from "@/lib/db/schema";
 import { formatBRL, formatCep, formatDateBR } from "@/lib/format";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
+import { situacaoEntrega, type SituacaoEntrega } from "@/lib/status";
 
 function paraDataInput(dataIso: string): string {
   return dataIso.slice(0, 10);
@@ -259,7 +263,7 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
   if (setorId === null) return [];
   const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
-  const [aguardandoSaida, semNfe] = await Promise.all([
+  const [aguardandoSaida, aguardandoAntigas, semNfe] = await Promise.all([
     db
       .select({ total: count() })
       .from(entregas)
@@ -270,6 +274,18 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
           filtroSetor
         )
       ),
+    // Quantas dessas são de dias anteriores (esquecidas na fila).
+    db
+      .select({ total: count() })
+      .from(entregas)
+      .where(
+        and(
+          eq(entregas.status, "pendente"),
+          isNull(entregas.horaSaida),
+          lt(entregas.data, paraChaveDiaLocal(new Date())),
+          filtroSetor
+        )
+      ),
     db
       .select({ total: count() })
       .from(entregas)
@@ -277,6 +293,7 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
   ]);
 
   const aguardandoSaidaTotal = aguardandoSaida[0]?.total ?? 0;
+  const aguardandoAntigasTotal = aguardandoAntigas[0]?.total ?? 0;
   const semNfeTotal = semNfe[0]?.total ?? 0;
   const alertas: Alerta[] = [];
 
@@ -286,8 +303,12 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
       tag: "SAÍDA",
       titulo: `${pluralEntregas(aguardandoSaidaTotal)} aguardando saída`,
       descricao:
-        "Cadastradas no sistema, mas o motorista ainda não saiu para entrega.",
+        aguardandoAntigasTotal > 0
+          ? `Inclui ${aguardandoAntigasTotal} de dias anteriores. Toque para ver todas.`
+          : "Cadastradas no sistema, mas o motorista ainda não saiu para entrega.",
       tom: "atencao",
+      // "de=&ate=" mostra todos os dias (sem isso a lista abre só no dia de hoje).
+      href: "/canhotos?situacao=aguardando&de=&ate=",
     });
   }
 
@@ -352,6 +373,7 @@ export async function getAtividadeRecente(
         id: entregaHistorico.id,
         statusNovo: entregaHistorico.statusNovo,
         alteradoEm: entregaHistorico.alteradoEm,
+        observacao: entregaHistorico.observacao,
         numero: entregas.numero,
       })
       .from(entregaHistorico)
@@ -377,7 +399,7 @@ export async function getAtividadeRecente(
 
     itens.push({
       id: `cadastro-${entrega.id}`,
-      hora: formatHora(entrega.criadoEm),
+      hora: rotuloQuando(entrega.criadoEm),
       titulo: "Entrega registrada",
       descricao: `${responsavel} cadastrou a entrega #${entrega.numero} para ${entrega.clienteNome}.`,
       cor: "primary",
@@ -389,18 +411,20 @@ export async function getAtividadeRecente(
     if (historico.statusNovo === "entregue") {
       itens.push({
         id: `historico-${historico.id}`,
-        hora: formatHora(historico.alteradoEm),
-        titulo: "Entrega confirmada pelo cliente",
-        descricao: `Cliente confirmou o recebimento da entrega #${historico.numero}.`,
+        hora: rotuloQuando(historico.alteradoEm),
+        titulo: "Entrega concluída",
+        descricao: `O motorista concluiu a entrega #${historico.numero} com foto da entrega.`,
         cor: "info",
         timestamp: historico.alteradoEm,
       });
     } else if (historico.statusNovo === "cancelado") {
       itens.push({
         id: `historico-${historico.id}`,
-        hora: formatHora(historico.alteradoEm),
+        hora: rotuloQuando(historico.alteradoEm),
         titulo: "Entrega cancelada",
-        descricao: `A entrega #${historico.numero} foi marcada como cancelada.`,
+        descricao: historico.observacao?.startsWith("Motivo do cancelamento:")
+          ? `Entrega #${historico.numero} cancelada. ${historico.observacao}.`
+          : `A entrega #${historico.numero} foi marcada como cancelada.`,
         cor: "muted",
         timestamp: historico.alteradoEm,
       });
@@ -408,15 +432,38 @@ export async function getAtividadeRecente(
   }
 
   return itens
-    .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, limit);
 }
 
-function formatHora(isoTimestamp: string): string {
-  return new Date(isoTimestamp).toLocaleTimeString("pt-BR", {
+const FUSO_LOJA = "America/Sao_Paulo";
+
+function diaNaLoja(data: Date): string {
+  return data.toLocaleDateString("en-CA", { timeZone: FUSO_LOJA });
+}
+
+/**
+ * "Hoje, 12:45" / "Ontem, 11:01" / "03/10, 09:30" — só a hora fazia itens de
+ * ontem parecerem fora de ordem. Sempre no fuso da loja (o servidor pode
+ * estar em UTC).
+ */
+export function rotuloQuando(isoTimestamp: string, agora = new Date()): string {
+  const data = new Date(isoTimestamp);
+  const hora = data.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: FUSO_LOJA,
   });
+  const dia = diaNaLoja(data);
+  if (dia === diaNaLoja(agora)) return `Hoje, ${hora}`;
+  const ontem = new Date(agora.getTime() - 24 * 60 * 60 * 1000);
+  if (dia === diaNaLoja(ontem)) return `Ontem, ${hora}`;
+  const ddmm = data.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: FUSO_LOJA,
+  });
+  return `${ddmm}, ${hora}`;
 }
 
 export interface EntregaListItem {
@@ -430,20 +477,73 @@ export interface EntregaListItem {
   formaPagamento: FormaPagamento;
   motoboy: string | null;
   status: StatusEntrega;
+  situacao: SituacaoEntrega;
+  /** Ainda na loja (pendente e sem saída): pode excluir ou cancelar. */
+  aindaNaLoja: boolean;
+}
+
+export interface FiltrosListaEntregas {
+  situacao?: SituacaoEntrega;
+  /** Só entregas abertas (pendentes e em rota), quando não há situação escolhida. */
+  somenteEmAberto?: boolean;
+  /** Cliente, NF-e, pedido, telefone ou número da entrega (#123). */
+  busca?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  motoboyId?: string;
+}
+
+/** Sem paginação ainda: a lista mostra as mais recentes e a busca acha o resto. */
+export const LIMITE_LISTA_ENTREGAS = 300;
+
+function escaparLike(texto: string): string {
+  return texto.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
 export async function getEntregas(
-  status?: StatusEntrega,
+  filtros: FiltrosListaEntregas = {},
   setorId?: string | null
 ): Promise<EntregaListItem[]> {
   const db = getDb();
   if (!db) return [];
   if (setorId === null) return [];
 
-  const filtros = [
-    status ? eq(entregas.status, status) : undefined,
-    setorId ? eq(entregas.setorId, setorId) : undefined,
-  ].filter((f): f is NonNullable<typeof f> => f !== undefined);
+  const condicoes = [];
+  switch (filtros.situacao) {
+    case "aguardando":
+      condicoes.push(eq(entregas.status, "pendente"), isNull(entregas.horaSaida));
+      break;
+    case "em_rota":
+      condicoes.push(eq(entregas.status, "pendente"), isNotNull(entregas.horaSaida));
+      break;
+    case "entregue":
+    case "cancelado":
+      condicoes.push(eq(entregas.status, filtros.situacao));
+      break;
+    default:
+      if (filtros.somenteEmAberto) condicoes.push(eq(entregas.status, "pendente"));
+  }
+  if (setorId) condicoes.push(eq(entregas.setorId, setorId));
+  if (filtros.dataInicio) condicoes.push(gte(entregas.data, filtros.dataInicio));
+  if (filtros.dataFim) condicoes.push(lte(entregas.data, filtros.dataFim));
+  if (filtros.motoboyId) condicoes.push(eq(entregas.motoboyId, filtros.motoboyId));
+
+  const busca = filtros.busca?.trim();
+  if (busca) {
+    const padrao = `%${escaparLike(busca)}%`;
+    const numero = /^#?\d{1,9}$/.test(busca) ? Number(busca.replace("#", "")) : null;
+    const digitos = busca.replace(/\D/g, "");
+    const opcoes = [
+      sql`${entregas.clienteNome} ilike ${padrao}`,
+      sql`${entregas.numeroNfe} ilike ${padrao}`,
+      sql`${entregas.numeroPedido} ilike ${padrao}`,
+    ];
+    if (numero !== null) opcoes.push(eq(entregas.numero, numero));
+    if (digitos.length >= 4) {
+      opcoes.push(sql`${entregas.clienteTelefone} like ${`%${digitos}%`}`);
+    }
+    condicoes.push(or(...opcoes)!);
+  }
 
   const rows = await db
     .select({
@@ -456,12 +556,14 @@ export async function getEntregas(
       valorPagamento: entregas.valorPagamento,
       formaPagamento: entregas.formaPagamento,
       status: entregas.status,
+      horaSaida: entregas.horaSaida,
       motoboyNome: motoboys.nome,
     })
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
-    .where(filtros.length > 0 ? and(...filtros) : undefined)
-    .orderBy(desc(entregas.numero));
+    .where(condicoes.length > 0 ? and(...condicoes) : undefined)
+    .orderBy(desc(entregas.numero))
+    .limit(LIMITE_LISTA_ENTREGAS);
 
   return rows.map((entrega) => ({
     id: entrega.id,
@@ -474,6 +576,8 @@ export async function getEntregas(
     formaPagamento: entrega.formaPagamento,
     motoboy: entrega.motoboyNome,
     status: entrega.status,
+    situacao: situacaoEntrega(entrega.status, entrega.horaSaida),
+    aindaNaLoja: entrega.status === "pendente" && entrega.horaSaida === null,
   }));
 }
 
@@ -482,6 +586,7 @@ export interface RelatorioFiltros {
   dataFim?: string;
   status?: StatusEntrega;
   formaPagamento?: FormaPagamento;
+  motoboyId?: string;
   // undefined = Admin (tudo); null = sem acesso (vazio); uuid = só o setor.
   setorId?: string | null;
 }
@@ -491,11 +596,20 @@ export interface RelatorioEntregaItem {
   numero: string;
   data: string;
   cliente: string;
+  telefone: string | null;
+  endereco: string | null;
+  numeroNfe: string | null;
+  numeroPedido: string | null;
   valor: string;
   valorNumerico: number;
   formaPagamento: FormaPagamento;
   motoboy: string | null;
   status: StatusEntrega;
+  situacao: SituacaoEntrega;
+  /** "HH:MM" ou null. */
+  horaSaida: string | null;
+  /** "dd/mm/aaaa HH:MM" (fuso da loja) ou null. */
+  concluidaEm: string | null;
 }
 
 export interface RelatorioPorFormaPagamento {
@@ -506,8 +620,15 @@ export interface RelatorioPorFormaPagamento {
 
 export interface RelatorioTotais {
   quantidade: number;
+  entregues: number;
+  canceladas: number;
+  /** Soma das entregas NÃO canceladas (canceladas não entram no caixa). */
   valorTotal: string;
+  /** Soma só das entregues. */
+  valorEntregue: string;
+  /** Média das NÃO canceladas. */
   ticketMedio: string;
+  /** Por forma de pagamento, sem canceladas. */
   porFormaPagamento: RelatorioPorFormaPagamento[];
 }
 
@@ -519,12 +640,58 @@ export interface RelatorioEntregas {
 function relatorioVazio(): RelatorioEntregas {
   return {
     itens: [],
-    totais: {
-      quantidade: 0,
-      valorTotal: formatBRL(0),
-      ticketMedio: formatBRL(0),
-      porFormaPagamento: [],
-    },
+    totais: calcularTotaisRelatorio([]),
+  };
+}
+
+function formatarDataHoraLoja(iso: string | null): string | null {
+  if (!iso) return null;
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime())) return null;
+  return data
+    .toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    .replace(",", "");
+}
+
+/** Totais do relatório: entregas canceladas contam na quantidade, mas não no dinheiro. */
+export function calcularTotaisRelatorio(
+  itens: Pick<RelatorioEntregaItem, "status" | "valorNumerico" | "formaPagamento">[]
+): RelatorioTotais {
+  const validas = itens.filter((item) => item.status !== "cancelado");
+  const entregues = itens.filter((item) => item.status === "entregue");
+  const soma = (lista: typeof itens) =>
+    lista.reduce((total, item) => total + item.valorNumerico, 0);
+  const valorValidas = soma(validas);
+
+  const porFormaMapa = new Map<FormaPagamento, { quantidade: number; valor: number }>();
+  for (const item of validas) {
+    const atual = porFormaMapa.get(item.formaPagamento) ?? { quantidade: 0, valor: 0 };
+    atual.quantidade += 1;
+    atual.valor += item.valorNumerico;
+    porFormaMapa.set(item.formaPagamento, atual);
+  }
+
+  return {
+    quantidade: itens.length,
+    entregues: entregues.length,
+    canceladas: itens.length - validas.length,
+    valorTotal: formatBRL(valorValidas),
+    valorEntregue: formatBRL(soma(entregues)),
+    ticketMedio: formatBRL(validas.length > 0 ? valorValidas / validas.length : 0),
+    porFormaPagamento: Array.from(porFormaMapa.entries())
+      .map(([formaPagamento, valor]) => ({
+        formaPagamento,
+        quantidade: valor.quantidade,
+        valor: formatBRL(valor.valor),
+      }))
+      .sort((a, b) => b.quantidade - a.quantidade),
   };
 }
 
@@ -541,9 +708,15 @@ export async function getRelatorioEntregas(
       numero: entregas.numero,
       data: entregas.data,
       clienteNome: entregas.clienteNome,
+      clienteTelefone: entregas.clienteTelefone,
+      endereco: entregas.endereco,
+      numeroNfe: entregas.numeroNfe,
+      numeroPedido: entregas.numeroPedido,
       valorPagamento: entregas.valorPagamento,
       formaPagamento: entregas.formaPagamento,
       status: entregas.status,
+      horaSaida: entregas.horaSaida,
+      clienteAssinouEm: entregas.clienteAssinouEm,
       motoboyNome: motoboys.nome,
     })
     .from(entregas)
@@ -554,12 +727,15 @@ export async function getRelatorioEntregas(
           ? gte(entregas.data, filtros.dataInicio)
           : undefined,
         filtros.dataFim ? lte(entregas.data, filtros.dataFim) : undefined,
-        filtros.status
+        // Relatórios mostram só o que terminou (entregue ou cancelado); o
+        // que está em aberto fica na tela Entregas.
+        filtros.status === "entregue" || filtros.status === "cancelado"
           ? eq(entregas.status, filtros.status)
-          : undefined,
+          : inArray(entregas.status, ["entregue", "cancelado"]),
         filtros.formaPagamento
           ? eq(entregas.formaPagamento, filtros.formaPagamento)
           : undefined,
+        filtros.motoboyId ? eq(entregas.motoboyId, filtros.motoboyId) : undefined,
         filtros.setorId ? eq(entregas.setorId, filtros.setorId) : undefined
       )
     )
@@ -570,50 +746,24 @@ export async function getRelatorioEntregas(
     numero: `#${entrega.numero}`,
     data: formatDateBR(entrega.data),
     cliente: entrega.clienteNome,
+    telefone: entrega.clienteTelefone,
+    endereco: entrega.endereco,
+    numeroNfe: entrega.numeroNfe,
+    numeroPedido: entrega.numeroPedido,
     valor: formatBRL(Number(entrega.valorPagamento)),
     valorNumerico: Number(entrega.valorPagamento),
     formaPagamento: entrega.formaPagamento,
     motoboy: entrega.motoboyNome,
     status: entrega.status,
+    situacao: situacaoEntrega(entrega.status, entrega.horaSaida),
+    horaSaida: entrega.horaSaida ? entrega.horaSaida.slice(0, 5) : null,
+    concluidaEm:
+      entrega.status === "entregue"
+        ? formatarDataHoraLoja(entrega.clienteAssinouEm)
+        : null,
   }));
 
-  const valorTotalNumerico = itens.reduce(
-    (soma, item) => soma + item.valorNumerico,
-    0
-  );
-
-  const porFormaMapa = new Map<
-    FormaPagamento,
-    { quantidade: number; valor: number }
-  >();
-
-  for (const item of itens) {
-    const atual = porFormaMapa.get(item.formaPagamento) ?? {
-      quantidade: 0,
-      valor: 0,
-    };
-    atual.quantidade += 1;
-    atual.valor += item.valorNumerico;
-    porFormaMapa.set(item.formaPagamento, atual);
-  }
-
-  return {
-    itens,
-    totais: {
-      quantidade: itens.length,
-      valorTotal: formatBRL(valorTotalNumerico),
-      ticketMedio: formatBRL(
-        itens.length > 0 ? valorTotalNumerico / itens.length : 0
-      ),
-      porFormaPagamento: Array.from(porFormaMapa.entries())
-        .map(([formaPagamento, valor]) => ({
-          formaPagamento,
-          quantidade: valor.quantidade,
-          valor: formatBRL(valor.valor),
-        }))
-        .sort((a, b) => b.quantidade - a.quantidade),
-    },
-  };
+  return { itens, totais: calcularTotaisRelatorio(itens) };
 }
 
 export interface EntregaDetalhe {
@@ -702,7 +852,7 @@ export async function getEntregaById(
 
 export interface EntregaComprovante {
   id: string;
-  tipo: "foto" | "comprovante_pix" | "assinatura_cliente";
+  tipo: "foto" | "foto_produto" | "comprovante_pix" | "assinatura_cliente";
   capturadoEm: string;
   capturadoPorMotoboy: string | null;
 }
@@ -732,6 +882,7 @@ export async function getComprovantesEntrega(
     .filter(
       (anexo) =>
         anexo.tipo === "foto" ||
+        anexo.tipo === "foto_produto" ||
         anexo.tipo === "comprovante_pix" ||
         anexo.tipo === "assinatura_cliente"
     )
@@ -739,11 +890,44 @@ export async function getComprovantesEntrega(
       id: anexo.id,
       tipo: anexo.tipo as
         | "foto"
+        | "foto_produto"
         | "comprovante_pix"
         | "assinatura_cliente",
       capturadoEm: anexo.capturadoEm,
       capturadoPorMotoboy: anexo.motoboyNome ?? null,
     }));
+}
+
+export interface EntregaDocumento {
+  id: string;
+  tipo: "xml_nfe" | "xml_cte" | "danfe_pdf";
+  capturadoEm: string;
+}
+
+/** XML e PDF da nota anexados no cadastro da entrega. */
+export async function getDocumentosEntrega(
+  entregaId: string
+): Promise<EntregaDocumento[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      id: entregaAnexos.id,
+      tipo: entregaAnexos.tipo,
+      capturadoEm: entregaAnexos.capturadoEm,
+    })
+    .from(entregaAnexos)
+    .where(eq(entregaAnexos.entregaId, entregaId))
+    .orderBy(asc(entregaAnexos.capturadoEm));
+
+  return rows.flatMap((anexo) =>
+    anexo.tipo === "xml_nfe" ||
+    anexo.tipo === "xml_cte" ||
+    anexo.tipo === "danfe_pdf"
+      ? [{ id: anexo.id, tipo: anexo.tipo, capturadoEm: anexo.capturadoEm }]
+      : []
+  );
 }
 
 export interface EntregaMotorista {
@@ -753,10 +937,21 @@ export interface EntregaMotorista {
   endereco: string;
   cep: string;
   valor: string;
+  valorNumerico: number;
   formaPagamento: FormaPagamento;
   status: StatusEntrega;
   horaSaida: string | null;
   clienteAssinouEm: string | null;
+}
+
+/** Entrega do dia na lista do motorista: inclui o que a rota precisa. */
+export interface EntregaMotoristaHoje extends EntregaMotorista {
+  latitude: number | null;
+  longitude: number | null;
+  /** Entregas da mesma rota têm o mesmo rotaId (null = entrega solta). */
+  rotaId: string | null;
+  /** Posição na ordem de visita da rota (1 = primeira parada). */
+  rotaOrdem: number | null;
 }
 
 export interface EntregaHistoricoMotorista extends EntregaMotorista {
@@ -802,6 +997,7 @@ export async function getHistoricoDoMotorista(
     endereco: entrega.endereco ?? "",
     cep: entrega.cep ? formatCep(entrega.cep) : "",
     valor: formatBRL(Number(entrega.valorPagamento)),
+    valorNumerico: Number(entrega.valorPagamento),
     formaPagamento: entrega.formaPagamento,
     status: entrega.status,
     horaSaida: entrega.horaSaida,
@@ -811,7 +1007,7 @@ export async function getHistoricoDoMotorista(
 
 export async function getEntregasDoMotorista(
   motoboyId: string
-): Promise<EntregaMotorista[]> {
+): Promise<EntregaMotoristaHoje[]> {
   const db = getDb();
   if (!db) return [];
 
@@ -829,6 +1025,10 @@ export async function getEntregasDoMotorista(
       status: entregas.status,
       horaSaida: entregas.horaSaida,
       clienteAssinouEm: entregas.clienteAssinouEm,
+      latitude: entregas.latitude,
+      longitude: entregas.longitude,
+      rotaId: entregas.rotaId,
+      rotaOrdem: entregas.rotaOrdem,
     })
     .from(entregas)
     .where(
@@ -847,10 +1047,15 @@ export async function getEntregasDoMotorista(
     endereco: entrega.endereco ?? "",
     cep: entrega.cep ? formatCep(entrega.cep) : "",
     valor: formatBRL(Number(entrega.valorPagamento)),
+    valorNumerico: Number(entrega.valorPagamento),
     formaPagamento: entrega.formaPagamento,
     status: entrega.status,
     horaSaida: entrega.horaSaida,
     clienteAssinouEm: entrega.clienteAssinouEm,
+    latitude: entrega.latitude === null ? null : Number(entrega.latitude),
+    longitude: entrega.longitude === null ? null : Number(entrega.longitude),
+    rotaId: entrega.rotaId,
+    rotaOrdem: entrega.rotaOrdem,
   }));
 }
 
@@ -900,4 +1105,47 @@ export async function getHistoricoEntrega(
     statusNovo: linha.statusNovo,
     observacao: linha.observacao,
   }));
+}
+
+export interface ClienteRecente {
+  nome: string;
+  telefone: string | null;
+  endereco: string | null;
+  cep: string | null;
+}
+
+/**
+ * Clientes das entregas mais recentes (sem repetir nome), para o cadastro de
+ * entrega sugerir o nome e preencher telefone/endereço de quem já comprou.
+ */
+export async function getClientesRecentes(
+  setorId?: string | null,
+  limite = 300
+): Promise<ClienteRecente[]> {
+  const db = getDb();
+  if (!db) return [];
+  if (setorId === null) return [];
+
+  const rows = await db
+    .select({
+      nome: entregas.clienteNome,
+      telefone: entregas.clienteTelefone,
+      endereco: entregas.endereco,
+      cep: entregas.cep,
+    })
+    .from(entregas)
+    .where(setorId ? eq(entregas.setorId, setorId) : undefined)
+    .orderBy(desc(entregas.criadoEm))
+    .limit(limite * 4);
+
+  const vistos = new Set<string>();
+  const clientes: ClienteRecente[] = [];
+  for (const row of rows) {
+    const chave = row.nome.trim().toLocaleLowerCase("pt-BR");
+    if (!chave || vistos.has(chave)) continue;
+    vistos.add(chave);
+    clientes.push(row);
+    if (clientes.length >= limite) break;
+  }
+  return clientes;
 }

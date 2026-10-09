@@ -5,7 +5,8 @@ import { Card } from "@/components/ui/Card";
 interface StatCardProps {
   label: string;
   value: string;
-  sub: string;
+  /** Subtítulo opcional embaixo do valor; sem ele o card não reserva a linha. */
+  sub?: string;
   /** Pílula com variação percentual (ex.: "12,5%"). */
   trend?: { value: string; tone: "good" | "bad" };
   /** Ícone à direita do valor (badge redondo). Pode aparecer junto do
@@ -103,11 +104,13 @@ export function StatCard({
           claros; na variante "accent" ganha peso médio em vez de normal
           pelo mesmo motivo. Alinhado à direita a pedido do Hickson
           (21/08/2026). */}
-      <p
-        className={`mt-2 text-right text-sm ${accent ? "font-medium text-white" : "font-normal text-[#475569]"}`}
-      >
-        {sub}
-      </p>
+      {sub ? (
+        <p
+          className={`mt-2 text-right text-sm ${accent ? "font-medium text-white" : "font-normal text-[#475569]"}`}
+        >
+          {sub}
+        </p>
+      ) : null}
     </Card>
   );
 }

@@ -5,7 +5,7 @@ import { linhaCsv, SEPARADOR_CSV } from "@/lib/csv";
 import { arquivarRelatorioCsv } from "@/lib/relatorios-storage";
 import {
   FORMA_PAGAMENTO_LABEL,
-  STATUS_LABEL,
+  SITUACAO_LABEL,
   isDataIsoValida,
   isFormaPagamento,
   isStatusEntrega,
@@ -38,30 +38,57 @@ export async function GET(request: NextRequest) {
   const fimParam = params.get("fim");
   const statusParam = params.get("status");
   const formaParam = params.get("forma");
+  const motoristaParam = params.get("motorista");
 
   const dataInicio = isDataIsoValida(inicioParam) ? inicioParam : undefined;
   const dataFim = isDataIsoValida(fimParam) ? fimParam : undefined;
   const status = isStatusEntrega(statusParam) ? statusParam : undefined;
   const formaPagamento = isFormaPagamento(formaParam) ? formaParam : undefined;
+  const motoboyId =
+    motoristaParam && /^[0-9a-f-]{36}$/i.test(motoristaParam)
+      ? motoristaParam
+      : undefined;
 
   const { itens } = await getRelatorioEntregas({
     dataInicio,
     dataFim,
     status,
     formaPagamento,
+    motoboyId,
     setorId: setorIdParaFiltro(sessao),
   });
 
-  const cabecalho = ["Código", "Data", "Cliente", "Valor", "Forma de pagamento", "Motorista", "Situação"];
+  // Valor como número ("45,00", sem "R$"): o Excel em português soma a coluna.
+  const cabecalho = [
+    "Código",
+    "Data",
+    "Cliente",
+    "Telefone",
+    "Endereço",
+    "NF-e",
+    "Pedido",
+    "Valor (R$)",
+    "Forma de pagamento",
+    "Motorista",
+    "Situação",
+    "Saída",
+    "Concluída em",
+  ];
   const linhas = itens.map((item) =>
     linhaCsv([
       item.numero,
       item.data,
       item.cliente,
-      item.valor,
+      item.telefone ?? "",
+      item.endereco ?? "",
+      item.numeroNfe ?? "",
+      item.numeroPedido ?? "",
+      item.valorNumerico.toFixed(2).replace(".", ","),
       FORMA_PAGAMENTO_LABEL[item.formaPagamento],
       item.motoboy ?? "",
-      STATUS_LABEL[item.status],
+      SITUACAO_LABEL[item.situacao],
+      item.horaSaida ?? "",
+      item.concluidaEm ?? "",
     ])
   );
 

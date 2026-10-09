@@ -20,6 +20,8 @@ export interface VeiculoInput {
   modelo: string;
   ano: number | null;
   ativo?: boolean;
+  /** Motorista responsável (opcional). */
+  motoboyId?: string | null;
 }
 
 export interface GastoVeiculoInput {
@@ -63,6 +65,10 @@ function validarVeiculo(input: VeiculoInput): string | null {
     return "Informe um ano válido.";
   }
 
+  if (input.motoboyId && !/^[0-9a-f-]{36}$/i.test(input.motoboyId)) {
+    return "Motorista inválido.";
+  }
+
   return null;
 }
 
@@ -96,10 +102,14 @@ export async function criarVeiculo(
       modelo: input.modelo.trim(),
       ano: input.ano,
       ativo: true,
+      motoboyId: input.motoboyId || null,
     });
   } catch (error) {
     if (codigoErroPostgres(error) === "23505") {
       return { ok: false, error: "Essa placa já está cadastrada." };
+    }
+    if (codigoErroPostgres(error) === "23503") {
+      return { ok: false, error: "Motorista não encontrado. Recarregue a página." };
     }
     return {
       ok: false,
@@ -144,6 +154,7 @@ export async function atualizarVeiculo(
         modelo: input.modelo.trim(),
         ano: input.ano,
         ativo: input.ativo ?? true,
+        motoboyId: input.motoboyId || null,
         atualizadoEm: new Date().toISOString(),
       })
       .where(eq(veiculos.id, id))
@@ -155,6 +166,9 @@ export async function atualizarVeiculo(
   } catch (error) {
     if (codigoErroPostgres(error) === "23505") {
       return { ok: false, error: "Essa placa já está cadastrada." };
+    }
+    if (codigoErroPostgres(error) === "23503") {
+      return { ok: false, error: "Motorista não encontrado. Recarregue a página." };
     }
     return {
       ok: false,

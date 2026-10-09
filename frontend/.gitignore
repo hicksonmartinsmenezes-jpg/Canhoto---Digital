@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# chaves privadas do Firebase (nunca versionar)
+*firebase-adminsdk*.json
+*-service-account*.json

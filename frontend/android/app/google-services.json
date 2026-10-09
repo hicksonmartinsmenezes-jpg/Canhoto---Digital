@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "867699504585",
+    "project_id": "canhoto-digital-rildon",
+    "storage_bucket": "canhoto-digital-rildon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:867699504585:android:1303f3085fd560e0d1a418",
+        "android_client_info": {
+          "package_name": "br.com.rildon.canhotodigital.motorista"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAU-TadPX_LY242XbUlbDaXcyh-1NOt_nk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

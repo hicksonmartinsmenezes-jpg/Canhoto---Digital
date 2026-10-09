@@ -22,6 +22,8 @@ export interface VeiculoListItem {
   modelo: string;
   ano: number | null;
   ativo: boolean;
+  motoboyId: string | null;
+  motoboyNome: string | null;
   gastoMes: string;
   gastoMesNumerico: number;
 }
@@ -48,6 +50,8 @@ export interface VeiculosResumo {
 
 export interface VeiculosData {
   veiculos: VeiculoListItem[];
+  /** Motoristas ativos, para escolher o responsável pelo veículo. */
+  motoboys: { id: string; nome: string }[];
   gastosRecentes: VeiculoGastoItem[];
   resumo: VeiculosResumo;
 }

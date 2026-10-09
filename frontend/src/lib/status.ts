@@ -56,3 +56,42 @@ const REGEX_DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 export function isDataIsoValida(value: unknown): value is string {
   return typeof value === "string" && REGEX_DATA_ISO.test(value);
 }
+
+// "Situação" mostrada nas telas: o status do banco tem só 3 valores, mas uma
+// entrega "pendente" pode estar parada na loja ou já na rua com o motorista.
+// Separar as duas evita que a loja confunda quem já saiu com quem não saiu.
+export type SituacaoEntrega = "aguardando" | "em_rota" | "entregue" | "cancelado";
+
+export function situacaoEntrega(
+  status: StatusEntrega,
+  horaSaida: string | null | undefined
+): SituacaoEntrega {
+  if (status === "pendente") return horaSaida ? "em_rota" : "aguardando";
+  return status;
+}
+
+export const SITUACAO_LABEL: Record<SituacaoEntrega, string> = {
+  aguardando: "Aguardando saída",
+  em_rota: "Em rota",
+  entregue: "Entregue",
+  cancelado: "Cancelado",
+};
+
+export const SITUACAO_BADGE_CLASSES: Record<SituacaoEntrega, string> = {
+  aguardando: "bg-amber-50 border-amber-200 text-amber-700",
+  em_rota: "bg-blue-50 border-blue-200 text-blue-700",
+  entregue: "bg-emerald-50 border-emerald-200 text-emerald-700",
+  cancelado: "bg-red-50 border-red-200 text-red-700",
+};
+
+/** Situação em texto simples (sem fundo nem borda), usada na lista de Entregas. */
+export const SITUACAO_TEXT_CLASSES: Record<SituacaoEntrega, string> = {
+  aguardando: "text-amber-700",
+  em_rota: "text-blue-700",
+  entregue: "text-emerald-700",
+  cancelado: "text-red-700",
+};
+
+export function isSituacaoEntrega(value: unknown): value is SituacaoEntrega {
+  return typeof value === "string" && Object.hasOwn(SITUACAO_LABEL, value);
+}

@@ -10,6 +10,7 @@ import {
   atualizarRascunho,
   lerRascunho,
   listarRascunhos,
+  fotosDoProduto,
 } from "@/lib/comprovante-pendente";
 import {
   enviarRascunho,
@@ -42,7 +43,8 @@ export interface RascunhoVisivel {
   rejeitado: boolean;
   mensagem: string | null;
   fotoUrl: string;
-  assinaturaUrl: string;
+  /** Miniaturas das fotos do produto, quando o motorista tirou. */
+  fotosProdutoUrls: string[];
 }
 
 /**
@@ -74,8 +76,10 @@ export function useRascunhosComprovante(entregaId?: string) {
     liberarUrls();
     const visiveis = filtrados.map((r): RascunhoVisivel => {
       const fotoUrl = URL.createObjectURL(r.fotoEntrega);
-      const assinaturaUrl = URL.createObjectURL(r.assinatura);
-      urlsRef.current.push(fotoUrl, assinaturaUrl);
+      const fotosProdutoUrls = fotosDoProduto(r).map((foto) =>
+        URL.createObjectURL(foto)
+      );
+      urlsRef.current.push(fotoUrl, ...fotosProdutoUrls);
       return {
         entregaId: r.entregaId,
         rotulo: r.rotulo ?? null,
@@ -84,7 +88,7 @@ export function useRascunhosComprovante(entregaId?: string) {
         rejeitado: r.rejeitado,
         mensagem: r.ultimoErro,
         fotoUrl,
-        assinaturaUrl,
+        fotosProdutoUrls,
       };
     });
 

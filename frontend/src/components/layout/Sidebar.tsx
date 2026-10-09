@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -14,6 +14,7 @@ import {
   ClipboardList,
   ChevronDown,
   Car,
+  X,
   GraduationCap,
   LogOut,
 } from "lucide-react";
@@ -101,6 +102,8 @@ export function Sidebar({ papel }: { papel: PapelPortal }) {
   if (pathname.startsWith("/motorista")) return null;
 
   return (
+    <>
+      <MenuCelular itens={itensMenu} pathname={pathname} />
     <div
       data-testid="sidebar"
       className="peer group fixed inset-y-0 left-0 z-40 hidden w-16 overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:w-64 md:block"
@@ -149,6 +152,9 @@ export function Sidebar({ papel }: { papel: PapelPortal }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
+                  title={item.label}
+                  aria-label={item.label}
                   className={`flex items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.98] ${
                     isActive
                       ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
@@ -186,6 +192,9 @@ export function Sidebar({ papel }: { papel: PapelPortal }) {
               <div key={item.label}>
                 <button
                   type="button"
+                  title={item.label}
+                  aria-label={item.label}
+                  aria-expanded={cadastrosAberto}
                   onClick={() => setCadastrosAberto((v) => !v)}
                   className={`flex w-full items-center gap-3 border-l-2 px-1 py-2 text-[15px] transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.98] ${
                     grupoAtivo
@@ -232,6 +241,9 @@ export function Sidebar({ papel }: { papel: PapelPortal }) {
                             <Link
                               key={child.href}
                               href={child.href}
+                              prefetch={false}
+                              title={child.label}
+                              aria-label={child.label}
                               className={`flex items-center gap-3 border-l-2 py-2 pr-1 pl-5 text-[15px] transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.98] ${
                                 isActive
                                   ? "border-transparent font-semibold text-white group-hover:border-[#FFD200] group-hover:bg-white/10"
@@ -264,6 +276,8 @@ export function Sidebar({ papel }: { papel: PapelPortal }) {
           <form action={sairOperador}>
             <button
               type="submit"
+              title="Sair"
+              aria-label="Sair"
               className="flex w-full items-center gap-3 border-l-2 border-transparent px-1 py-2 text-[15px] text-white/80 transition-[color,background-color,transform] duration-150 hover:bg-white/10 hover:text-white active:scale-[0.98]"
             >
               <span className="grid size-9 shrink-0 place-items-center rounded-lg">
@@ -276,6 +290,161 @@ export function Sidebar({ papel }: { papel: PapelPortal }) {
           </form>
         </div>
       </aside>
+    </div>
+    </>
+  );
+}
+
+type ItemMenu = (typeof NAV_ITEMS)[number];
+
+function itemAtivo(href: string, pathname: string) {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
+
+// Celular/tablet estreito (< md): a barra lateral some, então o menu vira uma
+// barra fixa no topo com botão "Menu" que abre uma gaveta com os nomes das
+// telas. Antes não havia como navegar pelo celular.
+function MenuCelular({
+  itens,
+  pathname,
+}: {
+  itens: ItemMenu[];
+  pathname: string;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [rotaAnterior, setRotaAnterior] = useState(pathname);
+
+  // Trocou de tela: fecha a gaveta (ajuste de estado durante o render, sem
+  // efeito, como recomenda o React).
+  if (rotaAnterior !== pathname) {
+    setRotaAnterior(pathname);
+    setAberto(false);
+  }
+
+  useEffect(() => {
+    if (!aberto) return;
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setAberto(false);
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [aberto]);
+
+  const links: {
+    href: string;
+    label: string;
+    icon: (typeof NAV_ITEMS)[0]["icon"];
+    grupo: string | null;
+  }[] = [];
+  for (const item of itens) {
+    if (item.type === "group") {
+      for (const filho of item.children) {
+        links.push({ ...filho, grupo: item.label });
+      }
+    } else {
+      links.push({ href: item.href, label: item.label, icon: item.icon, grupo: null });
+    }
+  }
+
+  return (
+    <div className="md:hidden">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between bg-[#0A1F44] px-4 text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/rildon-express-logo-white.svg"
+          alt="Rildon Express"
+          className="h-6 w-auto"
+        />
+        <button
+          type="button"
+          onClick={() => setAberto(true)}
+          aria-label="Abrir menu"
+          aria-expanded={aberto}
+          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-white hover:bg-white/10"
+        >
+          <Menu className="size-5" />
+          Menu
+        </button>
+      </header>
+
+      <AnimatePresence>
+        {aberto && (
+          <>
+            <motion.div
+              key="fundo"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-slate-900/50"
+              onClick={() => setAberto(false)}
+            />
+            <motion.nav
+              key="gaveta"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+              aria-label="Menu principal"
+              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-[#0A1F44] text-white"
+            >
+              <div className="flex h-14 items-center justify-between px-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/rildon-express-logo-white.svg"
+                  alt="Rildon Express"
+                  className="h-5 w-auto max-w-[170px]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAberto(false)}
+                  aria-label="Fechar menu"
+                  className="grid size-10 place-items-center rounded-lg hover:bg-white/10"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+              <div className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+                {links.map((link) => {
+                  const Icon = link.icon;
+                  const ativo = itemAtivo(link.href, pathname);
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      prefetch={false}
+                      aria-current={ativo ? "page" : undefined}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] ${
+                        ativo
+                          ? "bg-white/10 font-semibold text-white"
+                          : "text-white/80 hover:bg-white/10"
+                      }`}
+                    >
+                      <Icon className="size-5 shrink-0" />
+                      <span>
+                        {link.label}
+                        {link.grupo && (
+                          <span className="ml-1.5 text-xs text-white/50">
+                            {link.grupo}
+                          </span>
+                        )}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+              <form action={sairOperador} className="border-t border-white/10 p-3">
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-[15px] text-white/80 hover:bg-white/10"
+                >
+                  <LogOut className="size-5" />
+                  Sair
+                </button>
+              </form>
+            </motion.nav>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

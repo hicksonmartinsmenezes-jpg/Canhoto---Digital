@@ -17,7 +17,6 @@ export function MotoristasStatCard({
     <StatCard
       label="Motoristas ativos"
       value={ativos.toLocaleString("pt-BR")}
-      sub=""
       mini={{ label: "Em rota", value: emRota.length.toLocaleString("pt-BR") }}
     />
   );

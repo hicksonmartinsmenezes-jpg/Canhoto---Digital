@@ -16,17 +16,19 @@ export function Field({
   optional?: boolean;
   children: React.ReactNode;
 }) {
+  // O campo fica DENTRO do <label>: clicar no nome foca o campo e leitores de
+  // tela anunciam o nome certo (antes o rótulo não estava ligado ao campo).
   return (
-    <div>
-      <label className={labelClass}>
+    <label className="block">
+      <span className={labelClass}>
         {label}
         {optional && (
           <span className="ml-1 font-medium normal-case text-slate-400">
             (opcional)
           </span>
         )}
-      </label>
+      </span>
       {children}
-    </div>
+    </label>
   );
 }

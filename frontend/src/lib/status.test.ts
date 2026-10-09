@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   FORMA_PAGAMENTO_LABEL,
+  isSituacaoEntrega,
   isStatusEntrega,
+  SITUACAO_BADGE_CLASSES,
+  SITUACAO_LABEL,
+  situacaoEntrega,
   STATUS_BADGE_CLASSES,
   STATUS_HEX,
   STATUS_LABEL,
@@ -55,5 +59,26 @@ describe("status", () => {
       expect(isStatusEntrega(null)).toBe(false);
       expect(isStatusEntrega(["pendente"])).toBe(false);
     });
+  });
+});
+
+describe("situacaoEntrega", () => {
+  it("separa pendente parada de pendente em rota", () => {
+    expect(situacaoEntrega("pendente", null)).toBe("aguardando");
+    expect(situacaoEntrega("pendente", "09:30:00")).toBe("em_rota");
+    expect(situacaoEntrega("entregue", "09:30:00")).toBe("entregue");
+    expect(situacaoEntrega("cancelado", null)).toBe("cancelado");
+  });
+
+  it("valida a situação vinda da URL", () => {
+    expect(isSituacaoEntrega("em_rota")).toBe(true);
+    expect(isSituacaoEntrega("pendente")).toBe(false);
+    expect(isSituacaoEntrega("")).toBe(false);
+  });
+
+  it("rótulos e cores cobrem as 4 situações", () => {
+    const esperadas = ["aguardando", "cancelado", "em_rota", "entregue"];
+    expect(Object.keys(SITUACAO_LABEL).sort()).toEqual(esperadas);
+    expect(Object.keys(SITUACAO_BADGE_CLASSES).sort()).toEqual(esperadas);
   });
 });

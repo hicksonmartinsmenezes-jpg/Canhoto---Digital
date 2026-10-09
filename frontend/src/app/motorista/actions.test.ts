@@ -37,9 +37,13 @@ vi.mock("@/lib/motorista-session", () => ({
 import { revalidatePath } from "next/cache";
 import { rm, writeFile } from "node:fs/promises";
 import { getDb } from "@/lib/db";
+import { MAX_FOTOS_PRODUTO } from "@/lib/comprovante-limites";
 import { checarRateLimit } from "@/lib/rate-limit";
-import { motoristaPodeAcessarEntrega } from "@/lib/motorista-authorization";
-import { confirmarEntrega, iniciarEntrega } from "./actions";
+import {
+  motoristaPodeAcessarEntrega,
+  obterMotoristaAutorizado,
+} from "@/lib/motorista-authorization";
+import { confirmarEntrega, iniciarEntrega, iniciarRota } from "./actions";
 
 const revalidatePathMock = vi.mocked(revalidatePath);
 const writeFileMock = vi.mocked(writeFile);
@@ -51,6 +55,8 @@ const motoristaPodeAcessarEntregaMock = vi.mocked(
 );
 
 const ENTREGA_ID = "11111111-1111-4111-8111-111111111111";
+const ENTREGA_ID_2 = "22222222-2222-4222-8222-222222222222";
+const ENTREGA_ID_3 = "33333333-3333-4333-8333-333333333333";
 
 type SelectRow = {
   id: string;
@@ -149,15 +155,26 @@ function arquivoPng(nome: string): File {
 
 function criarFormDataEntrega({
   comprovantePix = false,
+  fotoProduto = false,
+  fotosProduto = 0,
 }: {
   comprovantePix?: boolean;
+  fotoProduto?: boolean;
+  fotosProduto?: number;
 } = {}): FormData {
   const formData = new FormData();
   formData.set("fotoEntrega", arquivoPng("entrega.png"));
-  formData.set("assinatura", arquivoPng("assinatura.png"));
 
   if (comprovantePix) {
     formData.set("comprovantePix", arquivoPng("comprovante-pix.png"));
+  }
+
+  if (fotoProduto) {
+    formData.append("fotoProduto", arquivoPng("produto.png"));
+  }
+
+  for (let i = 1; i <= fotosProduto; i++) {
+    formData.append("fotoProduto", arquivoPng(`produto-${i}.png`));
   }
 
   return formData;
@@ -201,7 +218,6 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("exige foto da entrega antes de confirmar", async () => {
     const formData = new FormData();
-    formData.set("assinatura", arquivoPng("assinatura.png"));
 
     await expect(confirmarEntrega(ENTREGA_ID, formData)).resolves.toEqual({
       ok: false,
@@ -212,19 +228,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
-  it("exige assinatura depois da foto da entrega", async () => {
-    const formData = new FormData();
-    formData.set("fotoEntrega", arquivoPng("entrega.png"));
-
-    await expect(confirmarEntrega(ENTREGA_ID, formData)).resolves.toEqual({
-      ok: false,
-      error: "Colete a assinatura do cliente antes de confirmar a entrega.",
-    });
-
-    expect(getDbMock).not.toHaveBeenCalled();
-  });
-
-  it("confirma entrega não Pix com foto da entrega e assinatura", async () => {
+  it("confirma entrega não Pix só com a foto da entrega", async () => {
     const { db, tx, insertValues } = configurarDb({
       selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
     });
@@ -238,7 +242,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(tx.update).toHaveBeenCalledTimes(1);
     // Sem outra entrega em rota: a última posição do motorista é apagada.
     expect(db.delete).toHaveBeenCalledTimes(1);
-    expect(writeFileMock).toHaveBeenCalledTimes(2);
+    expect(writeFileMock).toHaveBeenCalledTimes(1);
     expect(writeFileMock).toHaveBeenCalledWith(
       expect.stringContaining(
         "entregas/cliente-teste/entrega-000123".replaceAll("/", path.sep)
@@ -254,11 +258,11 @@ describe("ações do motorista com PostgreSQL local", () => {
           tipo: "foto",
           capturadoPorMotoboy: "motorista-a",
         }),
-        expect.objectContaining({
-          entregaId: ENTREGA_ID,
-          tipo: "assinatura_cliente",
-          capturadoPorMotoboy: "motorista-a",
-        }),
+      ])
+    );
+    expect(insertValues).not.toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ tipo: "assinatura_cliente" }),
       ])
     );
 
@@ -267,30 +271,27 @@ describe("ações do motorista com PostgreSQL local", () => {
       statusAnterior: "pendente",
       statusNovo: "entregue",
       alteradoPorMotoboy: "motorista-a",
-      observacao: "Entrega confirmada com foto da entrega e assinatura do cliente.",
+      observacao: "Entrega confirmada com foto da entrega.",
     });
   });
 
-  it("permite entrega Pix sem comprovante de pagamento", async () => {
+  it("conclui entrega Pix sem comprovante (o comprovante é opcional)", async () => {
     const { insertValues } = configurarDb({
       selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }], []],
     });
 
     await expect(
       confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
-    ).resolves.toEqual({
-      ok: true,
+    ).resolves.toEqual({ ok: true });
+
+    expect(writeFileMock).toHaveBeenCalledTimes(1);
+    expect(insertValues).toHaveBeenCalledWith({
+      entregaId: ENTREGA_ID,
+      statusAnterior: "pendente",
+      statusNovo: "entregue",
+      alteradoPorMotoboy: "motorista-a",
+      observacao: "Entrega confirmada com foto da entrega.",
     });
-
-    expect(writeFileMock).toHaveBeenCalledTimes(2);
-
-    const anexos = insertValues.mock.calls.find(
-      ([valor]) => Array.isArray(valor)
-    )?.[0] as Array<{ tipo: string }> | undefined;
-
-    expect(anexos?.some((anexo) => anexo.tipo === "comprovante_pix")).toBe(
-      false
-    );
   });
 
   it("salva comprovante Pix separado quando o motorista envia", async () => {
@@ -307,7 +308,7 @@ describe("ações do motorista com PostgreSQL local", () => {
       ok: true,
     });
 
-    expect(writeFileMock).toHaveBeenCalledTimes(3);
+    expect(writeFileMock).toHaveBeenCalledTimes(2);
 
     expect(insertValues).toHaveBeenCalledWith(
       expect.arrayContaining([
@@ -321,11 +322,6 @@ describe("ações do motorista com PostgreSQL local", () => {
           tipo: "comprovante_pix",
           capturadoPorMotoboy: "motorista-a",
         }),
-        expect.objectContaining({
-          entregaId: ENTREGA_ID,
-          tipo: "assinatura_cliente",
-          capturadoPorMotoboy: "motorista-a",
-        }),
       ])
     );
 
@@ -334,9 +330,107 @@ describe("ações do motorista com PostgreSQL local", () => {
       statusAnterior: "pendente",
       statusNovo: "entregue",
       alteradoPorMotoboy: "motorista-a",
-      observacao:
-        "Entrega confirmada com foto da entrega, comprovante Pix e assinatura do cliente.",
+      observacao: "Entrega confirmada com foto da entrega e comprovante Pix.",
     });
+  });
+
+  it("salva a foto do produto quando o motorista envia", async () => {
+    const { insertValues } = configurarDb({
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
+    });
+
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega({ fotoProduto: true }))
+    ).resolves.toEqual({ ok: true });
+
+    expect(writeFileMock).toHaveBeenCalledTimes(2);
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ tipo: "foto" }),
+        expect.objectContaining({
+          tipo: "foto_produto",
+          capturadoPorMotoboy: "motorista-a",
+        }),
+      ])
+    );
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        observacao: "Entrega confirmada com foto da entrega e foto do produto.",
+      })
+    );
+  });
+
+  it("salva foto do produto e comprovante Pix juntos", async () => {
+    const { insertValues } = configurarDb({
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }], []],
+    });
+
+    await expect(
+      confirmarEntrega(
+        ENTREGA_ID,
+        criarFormDataEntrega({ comprovantePix: true, fotoProduto: true })
+      )
+    ).resolves.toEqual({ ok: true });
+
+    expect(writeFileMock).toHaveBeenCalledTimes(3);
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        observacao:
+          "Entrega confirmada com foto da entrega, comprovante Pix e foto do produto.",
+      })
+    );
+  });
+
+  it("salva várias fotos do produto", async () => {
+    const { insertValues } = configurarDb({
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
+    });
+
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega({ fotosProduto: 3 }))
+    ).resolves.toEqual({ ok: true });
+
+    expect(writeFileMock).toHaveBeenCalledTimes(4);
+    const anexos = insertValues.mock.calls
+      .map((chamada) => chamada[0])
+      .find(Array.isArray) as Array<{ tipo: string }>;
+    expect(anexos.filter((item) => item.tipo === "foto_produto")).toHaveLength(3);
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        observacao:
+          "Entrega confirmada com foto da entrega e 3 fotos do produto.",
+      })
+    );
+  });
+
+  it("rejeita mais fotos do produto que o limite", async () => {
+    await expect(
+      confirmarEntrega(
+        ENTREGA_ID,
+        criarFormDataEntrega({ fotosProduto: MAX_FOTOS_PRODUTO + 1 })
+      )
+    ).resolves.toEqual({
+      ok: false,
+      error: `Envie no máximo ${MAX_FOTOS_PRODUTO} fotos do produto.`,
+    });
+
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it("rejeita foto do produto inválida quando informada", async () => {
+    const formData = criarFormDataEntrega();
+    formData.append(
+      "fotoProduto",
+      new File(["nao-e-imagem"], "produto.txt", { type: "text/plain" })
+    );
+
+    await expect(confirmarEntrega(ENTREGA_ID, formData)).resolves.toEqual({
+      ok: false,
+      error:
+        "As fotos do produto devem ser imagens JPG, PNG, WEBP, HEIC ou HEIF com até 8 MB cada.",
+    });
+
+    expect(getDbMock).not.toHaveBeenCalled();
   });
 
   it("rejeita comprovante Pix inválido quando informado", async () => {
@@ -435,5 +529,77 @@ describe("ações do motorista com PostgreSQL local", () => {
     ).resolves.toEqual({ ok: true });
 
     expect(db.delete).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("iniciarRota", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    checarRateLimitMock.mockResolvedValue({
+      permitido: true,
+    } as Awaited<ReturnType<typeof checarRateLimit>>);
+    vi.mocked(obterMotoristaAutorizado).mockResolvedValue("motorista-a");
+  });
+
+  it("inicia as paradas de uma vez, na ordem escolhida", async () => {
+    const { txUpdateQuery, tx } = configurarDb({
+      transacaoResultados: [
+        [{ id: ENTREGA_ID_2 }],
+        [{ id: ENTREGA_ID }],
+        [{ id: ENTREGA_ID_3 }],
+      ],
+    });
+
+    await expect(
+      iniciarRota([ENTREGA_ID_2, ENTREGA_ID, ENTREGA_ID_3])
+    ).resolves.toEqual({ ok: true });
+
+    expect(tx.update).toHaveBeenCalledTimes(3);
+    const gravados = txUpdateQuery.set.mock.calls.map((chamada) => chamada[0]);
+    expect(gravados.map((g) => g.rotaOrdem)).toEqual([1, 2, 3]);
+    expect(new Set(gravados.map((g) => g.rotaId)).size).toBe(1);
+    expect(gravados[0].rotaId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(new Set(gravados.map((g) => g.horaSaida)).size).toBe(1);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/motorista");
+  });
+
+  it("recusa menos de duas entregas, repetidas ou com id inválido", async () => {
+    configurarDb();
+
+    for (const ids of [
+      [ENTREGA_ID],
+      [ENTREGA_ID, ENTREGA_ID],
+      [ENTREGA_ID, "nao-e-uuid"],
+    ]) {
+      const resultado = await iniciarRota(ids);
+      expect(resultado.ok).toBe(false);
+      expect(resultado.error).toMatch(/Escolha de 2 a 10 entregas/);
+    }
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it("não inicia nada se uma das entregas não está mais disponível", async () => {
+    const { tx } = configurarDb({
+      transacaoResultados: [[{ id: ENTREGA_ID }], []],
+    });
+
+    const resultado = await iniciarRota([ENTREGA_ID, ENTREGA_ID_2]);
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.error).toMatch(/não está mais disponível/);
+    // A transação foi interrompida por exceção, o que desfaz a primeira parada.
+    expect(tx.update).toHaveBeenCalledTimes(2);
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("exige sessão de motorista", async () => {
+    vi.mocked(obterMotoristaAutorizado).mockResolvedValue(null);
+    configurarDb();
+
+    await expect(iniciarRota([ENTREGA_ID, ENTREGA_ID_2])).resolves.toEqual({
+      ok: false,
+      error: "Sessão expirada — faça login novamente.",
+    });
   });
 });

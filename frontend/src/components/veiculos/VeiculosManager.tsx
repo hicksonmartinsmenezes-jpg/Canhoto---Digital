@@ -186,8 +186,8 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
                               <p className="font-semibold text-slate-800">
                                 {veiculo.marca} {veiculo.modelo}
                               </p>
-                              <p className="mt-0.5 text-xs text-slate-400">
-                                ID {veiculo.id.slice(0, 8)}
+                              <p className="mt-0.5 text-xs text-slate-500">
+                                {veiculo.motoboyNome ?? "Sem motorista responsável"}
                               </p>
                             </div>
                           </div>
@@ -344,6 +344,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
             key="novo-veiculo"
             titulo="Novo veículo"
             veiculo={null}
+            motoboys={data.motoboys}
             onClose={() => setModal(null)}
             onSuccess={fecharEAtualizar}
           />
@@ -354,6 +355,7 @@ export function VeiculosManager({ data }: { data: VeiculosData }) {
             key="editar-veiculo"
             titulo="Editar veículo"
             veiculo={modal.veiculo}
+            motoboys={data.motoboys}
             onClose={() => setModal(null)}
             onSuccess={fecharEAtualizar}
           />
@@ -455,11 +457,13 @@ function ResumoCard({
 function VeiculoFormModal({
   titulo,
   veiculo,
+  motoboys,
   onClose,
   onSuccess,
 }: {
   titulo: string;
   veiculo: VeiculoListItem | null;
+  motoboys: VeiculosData["motoboys"];
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -468,6 +472,7 @@ function VeiculoFormModal({
   const [modelo, setModelo] = useState(veiculo?.modelo ?? "");
   const [ano, setAno] = useState(veiculo?.ano ? String(veiculo.ano) : "");
   const [ativo, setAtivo] = useState(veiculo?.ativo ?? true);
+  const [motoboyId, setMotoboyId] = useState(veiculo?.motoboyId ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -479,6 +484,7 @@ function VeiculoFormModal({
       modelo,
       ano: anoNumero,
       ativo,
+      motoboyId: motoboyId || null,
     };
 
     setErro(null);
@@ -561,6 +567,30 @@ function VeiculoFormModal({
             className={inputClass}
           />
         </Campo>
+
+        <div className="sm:col-span-2">
+          <Campo label="Motorista responsável" opcional>
+            <select
+              value={motoboyId}
+              onChange={(event) => setMotoboyId(event.target.value)}
+              className={inputClass}
+            >
+              <option value="">Nenhum</option>
+              {/* Responsável atual inativo continua aparecendo para não sumir. */}
+              {veiculo?.motoboyId &&
+                !motoboys.some((m) => m.id === veiculo.motoboyId) && (
+                  <option value={veiculo.motoboyId}>
+                    {veiculo.motoboyNome ?? "Motorista inativo"}
+                  </option>
+                )}
+              {motoboys.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        </div>
       </div>
 
       {veiculo && (

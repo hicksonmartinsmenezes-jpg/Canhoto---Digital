@@ -17,6 +17,8 @@ import {
   entregas,
   motoboyLocalizacoes,
 } from "@/lib/db/schema";
+import { MAX_FOTOS_PRODUTO } from "@/lib/comprovante-limites";
+import { MAX_PARADAS_ROTA, MIN_PARADAS_ROTA } from "@/lib/rota-limites";
 import { checarRateLimit } from "@/lib/rate-limit";
 import {
   ERRO_MOTORISTA_SESSAO,
@@ -45,7 +47,6 @@ const ERRO_BANCO =
   "Banco de dados indisponível neste ambiente — confirme a DATABASE_URL.";
 
 const TAMANHO_MAX_FOTO = 8 * 1024 * 1024;
-const TAMANHO_MAX_ASSINATURA = 1024 * 1024;
 
 const EXTENSAO_POR_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -100,13 +101,6 @@ function validarFoto(valor: FormDataEntryValue | null): File | null {
   if (!(valor instanceof File) || valor.size === 0) return null;
   if (!Object.hasOwn(EXTENSAO_POR_MIME, valor.type)) return null;
   if (valor.size > TAMANHO_MAX_FOTO) return null;
-  return valor;
-}
-
-function validarAssinatura(valor: FormDataEntryValue | null): File | null {
-  if (!(valor instanceof File) || valor.size === 0) return null;
-  if (valor.type !== "image/png") return null;
-  if (valor.size > TAMANHO_MAX_ASSINATURA) return null;
   return valor;
 }
 
@@ -213,6 +207,86 @@ export async function iniciarEntrega(
     return {
       ok: false,
       error: "Erro ao iniciar a entrega. Tente novamente.",
+    };
+  }
+
+  revalidatePath("/motorista");
+  return { ok: true };
+}
+
+/**
+ * Inicia de uma vez várias entregas aguardando saída como uma rota. A ordem
+ * do array é a ordem das paradas (a primeira é a 1ª a visitar). Tudo ou nada:
+ * se qualquer entrega não estiver mais disponível, nenhuma é iniciada.
+ */
+export async function iniciarRota(
+  entregaIds: string[]
+): Promise<AcaoEntregaResult> {
+  const limite = await checarRateLimit("iniciarRota");
+  if (!limite.permitido) {
+    return {
+      ok: false,
+      error:
+        "Muitas tentativas em pouco tempo — aguarde um minuto e tente de novo.",
+    };
+  }
+
+  if (
+    !Array.isArray(entregaIds) ||
+    entregaIds.length < MIN_PARADAS_ROTA ||
+    entregaIds.length > MAX_PARADAS_ROTA ||
+    new Set(entregaIds).size !== entregaIds.length ||
+    !entregaIds.every((id) => typeof id === "string" && uuidValido(id))
+  ) {
+    return {
+      ok: false,
+      error: `Escolha de ${MIN_PARADAS_ROTA} a ${MAX_PARADAS_ROTA} entregas para a rota.`,
+    };
+  }
+
+  const motoboyId = await obterMotoristaAutorizado();
+  if (!motoboyId) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
+
+  const db = getDb();
+  if (!db) return { ok: false, error: ERRO_BANCO };
+
+  try {
+    await db.transaction(async (tx) => {
+      const rotaId = randomUUID();
+      const horaSaida = horaLocalAtual();
+
+      for (const [indice, entregaId] of entregaIds.entries()) {
+        const [atualizada] = await tx
+          .update(entregas)
+          .set({ horaSaida, rotaId, rotaOrdem: indice + 1 })
+          .where(
+            and(
+              eq(entregas.id, entregaId),
+              eq(entregas.motoboyId, motoboyId),
+              eq(entregas.status, "pendente"),
+              isNull(entregas.horaSaida)
+            )
+          )
+          .returning({ id: entregas.id });
+
+        // Lançar desfaz as paradas já marcadas: é tudo ou nada.
+        if (!atualizada) throw new Error("ROTA_ENTREGA_INDISPONIVEL");
+      }
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "ROTA_ENTREGA_INDISPONIVEL"
+    ) {
+      return {
+        ok: false,
+        error:
+          "Alguma entrega da rota não está mais disponível. Atualize a lista e monte a rota de novo.",
+      };
+    }
+    return {
+      ok: false,
+      error: "Erro ao iniciar a rota. Tente novamente.",
     };
   }
 
@@ -329,7 +403,12 @@ export async function confirmarEntrega(
   const comprovantePixFoiEnviado =
     comprovantePixEntrada instanceof File && comprovantePixEntrada.size > 0;
   const comprovantePix = validarFoto(comprovantePixEntrada);
-  const assinatura = validarAssinatura(formData.get("assinatura"));
+  const fotosProdutoEntrada = formData
+    .getAll("fotoProduto")
+    .filter((item) => item instanceof File && item.size > 0);
+  const fotosProduto = fotosProdutoEntrada
+    .map((item) => validarFoto(item))
+    .filter((item): item is File => item !== null);
 
   if (!fotoEntrega) {
     return {
@@ -347,10 +426,18 @@ export async function confirmarEntrega(
     };
   }
 
-  if (!assinatura) {
+  if (fotosProdutoEntrada.length > MAX_FOTOS_PRODUTO) {
     return {
       ok: false,
-      error: "Colete a assinatura do cliente antes de confirmar a entrega.",
+      error: `Envie no máximo ${MAX_FOTOS_PRODUTO} fotos do produto.`,
+    };
+  }
+
+  if (fotosProduto.length !== fotosProdutoEntrada.length) {
+    return {
+      ok: false,
+      error:
+        "As fotos do produto devem ser imagens JPG, PNG, WEBP, HEIC ou HEIF com até 8 MB cada.",
     };
   }
 
@@ -403,6 +490,8 @@ export async function confirmarEntrega(
     };
   }
 
+  // Decisão da loja (08/10/2026): o comprovante Pix e a foto do produto são
+  // sempre opcionais; a assinatura do cliente deixou de ser coletada.
   const comprovantePixValido =
     entregaEhPix && comprovantePix ? comprovantePix : null;
 
@@ -414,87 +503,78 @@ export async function confirmarEntrega(
     diretorioRaizUploads(),
     ...pastaRelativaEntrega.split("/")
   );
-  const nomeFotoEntrega = `foto-entrega-${randomUUID()}.${EXTENSAO_POR_MIME[fotoEntrega.type]}`;
-  const nomeComprovantePix = comprovantePixValido
-    ? `comprovante-pix-${randomUUID()}.${EXTENSAO_POR_MIME[comprovantePixValido.type]}`
-    : null;
-  const nomeAssinatura = `assinatura-${randomUUID()}.png`;
 
-  const caminhoFotoEntrega = path.join(pastaEntrega, nomeFotoEntrega);
-  const caminhoComprovantePix = nomeComprovantePix
-    ? path.join(pastaEntrega, nomeComprovantePix)
-    : null;
-  const caminhoAssinatura = path.join(pastaEntrega, nomeAssinatura);
-
-  const arquivoUrlFotoEntrega = `${pastaRelativaEntrega}/${nomeFotoEntrega}`;
-  const arquivoUrlComprovantePix = nomeComprovantePix
-    ? `${pastaRelativaEntrega}/${nomeComprovantePix}`
-    : null;
-  const arquivoUrlAssinatura = `${pastaRelativaEntrega}/${nomeAssinatura}`;
-
-  let fotoEntregaGravada = false;
-  let comprovantePixGravado = false;
-  let assinaturaGravada = false;
+  // Ordem em que os anexos são gravados e listados.
+  const arquivos: Array<{
+    tipo: "foto" | "comprovante_pix" | "foto_produto";
+    arquivo: File;
+    prefixo: string;
+    descricao: string;
+    nome: string;
+    caminho: string;
+    url: string;
+    gravado: boolean;
+  }> = [];
+  function adicionarArquivo(
+    tipo: "foto" | "comprovante_pix" | "foto_produto",
+    arquivo: File,
+    prefixo: string,
+    descricao: string
+  ) {
+    const nome = `${prefixo}-${randomUUID()}.${EXTENSAO_POR_MIME[arquivo.type]}`;
+    arquivos.push({
+      tipo,
+      arquivo,
+      prefixo,
+      descricao,
+      nome,
+      caminho: path.join(pastaEntrega, nome),
+      url: `${pastaRelativaEntrega}/${nome}`,
+      gravado: false,
+    });
+  }
+  adicionarArquivo("foto", fotoEntrega, "foto-entrega", "da foto da entrega");
+  if (comprovantePixValido) {
+    adicionarArquivo(
+      "comprovante_pix",
+      comprovantePixValido,
+      "comprovante-pix",
+      "do comprovante Pix"
+    );
+  }
+  for (const fotoProduto of fotosProduto) {
+    adicionarArquivo(
+      "foto_produto",
+      fotoProduto,
+      "foto-produto",
+      "da foto do produto"
+    );
+  }
 
   try {
     await mkdir(pastaEntrega, { recursive: true });
 
-    const [bufferFotoEntrega, bufferAssinatura] = await Promise.all([
-      fotoEntrega.arrayBuffer(),
-      assinatura.arrayBuffer(),
-    ]);
-    const bytesFotoEntrega = new Uint8Array(bufferFotoEntrega);
-    const bytesAssinatura = new Uint8Array(bufferAssinatura);
+    const conteudos = await Promise.all(
+      arquivos.map(async (item) => new Uint8Array(await item.arquivo.arrayBuffer()))
+    );
 
-    if (!conteudoConfereComMime(bytesFotoEntrega, fotoEntrega.type)) {
-      return {
-        ok: false,
-        error: "O conteúdo da foto da entrega não corresponde a uma imagem válida.",
-      };
-    }
-
-    if (!conteudoConfereComMime(bytesAssinatura, assinatura.type)) {
-      return {
-        ok: false,
-        error: "O conteúdo da assinatura não corresponde a uma imagem válida.",
-      };
-    }
-
-    let bytesComprovantePix: Uint8Array | null = null;
-    if (comprovantePixValido) {
-      const bufferComprovantePix = await comprovantePixValido.arrayBuffer();
-      bytesComprovantePix = new Uint8Array(bufferComprovantePix);
-
-      if (
-        !conteudoConfereComMime(
-          bytesComprovantePix,
-          comprovantePixValido.type
-        )
-      ) {
+    for (const [indice, item] of arquivos.entries()) {
+      if (!conteudoConfereComMime(conteudos[indice], item.arquivo.type)) {
         return {
           ok: false,
-          error:
-            "O conteúdo do comprovante Pix não corresponde a uma imagem válida.",
+          error: `O conteúdo ${item.descricao} não corresponde a uma imagem válida.`,
         };
       }
     }
 
-    await writeFile(caminhoFotoEntrega, bytesFotoEntrega, { flag: "wx" });
-    fotoEntregaGravada = true;
-
-    if (bytesComprovantePix && caminhoComprovantePix) {
-      await writeFile(caminhoComprovantePix, bytesComprovantePix, {
-        flag: "wx",
-      });
-      comprovantePixGravado = true;
+    for (const [indice, item] of arquivos.entries()) {
+      await writeFile(item.caminho, conteudos[indice], { flag: "wx" });
+      item.gravado = true;
     }
 
-    await writeFile(caminhoAssinatura, bytesAssinatura, {
-      flag: "wx",
-    });
-    assinaturaGravada = true;
-
     const confirmado = await db.transaction(async (tx) => {
+      // clienteAssinouEm guarda o horário em que a entrega foi concluída (o
+      // nome é antigo, da época da assinatura do cliente).
       const [atualizada] = await tx
         .update(entregas)
         .set({
@@ -513,40 +593,32 @@ export async function confirmarEntrega(
 
       if (!atualizada) return false;
 
-      const anexosComprovante: Array<typeof entregaAnexos.$inferInsert> = [
-        {
+      await tx.insert(entregaAnexos).values(
+        arquivos.map((item) => ({
           entregaId,
-          tipo: "foto",
-          arquivoUrl: arquivoUrlFotoEntrega,
+          tipo: item.tipo,
+          arquivoUrl: item.url,
           capturadoPorMotoboy: acesso.motoboyId,
-        },
-        {
-          entregaId,
-          tipo: "assinatura_cliente",
-          arquivoUrl: arquivoUrlAssinatura,
-          capturadoPorMotoboy: acesso.motoboyId,
-        },
-      ];
+        }))
+      );
 
-      if (arquivoUrlComprovantePix) {
-        anexosComprovante.splice(1, 0, {
-          entregaId,
-          tipo: "comprovante_pix",
-          arquivoUrl: arquivoUrlComprovantePix,
-          capturadoPorMotoboy: acesso.motoboyId,
-        });
+      const itensConfirmados = ["foto da entrega"];
+      if (comprovantePixValido) itensConfirmados.push("comprovante Pix");
+      if (fotosProduto.length === 1) itensConfirmados.push("foto do produto");
+      if (fotosProduto.length > 1) {
+        itensConfirmados.push(`${fotosProduto.length} fotos do produto`);
       }
-
-      await tx.insert(entregaAnexos).values(anexosComprovante);
+      const textoItens =
+        itensConfirmados.length === 1
+          ? itensConfirmados[0]
+          : `${itensConfirmados.slice(0, -1).join(", ")} e ${itensConfirmados[itensConfirmados.length - 1]}`;
 
       await tx.insert(entregaHistorico).values({
         entregaId,
         statusAnterior: "pendente",
         statusNovo: "entregue",
         alteradoPorMotoboy: acesso.motoboyId,
-        observacao: arquivoUrlComprovantePix
-          ? "Entrega confirmada com foto da entrega, comprovante Pix e assinatura do cliente."
-          : "Entrega confirmada com foto da entrega e assinatura do cliente.",
+        observacao: `Entrega confirmada com ${textoItens}.`,
       });
 
       return true;
@@ -556,17 +628,11 @@ export async function confirmarEntrega(
       throw new Error("ENTREGA_NAO_CONFIRMAVEL");
     }
   } catch (error) {
-    await Promise.allSettled([
-      fotoEntregaGravada
-        ? rm(caminhoFotoEntrega, { force: true })
-        : Promise.resolve(),
-      comprovantePixGravado && caminhoComprovantePix
-        ? rm(caminhoComprovantePix, { force: true })
-        : Promise.resolve(),
-      assinaturaGravada
-        ? rm(caminhoAssinatura, { force: true })
-        : Promise.resolve(),
-    ]);
+    await Promise.allSettled(
+      arquivos
+        .filter((item) => item.gravado)
+        .map((item) => rm(item.caminho, { force: true }))
+    );
 
     if (error instanceof Error && error.message === "ENTREGA_NAO_CONFIRMAVEL") {
       // Dois envios simultâneos da mesma entrega (ex.: reenvio automático

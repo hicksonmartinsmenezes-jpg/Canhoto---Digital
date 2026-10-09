@@ -119,8 +119,10 @@ export function MotoristaLocationTracker({ ativo }: { ativo: boolean }) {
       let cancelado = false;
       let watcherId: string | null = null;
 
-      nativo
-        .addWatcher(
+      // Promise.resolve: dependendo de como a ponte do app monta o plugin,
+      // addWatcher devolve uma Promise ou direto o id do rastreamento.
+      Promise.resolve(
+        nativo.addWatcher(
           {
             backgroundTitle: "Rildon Express — entrega em andamento",
             backgroundMessage:
@@ -138,6 +140,7 @@ export function MotoristaLocationTracker({ ativo }: { ativo: boolean }) {
             });
           }
         )
+      )
         .then((id) => {
           if (cancelado) {
             void nativo.removeWatcher({ id });
