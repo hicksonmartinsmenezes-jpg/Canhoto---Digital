@@ -105,17 +105,17 @@ export default async function MotoristaPage({
 
           <div className="relative w-full">
             <div className="flex items-center justify-between gap-4">
-              <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
-                <CalendarDays className="size-4" />
-                {formatarDataHoje()}
-              </p>
-
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/rildon-express-logo-white.svg"
                 alt="Rildon Express"
                 className="h-5 w-auto max-w-[132px]"
               />
+
+              <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
+                <CalendarDays className="size-4" />
+                {formatarDataHoje()}
+              </p>
             </div>
 
             {proximaEntrega ? (
