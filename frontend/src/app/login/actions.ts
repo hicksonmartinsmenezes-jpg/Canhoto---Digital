@@ -84,7 +84,7 @@ export async function entrarAdmin(
   return { ok: true };
 }
 
-export async function sairAdmin(): Promise<void> {
+async function sairAdmin(): Promise<void> {
   await encerrarSessaoAdmin();
   redirect("/login");
 }

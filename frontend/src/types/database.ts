@@ -10,14 +10,14 @@ export type FormaPagamento =
   | "debito"
   | "cartao_1x"
   | "prazo";
-export type TipoAnexoEntrega =
+type TipoAnexoEntrega =
   | "xml_nfe"
   | "xml_cte"
   | "assinatura_cliente"
   | "foto"
   | "comprovante_pix";
 
-export type TipoGastoVeiculo =
+type TipoGastoVeiculo =
   | "combustivel"
   | "manutencao"
   | "multa"
@@ -25,16 +25,16 @@ export type TipoGastoVeiculo =
   | "pedagio"
   | "outro";
 
-export type StatusTreinamento = "em_andamento" | "concluido";
+type StatusTreinamento = "em_andamento" | "concluido";
 
-export interface Setor {
+interface Setor {
   id: string;
   nome: string;
   ativo: boolean;
   criado_em: string;
 }
 
-export interface Colaborador {
+interface Colaborador {
   id: string;
   auth_user_id: string | null;
   nome: string;
@@ -47,7 +47,7 @@ export interface Colaborador {
   criado_em: string;
 }
 
-export interface Motoboy {
+interface Motoboy {
   id: string;
   nome: string;
   ativo: boolean;
@@ -58,7 +58,7 @@ export interface Motoboy {
   criado_em: string;
 }
 
-export interface Entrega {
+interface Entrega {
   id: string;
   numero: number;
   data: string;
@@ -83,7 +83,7 @@ export interface Entrega {
   atualizado_em: string;
 }
 
-export interface EntregaAnexo {
+interface EntregaAnexo {
   id: string;
   entrega_id: string;
   tipo: TipoAnexoEntrega;
@@ -92,7 +92,7 @@ export interface EntregaAnexo {
   capturado_por: string | null;
 }
 
-export interface Veiculo {
+interface Veiculo {
   id: string;
   placa: string;
   marca: string;
@@ -103,7 +103,7 @@ export interface Veiculo {
   atualizado_em: string;
 }
 
-export interface VeiculoGasto {
+interface VeiculoGasto {
   id: string;
   veiculo_id: string;
   tipo: TipoGastoVeiculo;
@@ -115,7 +115,7 @@ export interface VeiculoGasto {
   criado_em: string;
 }
 
-export interface TreinamentoProgresso {
+interface TreinamentoProgresso {
   id: string;
   usuario_admin_id: string;
   treinamento_slug: string;
@@ -125,7 +125,7 @@ export interface TreinamentoProgresso {
   atualizado_em: string;
 }
 
-export interface EntregaHistorico {
+interface EntregaHistorico {
   id: string;
   entrega_id: string;
   status_anterior: StatusEntrega | null;

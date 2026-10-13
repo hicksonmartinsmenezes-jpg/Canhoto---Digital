@@ -9,7 +9,7 @@ export type StatusTreinamento =
   | "em_andamento"
   | "concluido";
 
-export interface MaterialTreinamento {
+interface MaterialTreinamento {
   titulo: string;
   href: string;
 }

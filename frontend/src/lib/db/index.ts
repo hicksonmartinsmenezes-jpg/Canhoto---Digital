@@ -37,7 +37,7 @@ export function getDb(): PostgresJsDatabase<typeof schema> | null {
  * Usado somente por rotinas de encerramento/teste que precisem fechar
  * explicitamente o pool do postgres.js.
  */
-export async function fecharDb(): Promise<void> {
+async function fecharDb(): Promise<void> {
   if (sqlClient) {
     await sqlClient.end({ timeout: 5 });
   }

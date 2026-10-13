@@ -128,12 +128,12 @@ export async function excluirEntrega(
   return { ok: true };
 }
 
-export interface ConferirCaixaResult {
+interface ConferirCaixaResult {
   ok: boolean;
   error?: string;
 }
 
-export async function conferirCaixa(
+async function conferirCaixa(
   entregaId: string,
   colaboradorId: string
 ): Promise<ConferirCaixaResult> {
