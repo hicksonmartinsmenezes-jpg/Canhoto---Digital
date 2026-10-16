@@ -7,13 +7,13 @@ import type { RascunhoComprovante } from "@/lib/comprovante-pendente";
 /** Rascunho velho demais é descartado (entrega provavelmente já resolvida). */
 export const VALIDADE_RASCUNHO_MS = 14 * 24 * 60 * 60 * 1000;
 
-export type ResultadoServidor = {
+type ResultadoServidor = {
   ok: boolean;
   error?: string;
   jaConcluida?: boolean;
 };
 
-export type EstadoEnvio =
+type EstadoEnvio =
   /** Servidor confirmou; rascunho apagado. */
   | "enviado"
   /** Sem conexão ou erro do servidor: continua guardado, vai tentar de novo. */
