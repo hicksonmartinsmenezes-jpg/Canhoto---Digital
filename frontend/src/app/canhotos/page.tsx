@@ -28,6 +28,7 @@ interface CanhotosPageProps {
     de?: string;
     ate?: string;
     criada?: string;
+    semNfe?: string;
   }>;
 }
 
@@ -41,19 +42,26 @@ export default async function CanhotosPage({ searchParams }: CanhotosPageProps) 
     (params.situacao === "aguardando" || params.situacao === "em_rota")
       ? params.situacao
       : undefined;
+  // Vindo do alerta do Dashboard: todas as entregas sem NF-e (não canceladas),
+  // de qualquer dia e situação, para o número bater com o do alerta.
+  const semNfe = params.semNfe === "1";
   const busca = (params.q ?? "").trim().slice(0, 80);
   const motoboyId = params.motorista && REGEX_UUID.test(params.motorista) ? params.motorista : undefined;
   // Datas: na primeira visita (sem "de"/"ate" na URL) a lista abre no dia de
   // hoje. Se o usuário apagar as datas no filtro, a URL guarda "de=&ate=" e
   // a lista passa a mostrar todos os dias.
   const hoje = hojeIsoNaLoja();
-  const escolheuDatas = params.de !== undefined || params.ate !== undefined;
-  const dataInicio = escolheuDatas
+  const escolheuDatas = semNfe || params.de !== undefined || params.ate !== undefined;
+  const dataInicio = semNfe
+    ? undefined
+    : escolheuDatas
     ? isDataIsoValida(params.de)
       ? params.de
       : undefined
     : hoje;
-  const dataFim = escolheuDatas
+  const dataFim = semNfe
+    ? undefined
+    : escolheuDatas
     ? isDataIsoValida(params.ate)
       ? params.ate
       : undefined
@@ -63,13 +71,22 @@ export default async function CanhotosPage({ searchParams }: CanhotosPageProps) 
   const sessao = await obterSessaoOperador();
   const [entregas, motoboys] = await Promise.all([
     getEntregas(
-      { situacao, somenteEmAberto: true, busca, motoboyId, dataInicio, dataFim },
+      {
+        situacao: semNfe ? undefined : situacao,
+        somenteEmAberto: !semNfe,
+        busca,
+        motoboyId,
+        dataInicio,
+        dataFim,
+        semNfe,
+      },
       setorIdParaFiltro(sessao)
     ),
     getMotoboys(),
   ]);
   // O dia de hoje que a tela já abre selecionado não conta como filtro.
   const temFiltro = Boolean(
+    semNfe ||
     situacao ||
     busca ||
     motoboyId ||
@@ -99,6 +116,23 @@ export default async function CanhotosPage({ searchParams }: CanhotosPageProps) 
         >
           <CheckCircle2 className="size-4 shrink-0" />
           Entrega #{criada} cadastrada.
+        </div>
+      )}
+
+      {semNfe && (
+        <div
+          role="status"
+          className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
+        >
+          <span className="font-semibold">
+            Mostrando só entregas sem número de NF-e (de qualquer dia e situação)
+          </span>
+          <Link
+            href="/canhotos"
+            className="font-semibold text-sky-700 underline-offset-2 hover:underline"
+          >
+            Ver lista normal
+          </Link>
         </div>
       )}
 

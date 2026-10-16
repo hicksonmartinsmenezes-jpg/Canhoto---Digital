@@ -289,7 +289,13 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
     db
       .select({ total: count() })
       .from(entregas)
-      .where(and(isNull(entregas.numeroNfe), filtroSetor)),
+      .where(
+        and(
+          isNull(entregas.numeroNfe),
+          ne(entregas.status, "cancelado"),
+          filtroSetor
+        )
+      ),
   ]);
 
   const aguardandoSaidaTotal = aguardandoSaida[0]?.total ?? 0;
@@ -319,6 +325,7 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
       titulo: `${pluralEntregas(semNfeTotal)} sem número de NF-e`,
       descricao: "Cadastro incompleto — dificulta a consulta depois.",
       tom: "info",
+      href: "/canhotos?semNfe=1",
     });
   }
 
@@ -491,6 +498,11 @@ export interface FiltrosListaEntregas {
   dataInicio?: string;
   dataFim?: string;
   motoboyId?: string;
+  /**
+   * Só entregas sem número de NF-e e não canceladas — mesmo critério do alerta
+   * "sem número de NF-e" do Dashboard (canceladas não precisam de nota).
+   */
+  semNfe?: boolean;
 }
 
 /** Sem paginação ainda: a lista mostra as mais recentes e a busca acha o resto. */
@@ -527,6 +539,9 @@ export async function getEntregas(
   if (filtros.dataInicio) condicoes.push(gte(entregas.data, filtros.dataInicio));
   if (filtros.dataFim) condicoes.push(lte(entregas.data, filtros.dataFim));
   if (filtros.motoboyId) condicoes.push(eq(entregas.motoboyId, filtros.motoboyId));
+  if (filtros.semNfe) {
+    condicoes.push(isNull(entregas.numeroNfe), ne(entregas.status, "cancelado"));
+  }
 
   const busca = filtros.busca?.trim();
   if (busca) {
