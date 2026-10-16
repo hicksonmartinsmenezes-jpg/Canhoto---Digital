@@ -60,7 +60,7 @@ export function maskCepInput(raw: string): string {
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
-export function normalizeCep(raw: string): string {
+function normalizeCep(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, 8);
 }
 

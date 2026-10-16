@@ -39,7 +39,7 @@ export interface VeiculoGastoItem {
   observacao: string | null;
 }
 
-export interface VeiculosResumo {
+interface VeiculosResumo {
   ativos: number;
   totalMes: string;
   combustivelMes: string;
