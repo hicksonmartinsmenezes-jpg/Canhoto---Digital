@@ -80,10 +80,7 @@ export function AlertsPanel({ alertas }: AlertsPanelProps) {
               </>
             );
 
-            // Issue #9: o alerta de conferência de caixa agora leva direto
-            // pra lista de Entregas, onde a ação "Conferir" fica disponível
-            // em cada linha pendente — os outros alertas (ainda sem ação
-            // própria) continuam como um card estático.
+            // Alerta com href vira link; sem href, card estático.
             return a.href ? (
               <Link
                 key={a.id}

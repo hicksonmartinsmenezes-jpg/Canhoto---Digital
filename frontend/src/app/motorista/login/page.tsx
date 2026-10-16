@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Loader2, LockKeyhole, LogIn, Phone } from "lucide-react";
 import { maskPhoneInput } from "@/lib/format";
+import { limparPaginasGuardadas } from "@/lib/offline-cache";
 import { loginMotorista } from "./actions";
 
 export default function MotoristaLoginPage() {
@@ -10,6 +11,12 @@ export default function MotoristaLoginPage() {
   const [pin, setPin] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Quem chega ao login saiu da conta ou teve a sessão vencida: as telas
+  // guardadas para uso sem internet eram de outra sessão e são apagadas.
+  useEffect(() => {
+    void limparPaginasGuardadas();
+  }, []);
 
   function entrar() {
     if (!telefone.trim()) {
@@ -23,8 +30,13 @@ export default function MotoristaLoginPage() {
 
     setErro(null);
     startTransition(async () => {
-      const resultado = await loginMotorista(telefone, pin);
-      setErro(resultado.error ?? "Não foi possível entrar.");
+      try {
+        const resultado = await loginMotorista(telefone, pin);
+        setErro(resultado.error ?? "Não foi possível entrar.");
+      } catch {
+        // Falha de rede (o sucesso redireciona e não chega aqui).
+        setErro("Sem conexão com o servidor. Confira o sinal e tente de novo.");
+      }
     });
   }
 

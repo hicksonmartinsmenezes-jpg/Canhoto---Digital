@@ -28,6 +28,12 @@ export function MotoristaWakeLock({ ativo }: { ativo: boolean }) {
           return;
         }
         wakeLockRef.current = lock;
+        // O navegador libera o lock sozinho quando a tela é ocultada (ex.:
+        // motorista foi pro Waze). Sem limpar a referência aqui, a checagem
+        // "!wakeLockRef.current" ao voltar nunca pedia o lock de novo.
+        lock.addEventListener("release", () => {
+          if (wakeLockRef.current === lock) wakeLockRef.current = null;
+        });
       } catch {
         // Sem Wake Lock disponível agora (ex.: bateria baixa no Android) —
         // o rastreamento continua funcionando normalmente, só sem essa

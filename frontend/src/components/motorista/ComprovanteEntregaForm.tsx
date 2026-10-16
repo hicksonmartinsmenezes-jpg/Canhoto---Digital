@@ -11,6 +11,13 @@ import {
   ReceiptText,
 } from "lucide-react";
 import { confirmarEntrega } from "@/app/motorista/actions";
+import { comprimirImagem } from "@/lib/comprimir-imagem";
+import { salvarRascunho } from "@/lib/comprovante-pendente";
+import { ComprovanteGuardadoPainel } from "@/components/motorista/ComprovanteGuardadoPainel";
+import {
+  enviarRascunhoSalvo,
+  useRascunhosComprovante,
+} from "@/components/motorista/useRascunhosComprovante";
 import type { FormaPagamento } from "@/types/database";
 
 const TAMANHO_MAX_FOTO = 8 * 1024 * 1024;
@@ -18,11 +25,18 @@ const TAMANHO_MAX_FOTO = 8 * 1024 * 1024;
 export function ComprovanteEntregaForm({
   entregaId,
   formaPagamento,
+  rotulo,
 }: {
   entregaId: string;
   formaPagamento: FormaPagamento;
+  /** Identifica a entrega no aviso da lista quando o envio fica pendente. */
+  rotulo?: string;
 }) {
   const router = useRouter();
+  const { rascunhos, enviando, enviarAgora, descartar, recarregar } =
+    useRascunhosComprovante(entregaId);
+  const rascunhoGuardado = rascunhos[0] ?? null;
+  const temRascunhoGuardado = rascunhoGuardado !== null;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const desenhandoRef = useRef(false);
   const assinaturaMarcadaRef = useRef(false);
@@ -33,6 +47,25 @@ export function ComprovanteEntregaForm({
   const [temAssinatura, setTemAssinatura] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Foto sendo reduzida no aparelho (leva ~1 s): segura o botão Finalizar.
+  const [preparandoImagem, setPreparandoImagem] = useState(false);
+  const selecaoFotoRef = useRef(0);
+  const selecaoPixRef = useRef(0);
+  const preparosEmAndamentoRef = useRef(0);
+
+  async function prepararImagem(
+    arquivo: File,
+    opcoes?: Parameters<typeof comprimirImagem>[1]
+  ): Promise<File> {
+    preparosEmAndamentoRef.current += 1;
+    setPreparandoImagem(true);
+    try {
+      return await comprimirImagem(arquivo, opcoes);
+    } finally {
+      preparosEmAndamentoRef.current -= 1;
+      if (preparosEmAndamentoRef.current === 0) setPreparandoImagem(false);
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -47,6 +80,9 @@ export function ComprovanteEntregaForm({
   }, [comprovantePixUrl]);
 
   useEffect(() => {
+    // Com um comprovante guardado o formulário não aparece (sem canvas);
+    // ao descartar, o canvas volta e precisa ser preparado de novo.
+    if (temRascunhoGuardado) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -66,7 +102,7 @@ export function ComprovanteEntregaForm({
     contexto.lineWidth = 2.25 * escala;
     contexto.lineCap = "round";
     contexto.lineJoin = "round";
-  }, []);
+  }, [temRascunhoGuardado]);
 
   function pontoNoCanvas(evento: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = evento.currentTarget;
@@ -151,8 +187,9 @@ export function ComprovanteEntregaForm({
     return null;
   }
 
-  function selecionarFotoEntrega(arquivo: File | undefined) {
+  async function selecionarFotoEntrega(arquivo: File | undefined) {
     setErro(null);
+    const selecao = ++selecaoFotoRef.current;
 
     if (!arquivo) {
       setFotoEntrega(null);
@@ -160,18 +197,23 @@ export function ComprovanteEntregaForm({
       return;
     }
 
-    const erroImagem = validarImagem(arquivo);
+    const reduzida = await prepararImagem(arquivo);
+    // Se o motorista escolheu outra foto enquanto esta era reduzida, descarta.
+    if (selecao !== selecaoFotoRef.current) return;
+
+    const erroImagem = validarImagem(reduzida);
     if (erroImagem) {
       setErro(erroImagem);
       return;
     }
 
-    setFotoEntrega(arquivo);
-    setFotoEntregaUrl(URL.createObjectURL(arquivo));
+    setFotoEntrega(reduzida);
+    setFotoEntregaUrl(URL.createObjectURL(reduzida));
   }
 
-  function selecionarComprovantePix(arquivo: File | undefined) {
+  async function selecionarComprovantePix(arquivo: File | undefined) {
     setErro(null);
+    const selecao = ++selecaoPixRef.current;
 
     if (!arquivo) {
       setComprovantePix(null);
@@ -179,18 +221,30 @@ export function ComprovanteEntregaForm({
       return;
     }
 
-    const erroImagem = validarImagem(arquivo);
+    // Comprovante tem texto pequeno: resolução um pouco maior que a da foto.
+    const reduzida = await prepararImagem(arquivo, {
+      ladoMaximo: 2000,
+      qualidade: 0.85,
+    });
+    if (selecao !== selecaoPixRef.current) return;
+
+    const erroImagem = validarImagem(reduzida);
     if (erroImagem) {
       setErro(erroImagem);
       return;
     }
 
-    setComprovantePix(arquivo);
-    setComprovantePixUrl(URL.createObjectURL(arquivo));
+    setComprovantePix(reduzida);
+    setComprovantePixUrl(URL.createObjectURL(reduzida));
   }
 
   function confirmar() {
     setErro(null);
+
+    if (preparandoImagem) {
+      setErro("Aguarde a foto terminar de ser preparada.");
+      return;
+    }
 
     if (!fotoEntrega) {
       setErro("Tire uma foto da entrega antes de finalizar.");
@@ -210,6 +264,30 @@ export function ComprovanteEntregaForm({
         return;
       }
 
+      // 1) Guarda tudo no aparelho ANTES de enviar: se o sinal cair, o app for
+      //    fechado ou a página recarregar, a foto e a assinatura não se perdem.
+      const guardado = await salvarRascunho({
+        entregaId,
+        rotulo: rotulo ?? null,
+        fotoEntrega,
+        comprovantePix: formaPagamento === "pix" ? comprovantePix : null,
+        assinatura,
+      });
+
+      if (guardado) {
+        // 2) Envia o que foi guardado. Se não der agora, o painel de
+        //    "comprovante guardado" assume e reenvia sozinho.
+        const resultado = await enviarRascunhoSalvo(entregaId);
+        await recarregar();
+
+        if (resultado.estado === "enviado") {
+          router.refresh();
+        }
+        return;
+      }
+
+      // O aparelho não permitiu guardar (navegação restrita): envio direto,
+      // mantendo a foto e a assinatura na tela se falhar.
       const formData = new FormData();
       formData.set("fotoEntrega", fotoEntrega);
       if (formaPagamento === "pix" && comprovantePix) {
@@ -217,7 +295,15 @@ export function ComprovanteEntregaForm({
       }
       formData.set("assinatura", assinatura);
 
-      const resultado = await confirmarEntrega(entregaId, formData);
+      let resultado: Awaited<ReturnType<typeof confirmarEntrega>>;
+      try {
+        resultado = await confirmarEntrega(entregaId, formData);
+      } catch {
+        setErro(
+          "Sem conexão com o servidor. Confira o sinal e toque em confirmar de novo — a foto e a assinatura foram mantidas."
+        );
+        return;
+      }
 
       if (!resultado.ok) {
         setErro(resultado.error ?? "Não foi possível confirmar a entrega.");
@@ -226,6 +312,30 @@ export function ComprovanteEntregaForm({
 
       router.refresh();
     });
+  }
+
+  function descartarGuardado() {
+    void descartar(entregaId).then(() => {
+      // Recomeça do zero: o que estava na tela foi para o rascunho apagado.
+      setFotoEntrega(null);
+      setFotoEntregaUrl(null);
+      setComprovantePix(null);
+      setComprovantePixUrl(null);
+      assinaturaMarcadaRef.current = false;
+      setTemAssinatura(false);
+      setErro(null);
+    });
+  }
+
+  if (rascunhoGuardado) {
+    return (
+      <ComprovanteGuardadoPainel
+        rascunho={rascunhoGuardado}
+        enviando={enviando.includes(entregaId)}
+        onEnviarAgora={() => void enviarAgora(entregaId)}
+        onDescartar={descartarGuardado}
+      />
+    );
   }
 
   return (
@@ -340,7 +450,7 @@ export function ComprovanteEntregaForm({
 
       <button
         type="button"
-        disabled={pending}
+        disabled={pending || preparandoImagem}
         onClick={confirmar}
         className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#15924A] px-4 py-3.5 text-sm font-black text-white transition hover:bg-[#117D3F] disabled:cursor-not-allowed disabled:opacity-60"
       >
@@ -348,6 +458,11 @@ export function ComprovanteEntregaForm({
           <>
             <Loader2 className="size-4 animate-spin" />
             Finalizando...
+          </>
+        ) : preparandoImagem ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Preparando foto...
           </>
         ) : (
           <>

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
 import { getDb } from "@/lib/db";
 import { codigoErroPostgres, mensagemErroBanco } from "@/lib/db/errors";
-import { motoboys } from "@/lib/db/schema";
+import { motoboyLocalizacoes, motoboys } from "@/lib/db/schema";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 import { gerarPin, hashPin, normalizarTelefone } from "@/lib/motorista-auth";
 
@@ -106,6 +106,13 @@ export async function atualizarMotoboy(
 
     if (!atualizado) {
       return { ok: false, error: "Motorista não encontrado." };
+    }
+
+    // Motorista desativado não deve continuar aparecendo no mapa "em rota".
+    if (!dados.ativo) {
+      await db
+        .delete(motoboyLocalizacoes)
+        .where(eq(motoboyLocalizacoes.motoboyId, id));
     }
   } catch (error) {
     if (codigoErroPostgres(error) === "23505") {

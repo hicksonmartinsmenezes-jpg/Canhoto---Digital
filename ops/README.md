@@ -214,6 +214,25 @@ BACKUP_MIRROR_DIR=G:\Meu Drive\Canhoto Digital\Backups
 
 A pasta escolhida deve pertencer a um cliente de sincronização já configurado no Windows.
 
+### Cópia externa criptografada no Google Drive + alerta no Telegram
+
+1. Instale o **Google Drive para computador** e entre com a conta da loja. Crie a pasta `Canhoto Digital\Backups` dentro do Meu Drive.
+2. No `.env.backup`, aponte `BACKUP_MIRROR_DIR` para ela (ex.: `G:\Meu Drive\Canhoto Digital\Backups`) e defina `BACKUP_ENCRYPTION_PASSPHRASE` (mínimo 12 caracteres). **Guarde essa senha fora deste PC** — sem ela o backup da nuvem não abre, e se o PC for perdido o `.env.backup` vai junto.
+3. Com a senha definida, cada backup vai para o Drive como **um arquivo** `canhoto-AAAAMMDD-HHMMSS.zip.enc` (AES-256-GCM; o Google só vê dados cifrados). O arquivo é conferido com a senha antes de receber o nome definitivo, e o Drive nunca sincroniza um arquivo pela metade (`.incompleto-*`).
+4. Opcional, mas recomendado — alerta no Telegram: crie um bot no `@BotFather` e preencha `BACKUP_TELEGRAM_BOT_TOKEN` e `BACKUP_TELEGRAM_CHAT_ID` (passo a passo no `backup.env.example`). Você recebe mensagem quando o backup **falhar** ou terminar **com avisos** (comprovante sumido, cópia sem criptografia, sem cópia externa). Backup bem-sucedido não manda mensagem.
+5. O resultado da última execução fica em `backups\Canhoto Backups\last-backup.json`.
+
+Limitações conhecidas: se o PC estiver desligado na hora do backup, nenhum alerta é enviado (não há monitor externo); e comprovantes que o banco cita mas não existem no disco **não** impedem mais o backup — eles aparecem como aviso e na lista `missingUploads` do `manifest.json`.
+
+Para abrir uma cópia da nuvem (restauração ou teste):
+
+```powershell
+.\ops\backup\decrypt-backup.ps1 -File "G:\Meu Drive\Canhoto Digital\Backups\canhoto-AAAAMMDD-HHMMSS.zip.enc"
+# pergunta a senha se ela não estiver no .env.backup; depois use o caminho
+# impresso no final:
+.\ops\backup\test-restore.ps1 -BackupPath "<pasta impressa>"
+```
+
 ### Teste manual obrigatório
 
 Primeiro crie um backup real:
@@ -224,14 +243,15 @@ Primeiro crie um backup real:
 
 O script:
 
-- verifica se todo `arquivo_url` registrado em `entrega_anexos` existe no storage;
+- verifica se todo `arquivo_url` registrado em `entrega_anexos` existe no storage (arquivo faltando vira aviso e entra no `manifest.json`; pasta de uploads inexistente continua sendo erro);
 - executa `pg_dump -Fc` dentro do container PostgreSQL;
 - valida o dump com `pg_restore -l`;
 - compacta `storage/uploads` (ou `CANHOTO_UPLOAD_DIR`) em `uploads.zip`;
 - compacta `storage/relatorios` (ou `CANHOTO_RELATORIOS_DIR`) em `relatorios.zip`;
 - calcula SHA-256 do banco, dos comprovantes e dos relatórios;
 - grava o `manifest.json`;
-- copia o pacote completo para `BACKUP_MIRROR_DIR` quando configurado;
+- copia o pacote para `BACKUP_MIRROR_DIR` quando configurado (criptografado em um único `.zip.enc` se houver `BACKUP_ENCRYPTION_PASSPHRASE`);
+- avisa no Telegram (se configurado) quando falhar ou terminar com avisos, e grava `last-backup.json`;
 - mantém a retenção configurada.
 
 Depois faça uma restauração real em banco separado:

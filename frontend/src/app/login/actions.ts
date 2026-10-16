@@ -5,7 +5,13 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { usuariosAdmin } from "@/lib/db/schema";
-import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
+import {
+  checarRateLimit,
+  contaBloqueadaPorFalhas,
+  limparFalhasLogin,
+  RATE_LIMIT_ESTRITO,
+  registrarFalhaLogin,
+} from "@/lib/rate-limit";
 import {
   definirCookieSessaoAdmin,
   encerrarSessaoAdmin,
@@ -17,6 +23,12 @@ export interface LoginAdminResult {
 }
 
 const ERRO_CREDENCIAIS = "E-mail ou senha inválidos.";
+const ERRO_CONTA_BLOQUEADA =
+  "Muitas tentativas para esta conta — aguarde alguns minutos e tente de novo.";
+
+// Hash bcrypt fictício (custo 10) para igualar o tempo de resposta quando o
+// e-mail não existe.
+const HASH_FICTICIO = bcrypt.hashSync("senha-fictícia-sem-uso", 10);
 
 export async function entrarAdmin(
   email: string,
@@ -42,6 +54,10 @@ export async function entrarAdmin(
     return { ok: false, error: ERRO_CREDENCIAIS };
   }
 
+  if (contaBloqueadaPorFalhas("entrarAdmin", emailNormalizado)) {
+    return { ok: false, error: ERRO_CONTA_BLOQUEADA };
+  }
+
   const db = getDb();
   if (!db) {
     return {
@@ -64,14 +80,15 @@ export async function entrarAdmin(
     )
     .limit(1);
 
-  if (!usuario) {
+  const senhaValida = await bcrypt.compare(
+    senha,
+    usuario?.senhaHash ?? HASH_FICTICIO
+  );
+  if (!usuario || !senhaValida) {
+    registrarFalhaLogin("entrarAdmin", emailNormalizado);
     return { ok: false, error: ERRO_CREDENCIAIS };
   }
-
-  const senhaValida = await bcrypt.compare(senha, usuario.senhaHash);
-  if (!senhaValida) {
-    return { ok: false, error: ERRO_CREDENCIAIS };
-  }
+  limparFalhasLogin("entrarAdmin", emailNormalizado);
 
   const sessaoCriada = await definirCookieSessaoAdmin(usuario.id);
   if (!sessaoCriada) {

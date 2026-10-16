@@ -8,9 +8,15 @@
 // por tentativa e erro quais telefones existem no sistema.
 
 import { redirect } from "next/navigation";
-import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
+import {
+  checarRateLimit,
+  contaBloqueadaPorFalhas,
+  limparFalhasLogin,
+  RATE_LIMIT_ESTRITO,
+  registrarFalhaLogin,
+} from "@/lib/rate-limit";
 import { getMotoboyPorTelefone } from "@/lib/data/motoboys";
-import { normalizarTelefone, verificarPin } from "@/lib/motorista-auth";
+import { hashPin, normalizarTelefone, verificarPin } from "@/lib/motorista-auth";
 import { definirCookieSessaoMotorista } from "@/lib/motorista-session";
 
 export interface LoginMotoristaResult {
@@ -19,6 +25,13 @@ export interface LoginMotoristaResult {
 }
 
 const MENSAGEM_INVALIDA = "Telefone ou PIN inválido.";
+const MENSAGEM_CONTA_BLOQUEADA =
+  "Muitas tentativas para este telefone — aguarde alguns minutos e tente de novo.";
+
+// Hash fictício (scrypt do PIN "0000") só para gastar o mesmo tempo de CPU
+// quando o telefone não existe/está inativo — sem isso, a resposta mais
+// rápida revela quais telefones estão cadastrados.
+const HASH_FICTICIO = hashPin("0000");
 
 export async function loginMotorista(
   telefoneRaw: string,
@@ -44,13 +57,21 @@ export async function loginMotorista(
     return { ok: false, error: "Informe o PIN de 4 dígitos." };
   }
 
+  if (contaBloqueadaPorFalhas("loginMotorista", telefone)) {
+    return { ok: false, error: MENSAGEM_CONTA_BLOQUEADA };
+  }
+
   const motoboy = await getMotoboyPorTelefone(telefone);
-  if (!motoboy || !motoboy.ativo || !motoboy.pinHash) {
+  const hashParaComparar =
+    motoboy && motoboy.ativo && motoboy.pinHash
+      ? motoboy.pinHash
+      : HASH_FICTICIO;
+  const pinConfere = verificarPin(pin, hashParaComparar);
+  if (!motoboy || !motoboy.ativo || !motoboy.pinHash || !pinConfere) {
+    registrarFalhaLogin("loginMotorista", telefone);
     return { ok: false, error: MENSAGEM_INVALIDA };
   }
-  if (!verificarPin(pin, motoboy.pinHash)) {
-    return { ok: false, error: MENSAGEM_INVALIDA };
-  }
+  limparFalhasLogin("loginMotorista", telefone);
 
   const sessaoCriada = await definirCookieSessaoMotorista(motoboy.id);
   if (!sessaoCriada) {

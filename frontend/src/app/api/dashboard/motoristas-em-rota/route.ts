@@ -1,19 +1,19 @@
-import { obterAdminAutenticado } from "@/lib/admin-auth";
 import { getMotoristasEmRota } from "@/lib/data/entregas";
+import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const admin = await obterAdminAutenticado();
+  const sessao = await obterSessaoOperador();
 
-  if (!admin) {
+  if (!sessao) {
     return Response.json(
       { error: "Não autorizado." },
       { status: 401, headers: { "Cache-Control": "no-store" } }
     );
   }
 
-  const motoristas = await getMotoristasEmRota();
+  const motoristas = await getMotoristasEmRota(setorIdParaFiltro(sessao));
 
   return Response.json(
     { motoristas },

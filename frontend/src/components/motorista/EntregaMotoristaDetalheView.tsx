@@ -22,6 +22,7 @@ import {
   iniciarEntrega,
 } from "@/app/motorista/actions";
 import { ComprovanteEntregaForm } from "@/components/motorista/ComprovanteEntregaForm";
+import { ComprovanteGuardadoSemFormulario } from "@/components/motorista/ComprovanteGuardadoSemFormulario";
 import type { EntregaMotoristaDetalhe } from "@/lib/data/motorista-entregas";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 
@@ -107,15 +108,27 @@ export function EntregaMotoristaDetalheView({
     setErro(null);
 
     startTransition(async () => {
-      const resultado = await iniciarEntrega(entrega.id);
+      let resultado: Awaited<ReturnType<typeof iniciarEntrega>>;
+      try {
+        resultado = await iniciarEntrega(entrega.id);
+      } catch {
+        // Sinal fraco: sem isso a exceção virava tela de erro.
+        setErro(
+          "Sem conexão com o servidor. Confira o sinal e toque em iniciar de novo."
+        );
+        return;
+      }
 
       if (!resultado.ok) {
         setErro(resultado.error ?? "Não foi possível iniciar a entrega.");
         return;
       }
 
-      await registrarLocalizacaoAtual();
+      // A entrega já começou: atualiza a tela agora e manda a posição em
+      // segundo plano (antes o botão ficava "Iniciando…" até 15 s esperando
+      // o GPS).
       router.refresh();
+      void registrarLocalizacaoAtual();
     });
   }
 
@@ -367,9 +380,12 @@ export function EntregaMotoristaDetalheView({
           <ComprovanteEntregaForm
             entregaId={entrega.id}
             formaPagamento={entrega.formaPagamento}
+            rotulo={`${entrega.numero} · ${entrega.clienteNome}`}
           />
         </section>
       )}
+
+      {!emRota && <ComprovanteGuardadoSemFormulario entregaId={entrega.id} />}
 
       {entregue && (
         <div className="flex items-center justify-center gap-2 rounded-2xl bg-[#E8F7EF] px-4 py-4 text-sm font-black text-[#15924A]">

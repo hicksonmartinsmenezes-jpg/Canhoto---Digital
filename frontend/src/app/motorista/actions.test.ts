@@ -35,7 +35,7 @@ vi.mock("@/lib/motorista-session", () => ({
 }));
 
 import { revalidatePath } from "next/cache";
-import { writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import { getDb } from "@/lib/db";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { motoristaPodeAcessarEntrega } from "@/lib/motorista-authorization";
@@ -43,6 +43,7 @@ import { confirmarEntrega, iniciarEntrega } from "./actions";
 
 const revalidatePathMock = vi.mocked(revalidatePath);
 const writeFileMock = vi.mocked(writeFile);
+const rmMock = vi.mocked(rm);
 const getDbMock = vi.mocked(getDb);
 const checarRateLimitMock = vi.mocked(checarRateLimit);
 const motoristaPodeAcessarEntregaMock = vi.mocked(
@@ -224,8 +225,8 @@ describe("ações do motorista com PostgreSQL local", () => {
   });
 
   it("confirma entrega não Pix com foto da entrega e assinatura", async () => {
-    const { tx, insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }]],
+    const { db, tx, insertValues } = configurarDb({
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
     });
 
     await expect(
@@ -235,6 +236,8 @@ describe("ações do motorista com PostgreSQL local", () => {
     });
 
     expect(tx.update).toHaveBeenCalledTimes(1);
+    // Sem outra entrega em rota: a última posição do motorista é apagada.
+    expect(db.delete).toHaveBeenCalledTimes(1);
     expect(writeFileMock).toHaveBeenCalledTimes(2);
     expect(writeFileMock).toHaveBeenCalledWith(
       expect.stringContaining(
@@ -270,7 +273,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("permite entrega Pix sem comprovante de pagamento", async () => {
     const { insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }]],
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }], []],
     });
 
     await expect(
@@ -292,7 +295,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("salva comprovante Pix separado quando o motorista envia", async () => {
     const { insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }]],
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }], []],
     });
 
     await expect(
@@ -354,9 +357,22 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
+  it("reenvio de entrega já concluída pelo próprio motorista é sucesso e não grava nada", async () => {
+    const { tx } = configurarDb({
+      selectResultados: [[], [{ id: ENTREGA_ID }]],
+    });
+
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+    ).resolves.toEqual({ ok: true, jaConcluida: true });
+
+    expect(writeFileMock).not.toHaveBeenCalled();
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
   it("não confirma entrega que já não está disponível para conclusão", async () => {
     configurarDb({
-      selectResultados: [[]],
+      selectResultados: [[], []],
     });
 
     await expect(
@@ -367,6 +383,22 @@ describe("ações do motorista com PostgreSQL local", () => {
     });
 
     expect(writeFileMock).not.toHaveBeenCalled();
+  });
+
+  it("envio simultâneo: se outro envio concluiu primeiro, devolve sucesso e apaga os arquivos extras", async () => {
+    configurarDb({
+      selectResultados: [
+        [{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }],
+        [{ id: ENTREGA_ID }],
+      ],
+      transacaoResultados: [[]],
+    });
+
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+    ).resolves.toEqual({ ok: true, jaConcluida: true });
+
+    expect(rmMock).toHaveBeenCalled();
   });
 
   it("não acessa o banco quando a entrega pertence a outro motorista", async () => {
@@ -381,7 +413,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("revalida as telas após confirmar a entrega", async () => {
     configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }]],
+      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
     });
 
     await confirmarEntrega(ENTREGA_ID, criarFormDataEntrega());
@@ -389,5 +421,19 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/motorista");
     expect(revalidatePathMock).toHaveBeenCalledWith("/canhotos");
     expect(revalidatePathMock).toHaveBeenCalledWith("/");
+  });
+  it("mantém a localização do motorista quando ainda há outra entrega em rota", async () => {
+    const { db } = configurarDb({
+      selectResultados: [
+        [{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }],
+        [{ id: "outra-entrega" }],
+      ],
+    });
+
+    await expect(
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+    ).resolves.toEqual({ ok: true });
+
+    expect(db.delete).not.toHaveBeenCalled();
   });
 });

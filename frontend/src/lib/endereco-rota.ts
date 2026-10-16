@@ -23,6 +23,8 @@ async function consultarCep(
         next: {
           revalidate: 60 * 60 * 24 * 30,
         },
+        // Sem isso a tela de detalhe ficava esperando a BrasilAPI sem limite.
+        signal: AbortSignal.timeout(3_000),
       }
     );
 

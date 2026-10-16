@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getRelatorioEntregas } from "@/lib/data/entregas";
+import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
 import {
   FORMA_PAGAMENTO_LABEL,
   STATUS_BADGE_CLASSES,
@@ -49,11 +50,13 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
   const status = isStatusEntrega(params.status) ? params.status : undefined;
   const formaPagamento = isFormaPagamento(params.forma) ? params.forma : undefined;
 
+  const sessao = await obterSessaoOperador();
   const { itens, totais } = await getRelatorioEntregas({
     dataInicio,
     dataFim,
     status,
     formaPagamento,
+    setorId: setorIdParaFiltro(sessao),
   });
 
   const temFiltroExtra = Boolean(status || formaPagamento);

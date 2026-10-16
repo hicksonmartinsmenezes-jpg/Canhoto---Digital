@@ -235,6 +235,9 @@ function FormModal({
   // outro.
   const [temPin, setTemPin] = useState(motoboy?.temPin ?? false);
   const [pinGerado, setPinGerado] = useState<string | null>(null);
+  // "Gerar novo PIN" invalida o atual (o motorista fica sem acesso até receber
+  // o novo): pede uma confirmação antes.
+  const [confirmandoNovoPin, setConfirmandoNovoPin] = useState(false);
   const [erroPin, setErroPin] = useState<string | null>(null);
   const [pendingPin, startTransitionPin] = useTransition();
   // A Server Action gera o PIN contra o telefone já salvo no banco, não
@@ -261,6 +264,7 @@ function FormModal({
 
   function gerarPin() {
     if (!motoboy) return;
+    setConfirmandoNovoPin(false);
     setErroPin(null);
     startTransitionPin(async () => {
       const resultado = await gerarPinMotoboy(motoboy.id);
@@ -274,17 +278,19 @@ function FormModal({
   }
 
   return (
-    <Modal onClose={onFechar}>
+    <Modal onClose={onFechar} bloquearFechar={Boolean(pinGerado)}>
       <div className="mb-4 flex items-start justify-between">
         <h3 className="text-[15px] font-bold">{titulo}</h3>
-        <button
-          type="button"
-          aria-label="Fechar"
-          onClick={onFechar}
-          className="text-slate-400 transition-colors hover:text-slate-600"
-        >
-          <X className="size-4" />
-        </button>
+        {!pinGerado && (
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={onFechar}
+            className="text-slate-400 transition-colors hover:text-slate-600"
+          >
+            <X className="size-4" />
+          </button>
+        )}
       </div>
 
       <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -374,7 +380,7 @@ function FormModal({
             <button
               type="button"
               disabled={pendingPin || !telefone.trim() || telefoneMudou}
-              onClick={gerarPin}
+              onClick={() => (temPin ? setConfirmandoNovoPin(true) : gerarPin())}
               className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 transition-[transform,border-color,color] duration-150 hover:border-amber-500/40 hover:text-amber-600 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
             >
               {pendingPin ? (
@@ -388,6 +394,30 @@ function FormModal({
                 "Gerar PIN"
               )}
             </button>
+          )}
+          {confirmandoNovoPin && !pinGerado && (
+            <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
+              <p className="font-semibold">
+                Gerar um novo PIN invalida o atual: o motorista só volta a
+                entrar com o PIN novo.
+              </p>
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={gerarPin}
+                  className="rounded-md bg-amber-500 px-3 py-1.5 font-bold text-white hover:bg-amber-400"
+                >
+                  Sim, gerar novo PIN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoNovoPin(false)}
+                  className="font-bold text-slate-500 hover:text-slate-700"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
           )}
           {/* O PIN é gerado contra o telefone já SALVO no banco (a Server
               Action confere de novo, não confia no valor deste form) — por
@@ -410,33 +440,46 @@ function FormModal({
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-end gap-3">
-        <button
-          type="button"
-          onClick={onFechar}
-          className="text-sm font-bold text-slate-500 hover:text-slate-700"
-        >
-          {pinGerado ? "Fechar" : "Cancelar"}
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={salvar}
-          className="inline-flex items-center gap-1.5 bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
-        >
-          {pending ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            <>
-              <Check className="size-4" />
-              Salvar
-            </>
-          )}
-        </button>
-      </div>
+      {pinGerado ? (
+        <div className="mt-6 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={onSucesso}
+            className="inline-flex items-center gap-1.5 bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97]"
+          >
+            <Check className="size-4" />
+            Já anotei o PIN — fechar
+          </button>
+        </div>
+      ) : (
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onFechar}
+            className="text-sm font-bold text-slate-500 hover:text-slate-700"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={salvar}
+            className="inline-flex items-center gap-1.5 bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
+          >
+            {pending ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Check className="size-4" />
+                Salvar
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </Modal>
   );
 }

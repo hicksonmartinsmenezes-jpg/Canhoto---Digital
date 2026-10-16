@@ -6,9 +6,6 @@ vi.mock("next/cache", () => ({
 vi.mock("@/lib/admin-auth", () => ({
   exigirAdminAutenticado: vi.fn(),
 }));
-vi.mock("@/lib/operador-auth", () => ({
-  obterOperadorAutenticado: vi.fn(),
-}));
 vi.mock("@/lib/db", () => ({
   getDb: vi.fn(),
 }));

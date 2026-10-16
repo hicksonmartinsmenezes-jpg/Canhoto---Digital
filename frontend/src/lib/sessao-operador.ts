@@ -2,44 +2,40 @@ import "server-only";
 
 // Helper único pras páginas do Portal descobrirem quem está logado sem se
 // importar se é Admin (vê tudo) ou colaborador com papel "gestor_setor"
-// (vê só o setor dele). proxy.ts já garante que só um desses dois chega
-// até a página — esse helper só identifica QUAL dos dois, pra decidir se
-// aplica filtro de setor nas consultas.
+// (vê só o setor dele). A sessão é REVALIDADA no banco a cada chamada
+// (colaborador ainda ativo, ainda gestor_setor, setor atual) — o token do
+// cookie vale por 8 h e não pode ser a fonte da verdade sobre o setor.
 
-import { obterUsuarioAdminIdDaSessao } from "@/lib/admin-session";
-import { obterSessaoColaborador } from "@/lib/colaborador-session";
+import { authBypassAtivo } from "@/lib/auth-bypass";
+import { obterOperadorAutenticado } from "@/lib/operador-auth";
+import type { SessaoOperador } from "@/lib/sessao-operador-core";
 
-export type SessaoOperador =
-  | { tipo: "admin"; usuarioAdminId: string }
-  | { tipo: "gestor_setor"; colaboradorId: string; setorId: string | null };
+export {
+  sessaoPodeAcessarSetor,
+  setorIdParaFiltro,
+  type SessaoOperador,
+} from "@/lib/sessao-operador-core";
 
 export async function obterSessaoOperador(): Promise<SessaoOperador | null> {
-  const usuarioAdminId = await obterUsuarioAdminIdDaSessao();
-  if (usuarioAdminId) {
-    return { tipo: "admin", usuarioAdminId };
+  const operador = await obterOperadorAutenticado();
+
+  if (operador?.tipo === "admin") {
+    return { tipo: "admin", usuarioAdminId: operador.usuarioAdminId };
   }
 
-  const sessaoColaborador = await obterSessaoColaborador();
-  if (sessaoColaborador) {
+  if (operador?.tipo === "gestor_setor") {
     return {
       tipo: "gestor_setor",
-      colaboradorId: sessaoColaborador.colaboradorId,
-      setorId: sessaoColaborador.setorId,
+      colaboradorId: operador.colaboradorId,
+      setorId: operador.setorId,
     };
   }
 
-  return null;
-}
+  // CI/dev: o proxy já liberou a rota sem sessão; trata como admin para
+  // as telas continuarem mostrando dados. Nunca vale em produção.
+  if (authBypassAtivo()) {
+    return { tipo: "admin", usuarioAdminId: "auth-bypass" };
+  }
 
-// Conveniência pras consultas em lib/data/entregas.ts:
-// - undefined => Admin, não filtra, vê tudo.
-// - uuid do setor => gestor_setor normal, filtra por esse setor.
-// - null => gestor_setor SEM setor cadastrado (caso raro/mal configurado);
-//   as funções de lib/data/entregas.ts tratam null como "não mostra nada",
-//   nunca como "não filtra" — importante não confundir os dois.
-export function setorIdParaFiltro(
-  sessao: SessaoOperador | null
-): string | null | undefined {
-  if (!sessao || sessao.tipo === "admin") return undefined;
-  return sessao.setorId;
+  return null;
 }

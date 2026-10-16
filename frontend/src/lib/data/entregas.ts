@@ -15,6 +15,7 @@ import {
   isNull,
   lte,
   ne,
+  sql,
 } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
@@ -48,9 +49,14 @@ export interface MotoristaEmRota {
   localizacaoAtualizadaEm: string | null;
 }
 
-export async function getMotoristasEmRota(): Promise<MotoristaEmRota[]> {
+// setorId: undefined = Admin (tudo); null = sem acesso (nada); uuid = só
+// entregas desse setor. Mesmo contrato de getDashboardStats.
+export async function getMotoristasEmRota(
+  setorId?: string | null
+): Promise<MotoristaEmRota[]> {
   const db = getDb();
   if (!db) return [];
+  if (setorId === null) return [];
 
   const hoje = paraChaveDiaLocal(new Date());
 
@@ -79,7 +85,8 @@ export async function getMotoristasEmRota(): Promise<MotoristaEmRota[]> {
         eq(entregas.status, "pendente"),
         isNotNull(entregas.horaSaida),
         isNotNull(entregas.motoboyId),
-        eq(motoboys.ativo, true)
+        eq(motoboys.ativo, true),
+        setorId ? eq(entregas.setorId, setorId) : undefined
       )
     )
     .orderBy(asc(motoboys.nome), asc(entregas.numero));
@@ -191,7 +198,10 @@ function paraChaveDiaLocal(d: Date): string {
   return `${ano}-${mes}-${dia}`;
 }
 
-export async function getEntregasPorDia(dias = 7): Promise<EntregaPorDia[]> {
+export async function getEntregasPorDia(
+  dias = 7,
+  setorId?: string | null
+): Promise<EntregaPorDia[]> {
   const hoje = new Date();
   const inicio = new Date(hoje);
   inicio.setDate(inicio.getDate() - (dias - 1));
@@ -204,14 +214,15 @@ export async function getEntregasPorDia(dias = 7): Promise<EntregaPorDia[]> {
   }
 
   const db = getDb();
-  if (db) {
+  if (db && setorId !== null) {
     const rows = await db
       .select({ data: entregas.data })
       .from(entregas)
       .where(
         and(
           gte(entregas.data, paraChaveDiaLocal(inicio)),
-          lte(entregas.data, paraChaveDiaLocal(hoje))
+          lte(entregas.data, paraChaveDiaLocal(hoje)),
+          setorId ? eq(entregas.setorId, setorId) : undefined
         )
       );
 
@@ -242,21 +253,27 @@ function pluralEntregas(n: number): string {
   return n === 1 ? "1 entrega" : `${n} entregas`;
 }
 
-export async function getAlertas(): Promise<Alerta[]> {
+export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
   const db = getDb();
   if (!db) return [];
+  if (setorId === null) return [];
+  const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
   const [aguardandoSaida, semNfe] = await Promise.all([
     db
       .select({ total: count() })
       .from(entregas)
       .where(
-        and(eq(entregas.status, "pendente"), isNull(entregas.horaSaida))
+        and(
+          eq(entregas.status, "pendente"),
+          isNull(entregas.horaSaida),
+          filtroSetor
+        )
       ),
     db
       .select({ total: count() })
       .from(entregas)
-      .where(isNull(entregas.numeroNfe)),
+      .where(and(isNull(entregas.numeroNfe), filtroSetor)),
   ]);
 
   const aguardandoSaidaTotal = aguardandoSaida[0]?.total ?? 0;
@@ -300,10 +317,13 @@ export interface AtividadeItem {
 // camada de escrita na mesma transação da mudança. Isso permite registrar o
 // ator real (colaborador ou motoboy) em vez de inferi-lo por um trigger.
 export async function getAtividadeRecente(
-  limit = 4
+  limit = 4,
+  setorId?: string | null
 ): Promise<AtividadeItem[]> {
   const db = getDb();
   if (!db) return [];
+  if (setorId === null) return [];
+  const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
   const [cadastros, mudancasStatus] = await Promise.all([
     db
@@ -324,6 +344,7 @@ export async function getAtividadeRecente(
         usuariosAdmin,
         eq(entregas.cadastradoPorAdmin, usuariosAdmin.id)
       )
+      .where(filtroSetor)
       .orderBy(desc(entregas.criadoEm))
       .limit(limit),
     db
@@ -335,6 +356,14 @@ export async function getAtividadeRecente(
       })
       .from(entregaHistorico)
       .innerJoin(entregas, eq(entregaHistorico.entregaId, entregas.id))
+      .where(
+        and(
+          // Linhas de auditoria (só dados alterados, mesmo status) não são
+          // "cliente confirmou"/"cancelada" — ficam fora do feed.
+          sql`${entregaHistorico.statusAnterior} is distinct from ${entregaHistorico.statusNovo}`,
+          filtroSetor
+        )
+      )
       .orderBy(desc(entregaHistorico.alteradoEm))
       .limit(limit),
   ]);
@@ -400,9 +429,7 @@ export interface EntregaListItem {
   valor: string;
   formaPagamento: FormaPagamento;
   motoboy: string | null;
-  caixa: string | null;
   status: StatusEntrega;
-  pendenteConferencia: boolean;
 }
 
 export async function getEntregas(
@@ -430,11 +457,9 @@ export async function getEntregas(
       formaPagamento: entregas.formaPagamento,
       status: entregas.status,
       motoboyNome: motoboys.nome,
-      caixaNome: colaboradores.nome,
     })
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
-    .leftJoin(colaboradores, eq(entregas.caixaId, colaboradores.id))
     .where(filtros.length > 0 ? and(...filtros) : undefined)
     .orderBy(desc(entregas.numero));
 
@@ -448,12 +473,7 @@ export async function getEntregas(
     valor: formatBRL(Number(entrega.valorPagamento)),
     formaPagamento: entrega.formaPagamento,
     motoboy: entrega.motoboyNome,
-    caixa: entrega.caixaNome,
     status: entrega.status,
-    pendenteConferencia:
-      entrega.status === "entregue" &&
-      entrega.formaPagamento !== "prazo" &&
-      entrega.caixaNome === null,
   }));
 }
 
@@ -462,6 +482,8 @@ export interface RelatorioFiltros {
   dataFim?: string;
   status?: StatusEntrega;
   formaPagamento?: FormaPagamento;
+  // undefined = Admin (tudo); null = sem acesso (vazio); uuid = só o setor.
+  setorId?: string | null;
 }
 
 interface RelatorioEntregaItem {
@@ -511,6 +533,7 @@ export async function getRelatorioEntregas(
 ): Promise<RelatorioEntregas> {
   const db = getDb();
   if (!db) return relatorioVazio();
+  if (filtros.setorId === null) return relatorioVazio();
 
   const rows = await db
     .select({
@@ -536,7 +559,8 @@ export async function getRelatorioEntregas(
           : undefined,
         filtros.formaPagamento
           ? eq(entregas.formaPagamento, filtros.formaPagamento)
-          : undefined
+          : undefined,
+        filtros.setorId ? eq(entregas.setorId, filtros.setorId) : undefined
       )
     )
     .orderBy(desc(entregas.data), desc(entregas.numero));
@@ -613,6 +637,7 @@ export interface EntregaDetalhe {
   horaSaida: string | null;
   observacoes: string;
   status: StatusEntrega;
+  setorId: string | null;
 }
 
 export async function getEntregaById(
@@ -641,6 +666,7 @@ export async function getEntregaById(
       status: entregas.status,
       motoboyId: entregas.motoboyId,
       motoboyNome: motoboys.nome,
+      setorId: entregas.setorId,
     })
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
@@ -670,6 +696,7 @@ export async function getEntregaById(
     horaSaida: entrega.horaSaida,
     observacoes: entrega.observacoes ?? "",
     status: entrega.status,
+    setorId: entrega.setorId,
   };
 }
 
@@ -824,5 +851,53 @@ export async function getEntregasDoMotorista(
     status: entrega.status,
     horaSaida: entrega.horaSaida,
     clienteAssinouEm: entrega.clienteAssinouEm,
+  }));
+}
+
+export interface HistoricoEntregaItem {
+  id: string;
+  alteradoEm: string;
+  responsavel: string;
+  statusAnterior: StatusEntrega | null;
+  statusNovo: StatusEntrega;
+  observacao: string | null;
+}
+
+export async function getHistoricoEntrega(
+  entregaId: string
+): Promise<HistoricoEntregaItem[]> {
+  const db = getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      id: entregaHistorico.id,
+      alteradoEm: entregaHistorico.alteradoEm,
+      statusAnterior: entregaHistorico.statusAnterior,
+      statusNovo: entregaHistorico.statusNovo,
+      observacao: entregaHistorico.observacao,
+      colaboradorNome: colaboradores.nome,
+      motoboyNome: motoboys.nome,
+      adminId: entregaHistorico.alteradoPorAdmin,
+    })
+    .from(entregaHistorico)
+    .leftJoin(colaboradores, eq(entregaHistorico.alteradoPor, colaboradores.id))
+    .leftJoin(motoboys, eq(entregaHistorico.alteradoPorMotoboy, motoboys.id))
+    .where(eq(entregaHistorico.entregaId, entregaId))
+    .orderBy(desc(entregaHistorico.alteradoEm));
+
+  return rows.map((linha) => ({
+    id: linha.id,
+    alteradoEm: linha.alteradoEm,
+    responsavel:
+      linha.colaboradorNome ??
+      (linha.motoboyNome
+        ? `${linha.motoboyNome} (motorista)`
+        : linha.adminId
+          ? "Administrador"
+          : "Sistema"),
+    statusAnterior: linha.statusAnterior,
+    statusNovo: linha.statusNovo,
+    observacao: linha.observacao,
   }));
 }

@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [],
   "ignore": ["public/motorista-sw.js"],
-  "ignoreDependencies": ["wait-on", "@capacitor/preferences"],
+  "ignoreDependencies": ["wait-on", "@capacitor/preferences", "@capacitor-community/background-geolocation"],
   "rules": {
     "files": "error",
     "dependencies": "error",

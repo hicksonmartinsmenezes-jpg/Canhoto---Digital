@@ -231,6 +231,7 @@ export function AdicionarEntregaWizard({
     }
 
     e.preventDefault();
+    if (e.ctrlKey || e.metaKey) return;
     if (step === 1) irParaEtapa2();
     if (step === 2) irParaEtapa3();
   }

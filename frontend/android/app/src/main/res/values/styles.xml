@@ -16,7 +16,10 @@
     </style>
 
 
+    <!-- Splash igual ao do PWA: fundo branco + ícone do entregador no centro. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">#FFFFFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <item name="android:background">#FFFFFF</item>
     </style>
 </resources>

@@ -11,12 +11,12 @@ import {
   Phone,
   UserRound,
 } from "lucide-react";
-import {
-  MotoristaBottomNav,
-  type MotoristaView,
-} from "@/components/motorista/MotoristaBottomNav";
+import { type MotoristaView } from "@/components/motorista/MotoristaBottomNav";
+import { MotoristaTabs } from "@/components/motorista/MotoristaTabs";
 import { MotoristaAutoRefresh } from "@/components/motorista/MotoristaAutoRefresh";
 import { MotoristaEntregasHoje } from "@/components/motorista/MotoristaEntregasHoje";
+import { MotoristaEnvioPendente } from "@/components/motorista/MotoristaEnvioPendente";
+import { MotoristaPreparoOffline } from "@/components/motorista/MotoristaPreparoOffline";
 import { MotoristaHistorico } from "@/components/motorista/MotoristaHistorico";
 import { MotoristaLocationTracker } from "@/components/motorista/MotoristaLocationTracker";
 import { MotoristaWakeLock } from "@/components/motorista/MotoristaWakeLock";
@@ -65,9 +65,8 @@ export default async function MotoristaPage({
   const [perfil, entregas, historico] = await Promise.all([
     getMotoboyPerfil(motoboyId),
     getEntregasDoMotorista(motoboyId),
-    view === "historico"
-      ? getHistoricoDoMotorista(motoboyId, 100)
-      : Promise.resolve([]),
+    // As três abas são montadas de uma vez (troca instantânea no aparelho).
+    getHistoricoDoMotorista(motoboyId, 100),
   ]);
 
   const nome = perfil?.nome ?? "Motorista";
@@ -89,33 +88,49 @@ export default async function MotoristaPage({
       (entrega) => entrega.status === "pendente" && entrega.horaSaida !== null
     ) ?? entregas.find((entrega) => entrega.status === "pendente");
 
+  // A distância depende de serviços externos (geocodificação/rotas). Não deixa
+  // a tela esperar por eles: se não responder em 1,5 s mostra sem a distância
+  // e o cálculo continua em segundo plano (fica em cache pra próxima
+  // atualização).
   const distanciaAteDestino = proximaEntrega
-    ? await getDistanciaLojaAteDestinoKm(proximaEntrega.id)
+    ? await Promise.race([
+        getDistanciaLojaAteDestinoKm(proximaEntrega.id),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1_500)),
+      ])
     : null;
 
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
       <MotoristaAutoRefresh />
+      <MotoristaPreparoOffline
+        entregaIds={entregas
+          .filter((entrega) => entrega.status === "pendente")
+          .map((entrega) => entrega.id)}
+      />
       <MotoristaLocationTracker ativo={possuiEntregaEmRota} />
       <MotoristaWakeLock ativo={possuiEntregaEmRota} />
 
-      {view === "entregas" && (
+      <MotoristaTabs
+        inicial={view}
+        pendentes={pendentes}
+        cabecalhos={{
+          entregas: (
         <header className="relative overflow-hidden bg-gradient-to-br from-[#0C3568] to-[#08264F] px-4 pb-4 pt-5 text-white">
           <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full border border-white/5" />
 
           <div className="relative w-full">
             <div className="flex items-center justify-between gap-4">
-              <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
-                <CalendarDays className="size-4" />
-                {formatarDataHoje()}
-              </p>
-
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/rildon-express-logo-white.svg"
                 alt="Rildon Express"
                 className="h-5 w-auto max-w-[132px]"
               />
+
+              <p className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
+                <CalendarDays className="size-4" />
+                {formatarDataHoje()}
+              </p>
             </div>
 
             {proximaEntrega ? (
@@ -191,12 +206,11 @@ export default async function MotoristaPage({
             )}
           </div>
         </header>
-      )}
-
-      {view === "perfil" && (
+          ),
+          perfil: (
         <header className="bg-[#082B57] text-white">
           <div className="w-full px-4 py-4">
-            {view === "perfil" && (
+            <>
               <div className="flex items-center gap-4 py-1">
                 <span className="grid size-16 shrink-0 place-items-center rounded-full border-2 border-white/70 bg-white text-[#0A2C5A]">
                   <UserRound className="size-8" />
@@ -212,14 +226,15 @@ export default async function MotoristaPage({
                   Ativo
                 </span>
               </div>
-            )}
+            </>
           </div>
         </header>
-      )}
-
-      <main className="w-full pb-28">
-        {view === "entregas" && (
+          ),
+        }}
+        conteudos={{
+          entregas: (
           <>
+            <MotoristaEnvioPendente />
             <section className="border-b border-slate-200 bg-white px-4 py-3">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -256,15 +271,13 @@ export default async function MotoristaPage({
               <MotoristaEntregasHoje entregas={entregas} />
             </div>
           </>
-        )}
-
-        {view === "historico" && (
+          ),
+          historico: (
           <div className="pt-4">
             <MotoristaHistorico entregas={historico} />
           </div>
-        )}
-
-        {view === "perfil" && (
+          ),
+          perfil: (
           <section className="bg-white">
             <div className="border-b border-slate-200 px-4 py-4">
               <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
@@ -321,10 +334,9 @@ export default async function MotoristaPage({
               </form>
             </div>
           </section>
-        )}
-      </main>
-
-      <MotoristaBottomNav ativo={view} pendentes={pendentes} />
+          ),
+        }}
+      />
     </div>
   );
 }

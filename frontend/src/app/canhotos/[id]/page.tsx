@@ -5,18 +5,23 @@ import {
   Camera,
   Clock3,
   ExternalLink,
+  History,
   MapPin,
   PenLine,
   ReceiptText,
   SquarePen,
   UserRound,
 } from "lucide-react";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
 import {
   getComprovantesEntrega,
   getEntregaById,
+  getHistoricoEntrega,
 } from "@/lib/data/entregas";
 import { formatBRL, formatDateBR } from "@/lib/format";
+import {
+  obterSessaoOperador,
+  sessaoPodeAcessarSetor,
+} from "@/lib/sessao-operador";
 import {
   FORMA_PAGAMENTO_LABEL,
   STATUS_BADGE_CLASSES,
@@ -37,16 +42,20 @@ export default async function EntregaDetalhePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await obterAdminAutenticado();
-  if (!admin) redirect("/login");
+  const sessao = await obterSessaoOperador();
+  if (!sessao) redirect("/login");
 
   const { id } = await params;
-  const [entrega, comprovantes] = await Promise.all([
+  const [entrega, comprovantes, historico] = await Promise.all([
     getEntregaById(id),
     getComprovantesEntrega(id),
+    getHistoricoEntrega(id),
   ]);
 
-  if (!entrega) notFound();
+  if (!entrega || !sessaoPodeAcessarSetor(sessao, entrega.setorId)) notFound();
+
+  // Entrega concluída só o Admin edita (ver editar/actions.ts).
+  const podeEditar = sessao.tipo === "admin" || entrega.status !== "entregue";
 
   const fotos = comprovantes.filter((item) => item.tipo === "foto");
   const comprovantesPix = comprovantes.filter(
@@ -83,13 +92,15 @@ export default async function EntregaDetalhePage({
           </p>
         </div>
 
-        <Link
-          href={`/canhotos/${entrega.id}/editar`}
-          className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0A1F44]/90"
-        >
-          <SquarePen className="size-4" />
-          Editar entrega
-        </Link>
+        {podeEditar && (
+          <Link
+            href={`/canhotos/${entrega.id}/editar`}
+            className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0A1F44]/90"
+          >
+            <SquarePen className="size-4" />
+            Editar entrega
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-12 gap-5">
@@ -377,6 +388,53 @@ export default async function EntregaDetalhePage({
                 </div>
               )}
             </div>
+          )}
+        </section>
+
+        <section className="col-span-12 border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <h2 className="flex items-center gap-2 text-[15px] font-bold text-[#0A1F44]">
+              <History className="size-4" />
+              Histórico
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Mudanças de situação e alterações de valor, pagamento, cliente,
+              motorista ou data — com quem fez e quando.
+            </p>
+          </div>
+
+          {historico.length === 0 ? (
+            <p className="px-6 py-8 text-center text-sm text-slate-400">
+              Nenhuma alteração registrada.
+            </p>
+          ) : (
+            <ol className="divide-y divide-slate-100 px-6">
+              {historico.map((item) => (
+                <li
+                  key={item.id}
+                  className="grid gap-1 py-3.5 text-sm sm:grid-cols-[150px_1fr]"
+                >
+                  <span className="text-xs font-semibold text-slate-500">
+                    {formatarDataHora(item.alteradoEm)}
+                  </span>
+                  <div>
+                    <p className="font-semibold text-slate-800">
+                      {item.responsavel}
+                      {item.statusAnterior !== item.statusNovo && (
+                        <span className="font-medium text-slate-500">
+                          {" "}
+                          · {item.statusAnterior ? `${STATUS_LABEL[item.statusAnterior]} → ` : ""}
+                          {STATUS_LABEL[item.statusNovo]}
+                        </span>
+                      )}
+                    </p>
+                    {item.observacao && (
+                      <p className="mt-0.5 text-slate-600">{item.observacao}</p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
           )}
         </section>
       </div>

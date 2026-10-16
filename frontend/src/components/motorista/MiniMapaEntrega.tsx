@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import "leaflet/dist/leaflet.css";
 import {
   CircleMarker,
   MapContainer,

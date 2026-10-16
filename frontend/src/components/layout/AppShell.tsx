@@ -2,9 +2,23 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { Sidebar } from "@/components/layout/Sidebar";
+import dynamic from "next/dynamic";
+import type { PapelPortal } from "@/lib/papel-portal";
 
-export function AppShell({ children }: { children: ReactNode }) {
+// Carregado sob demanda: o app do motorista (celular, internet móvel) nunca
+// renderiza a barra lateral, então não deve baixar a biblioteca de animação
+// (motion) e os ícones dela (~50 KB comprimidos a cada primeira abertura).
+const Sidebar = dynamic(() =>
+  import("@/components/layout/Sidebar").then((m) => m.Sidebar)
+);
+
+export function AppShell({
+  children,
+  papel,
+}: {
+  children: ReactNode;
+  papel: PapelPortal;
+}) {
   const pathname = usePathname();
   const areaMotorista = pathname.startsWith("/motorista");
   // Telas de login (Admin e Gestor de setor) não devem exibir a barra
@@ -23,7 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <Sidebar />
+      <Sidebar papel={papel} />
       <main className="min-h-full p-6 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] peer-hover:translate-x-48 md:ml-16 lg:p-8">
         {children}
       </main>

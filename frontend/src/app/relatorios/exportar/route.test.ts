@@ -3,11 +3,16 @@ import { NextRequest } from "next/server";
 import { getRelatorioEntregas } from "@/lib/data/entregas";
 import { arquivarRelatorioCsv } from "@/lib/relatorios-storage";
 import { obterAdminAutenticado } from "@/lib/admin-auth";
+import { obterSessaoOperador } from "@/lib/sessao-operador";
 import { GET } from "./route";
 
 vi.mock("@/lib/data/entregas", () => ({ getRelatorioEntregas: vi.fn() }));
 vi.mock("@/lib/relatorios-storage", () => ({ arquivarRelatorioCsv: vi.fn() }));
 vi.mock("@/lib/admin-auth", () => ({ obterAdminAutenticado: vi.fn() }));
+vi.mock("@/lib/sessao-operador", () => ({
+  obterSessaoOperador: vi.fn(),
+  setorIdParaFiltro: vi.fn(() => undefined),
+}));
 
 function relatorioComCliente(cliente: string) {
   return {
@@ -28,6 +33,7 @@ function relatorioComCliente(cliente: string) {
 
 describe("exportação CSV do relatório", () => {
   beforeEach(() => {
+    vi.mocked(obterSessaoOperador).mockResolvedValue({ tipo: "admin" } as never);
     vi.mocked(getRelatorioEntregas).mockResolvedValue({
       itens: [{
         id: "1",
@@ -50,6 +56,14 @@ describe("exportação CSV do relatório", () => {
       colaboradorId: null,
       email: "admin@example.com",
     });
+  });
+
+  it("recusa a exportação sem sessão de operador", async () => {
+    vi.mocked(obterSessaoOperador).mockResolvedValueOnce(null);
+    const response = await GET(new NextRequest("http://localhost/relatorios/exportar"));
+
+    expect(response.status).toBe(401);
+    expect(getRelatorioEntregas).not.toHaveBeenCalled();
   });
 
   it("neutraliza fórmulas, usa ponto e vírgula e mantém o download se o arquivo não puder ser arquivado", async () => {

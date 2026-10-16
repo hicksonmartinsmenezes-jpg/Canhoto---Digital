@@ -6,19 +6,7 @@ $configPath = Join-Path $scriptDir ".env.backup"
 $backupRoot = Join-Path (Join-Path $repoRoot "backups") "Canhoto Backups"
 $container = "canhoto_digital_postgres"
 
-function Import-EnvFile([string]$Path) {
-    if (-not (Test-Path $Path)) { return }
-
-    Get-Content $Path | ForEach-Object {
-        $line = $_.Trim()
-        if (-not $line -or $line.StartsWith("#")) { return }
-
-        $parts = $line -split "=", 2
-        if ($parts.Count -eq 2) {
-            Set-Item -Path ("Env:" + $parts[0].Trim()) -Value $parts[1].Trim()
-        }
-    }
-}
+. (Join-Path $scriptDir "backup-lib.ps1")
 
 function Resolve-OperationalPath([string]$Value, [string]$DefaultPath) {
     if (-not $Value) {
@@ -45,9 +33,14 @@ function Get-DatabaseValues([string]$Sql, [string]$DatabaseExpression = '"$POSTG
     return @($result | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 }
 
-function Assert-ReferencedUploadsExist([string]$UploadDir) {
+# Devolve a lista de anexos que o banco cita mas que não existem no disco.
+# Antes, UM arquivo faltando abortava o backup inteiro (inclusive o do banco);
+# agora o backup continua, avisa e grava a lista no manifest.json. Pasta de
+# uploads inexistente ou caminho inseguro continuam sendo erro: indicam
+# configuração errada, não um arquivo perdido.
+function Get-MissingReferencedUploads([string]$UploadDir) {
     $referenced = @(Get-DatabaseValues "select arquivo_url from entrega_anexos where arquivo_url is not null and btrim(arquivo_url) <> '' order by arquivo_url;")
-    if ($referenced.Count -eq 0) { return }
+    if ($referenced.Count -eq 0) { return @() }
 
     if (-not (Test-Path -LiteralPath $UploadDir -PathType Container)) {
         throw "The database references delivery attachments, but the upload directory does not exist: $UploadDir"
@@ -55,6 +48,8 @@ function Assert-ReferencedUploadsExist([string]$UploadDir) {
 
     $root = [IO.Path]::GetFullPath($UploadDir).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
     $rootPrefix = $root + [IO.Path]::DirectorySeparatorChar
+
+    $missing = New-Object System.Collections.Generic.List[string]
 
     foreach ($relative in $referenced) {
         $normalized = $relative.Replace("/", [IO.Path]::DirectorySeparatorChar)
@@ -65,9 +60,11 @@ function Assert-ReferencedUploadsExist([string]$UploadDir) {
         }
 
         if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
-            throw "Attachment referenced by the database is missing from storage: $relative"
+            $missing.Add($relative)
         }
     }
+
+    return @($missing)
 }
 
 function Assert-ZipReadable([string]$Path) {
@@ -137,6 +134,19 @@ function Assert-BackupPackage([string]$PackagePath) {
 
 Import-EnvFile $configPath
 
+$statusPath = Join-Path $backupRoot "last-backup.json"
+$backupWarnings = New-Object System.Collections.Generic.List[string]
+
+# Qualquer erro (inclusive antes do try abaixo, como "docker não encontrado")
+# vira registro em last-backup.json e alerta no Telegram, e o script termina
+# com erro para o Agendador de Tarefas marcar a execução como falha.
+trap {
+    $mensagem = $_.Exception.Message
+    Write-BackupStatus -StatusPath $statusPath -Ok $false -Warnings $backupWarnings.ToArray() -ErrorMessage $mensagem
+    Send-BackupAlert ("BACKUP FALHOU em " + (Get-Date -Format "dd/MM HH:mm") + ":`n" + $mensagem) | Out-Null
+    break
+}
+
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     throw "docker not found in PATH."
 }
@@ -180,7 +190,11 @@ if (Test-Path -LiteralPath $finalPath) {
 New-Item -ItemType Directory -Force -Path $partialPath | Out-Null
 
 try {
-    Assert-ReferencedUploadsExist $uploadDir
+    $missingUploads = @(Get-MissingReferencedUploads $uploadDir)
+    if ($missingUploads.Count -gt 0) {
+        $backupWarnings.Add("$($missingUploads.Count) comprovante(s) citado(s) no banco não existem no disco (lista em manifest.json).")
+        Write-Warning $backupWarnings[$backupWarnings.Count - 1]
+    }
 
     $dumpCommand = 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f "' + $containerPath + '"'
     docker exec $container sh -lc $dumpCommand
@@ -301,6 +315,10 @@ try {
                 0
             }))
         }
+        missingUploads = [ordered]@{
+            count = $missingUploads.Count
+            files = @($missingUploads | Select-Object -First 200)
+        }
         requiredTables = $requiredTables
     }
 
@@ -311,19 +329,30 @@ try {
     Move-Item -LiteralPath $partialPath -Destination $finalPath
 
     if ($mirrorDir) {
-        New-Item -ItemType Directory -Force -Path $mirrorDir | Out-Null
-        $mirrorPath = Join-Path $mirrorDir $packageName
-
-        if (Test-Path -LiteralPath $mirrorPath) {
-            throw "Mirror destination already exists: $mirrorPath"
+        if ($env:BACKUP_ENCRYPTION_PASSPHRASE) {
+            # Cópia externa: um único arquivo .zip.enc (AES-256-GCM), conferido
+            # com a senha antes de ganhar o nome definitivo.
+            $mirrorFile = New-EncryptedMirrorCopy -PackagePath $finalPath -MirrorDir $mirrorDir -WorkDir $backupRoot
+            Write-Host "Encrypted mirror copy: $mirrorFile"
         }
+        else {
+            New-Item -ItemType Directory -Force -Path $mirrorDir | Out-Null
+            $mirrorPath = Join-Path $mirrorDir $packageName
 
-        Copy-Item -LiteralPath $finalPath -Destination $mirrorPath -Recurse
-        Assert-BackupPackage $mirrorPath
-        Write-Host "Mirror copy: $mirrorPath"
+            if (Test-Path -LiteralPath $mirrorPath) {
+                throw "Mirror destination already exists: $mirrorPath"
+            }
+
+            Copy-Item -LiteralPath $finalPath -Destination $mirrorPath -Recurse
+            Assert-BackupPackage $mirrorPath
+            Write-Host "Mirror copy: $mirrorPath"
+            $backupWarnings.Add("A cópia externa NÃO está criptografada (defina BACKUP_ENCRYPTION_PASSPHRASE em .env.backup).")
+            Write-Warning $backupWarnings[$backupWarnings.Count - 1]
+        }
     }
     else {
-        Write-Warning "BACKUP_MIRROR_DIR is not configured. Backup exists only on this machine."
+        $backupWarnings.Add("BACKUP_MIRROR_DIR vazio: o backup existe só neste PC.")
+        Write-Warning $backupWarnings[$backupWarnings.Count - 1]
     }
 
     $cutoff = (Get-Date).AddDays(-$retention)
@@ -332,15 +361,18 @@ try {
         Where-Object { $_.LastWriteTime -lt $cutoff } |
         Remove-Item -Recurse -Force
 
-    if ($mirrorDir -and (Test-Path -LiteralPath $mirrorDir)) {
-        Get-ChildItem -LiteralPath $mirrorDir -Directory -Filter "canhoto-*" -ErrorAction SilentlyContinue |
-            Where-Object { $_.LastWriteTime -lt $cutoff } |
-            Remove-Item -Recurse -Force
+    if ($mirrorDir) {
+        Remove-ExpiredMirrorItems -MirrorDir $mirrorDir -Cutoff $cutoff
     }
 
     Write-Host "Complete backup created: $finalPath"
     Write-Host "Database + delivery uploads + exported reports are in the same validated package."
     Write-Host "Retention: $retention days"
+
+    Write-BackupStatus -StatusPath $statusPath -Ok $true -Package $packageName -Warnings $backupWarnings.ToArray()
+    if ($backupWarnings.Count -gt 0) {
+        Send-BackupAlert ("Backup $packageName concluído com AVISOS:`n- " + ($backupWarnings -join "`n- ")) | Out-Null
+    }
 }
 finally {
     docker exec $container rm -f $containerPath 2>$null | Out-Null

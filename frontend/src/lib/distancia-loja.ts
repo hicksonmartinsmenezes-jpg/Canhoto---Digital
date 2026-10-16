@@ -167,7 +167,7 @@ async function distanciaRodoviariaKm(
           "User-Agent": "Canhoto-Digital/2.0",
         },
         cache: "no-store",
-        signal: AbortSignal.timeout(6_000),
+        signal: AbortSignal.timeout(3_000),
       }
     );
 
@@ -200,7 +200,7 @@ async function resolverCoordenadas(
   return coordenadasPorCep(cep);
 }
 
-export async function getDistanciaLojaAteDestinoKm(
+async function calcularDistanciaLojaAteDestinoKm(
   entregaId: string
 ): Promise<number | null> {
   const db = getDb();
@@ -266,4 +266,58 @@ export async function getDistanciaLojaAteDestinoKm(
   );
 
   return Number(distanciaDireta.toFixed(1));
+}
+
+// ---------------------------------------------------------------------------
+// Cache em memória. A tela do motorista se atualiza sozinha (router.refresh) e
+// cada atualização recalculava a distância: geocodificação + rota no OSRM
+// público, com timeouts de vários segundos, a cada poucos segundos. A distância
+// loja → destino não muda durante a entrega, então guardamos o resultado e
+// juntamos chamadas simultâneas da mesma entrega numa só.
+// ---------------------------------------------------------------------------
+const TTL_SUCESSO_MS = 60 * 60 * 1000; // 1 h
+const TTL_SEM_RESULTADO_MS = 3 * 60 * 1000; // 3 min (tenta de novo depois)
+const LIMITE_CACHE = 500;
+
+const cacheDistancia = new Map<
+  string,
+  { valor: number | null; expiraEm: number }
+>();
+const calculosEmAndamento = new Map<string, Promise<number | null>>();
+
+function limparCacheExpirado(agora: number) {
+  if (cacheDistancia.size < LIMITE_CACHE) return;
+  for (const [chave, item] of cacheDistancia) {
+    if (item.expiraEm <= agora) cacheDistancia.delete(chave);
+  }
+  if (cacheDistancia.size >= LIMITE_CACHE) cacheDistancia.clear();
+}
+
+export async function getDistanciaLojaAteDestinoKm(
+  entregaId: string
+): Promise<number | null> {
+  const agora = Date.now();
+  const guardado = cacheDistancia.get(entregaId);
+  if (guardado && guardado.expiraEm > agora) return guardado.valor;
+
+  const emAndamento = calculosEmAndamento.get(entregaId);
+  if (emAndamento) return emAndamento;
+
+  const calculo = calcularDistanciaLojaAteDestinoKm(entregaId)
+    .catch(() => null)
+    .then((valor) => {
+      const fim = Date.now();
+      limparCacheExpirado(fim);
+      cacheDistancia.set(entregaId, {
+        valor,
+        expiraEm: fim + (valor === null ? TTL_SEM_RESULTADO_MS : TTL_SUCESSO_MS),
+      });
+      return valor;
+    })
+    .finally(() => {
+      calculosEmAndamento.delete(entregaId);
+    });
+
+  calculosEmAndamento.set(entregaId, calculo);
+  return calculo;
 }

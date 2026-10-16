@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, MoreVertical } from "lucide-react";
 import { EntregaMotoristaDetalheView } from "@/components/motorista/EntregaMotoristaDetalheView";
 import { MotoristaLocationTracker } from "@/components/motorista/MotoristaLocationTracker";
+import { MotoristaWakeLock } from "@/components/motorista/MotoristaWakeLock";
 import { getEntregaMotoristaDetalhe } from "@/lib/data/motorista-entregas";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 
@@ -27,6 +28,7 @@ export default async function MotoristaEntregaPage({
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
       <MotoristaLocationTracker ativo={emRota} />
+      <MotoristaWakeLock ativo={emRota} />
 
       <header className="bg-[#082B57] text-white">
         <div className="flex w-full items-center justify-between gap-3 px-4 py-4">

@@ -1,6 +1,12 @@
 import "server-only";
 import { headers } from "next/headers";
-import { avaliarJanela, type Registro } from "@/lib/rate-limit-core";
+import {
+  avaliarJanela,
+  contarNaJanela,
+  escolherIpDoCliente,
+  registrarOcorrencia,
+  type Registro,
+} from "@/lib/rate-limit-core";
 import type { RateLimitResult } from "@/lib/rate-limit-core";
 
 // Rate limit simples (janela deslizante, em memória) para as Server Actions
@@ -30,13 +36,7 @@ export const RATE_LIMIT_ESTRITO = 5; // usado em ações destrutivas (excluir)
 const registros = new Map<string, Registro>();
 
 async function obterIdentificador(): Promise<string> {
-  const h = await headers();
-  // "x-forwarded-for" pode vir com múltiplos IPs separados por vírgula
-  // (proxy/CDN na frente) — o primeiro é o do cliente original.
-  const forwardedFor = h.get("x-forwarded-for");
-  return (
-    forwardedFor?.split(",")[0]?.trim() || h.get("x-real-ip") || "desconhecido"
-  );
+  return escolherIpDoCliente(await headers());
 }
 
 // Chamar no início de cada Server Action de escrita. `acao` é um nome curto
@@ -56,6 +56,40 @@ export async function checarRateLimit(
   );
 }
 
+// Bloqueio por CONTA (além do limite por IP): contar só falhas de login
+// numa janela maior. Impede que quem troca de IP (ou vários IPs atrás do
+// mesmo NAT/túnel) force o PIN de 4 dígitos de um motorista específico.
+const LOGIN_FALHAS_JANELA_MS = 15 * 60_000;
+const LOGIN_FALHAS_MAXIMAS = 8;
+const falhasLogin = new Map<string, Registro>();
+
+export function contaBloqueadaPorFalhas(
+  acao: string,
+  identificador: string
+): boolean {
+  return (
+    contarNaJanela(
+      falhasLogin,
+      `${acao}:${identificador}`,
+      Date.now(),
+      LOGIN_FALHAS_JANELA_MS
+    ) >= LOGIN_FALHAS_MAXIMAS
+  );
+}
+
+export function registrarFalhaLogin(acao: string, identificador: string): void {
+  registrarOcorrencia(
+    falhasLogin,
+    `${acao}:${identificador}`,
+    Date.now(),
+    LOGIN_FALHAS_JANELA_MS
+  );
+}
+
+export function limparFalhasLogin(acao: string, identificador: string): void {
+  falhasLogin.delete(`${acao}:${identificador}`);
+}
+
 // Limpeza periódica — evita que a Map cresça pra sempre num processo de
 // vida longa. Remove só chaves sem nenhuma tentativa dentro da janela atual.
 if (typeof setInterval !== "undefined") {
@@ -67,6 +101,10 @@ if (typeof setInterval !== "undefined") {
       );
       if (ativos.length === 0) registros.delete(chave);
       else registro.timestamps = ativos;
+    }
+    for (const [chave, registro] of falhasLogin) {
+      if (registro.timestamps.every((t) => agora - t >= LOGIN_FALHAS_JANELA_MS))
+        falhasLogin.delete(chave);
     }
   }, 10 * 60_000);
   intervalo.unref?.();

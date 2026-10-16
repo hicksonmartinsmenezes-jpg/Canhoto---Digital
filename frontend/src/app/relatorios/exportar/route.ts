@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRelatorioEntregas } from "@/lib/data/entregas";
+import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
+import { linhaCsv, SEPARADOR_CSV } from "@/lib/csv";
 import { arquivarRelatorioCsv } from "@/lib/relatorios-storage";
 import { obterAdminAutenticado } from "@/lib/admin-auth";
 import {
@@ -16,17 +18,21 @@ import {
 // o jeito mais simples de disparar o download do navegador sem
 // JavaScript extra no client.
 //
-// Neutraliza fórmulas e escapa células CSV: envolve em aspas e duplica
-// aspas internas sempre que o valor contém separador, aspas ou quebra de linha.
-function celulaCsv(valor: string): string {
-  const valorSeguro = /^[\t\r ]*[=+\-@]/.test(valor) ? `'${valor}` : valor;
-  if (/[;"\r\n]/.test(valorSeguro)) {
-    return `"${valorSeguro.replace(/"/g, '""')}"`;
-  }
-  return valorSeguro;
-}
-
 export async function GET(request: NextRequest) {
+  // Autenticação própria: o proxy só confere a assinatura do cookie e o
+  // relatório carrega dados financeiros — exige sessão válida e aplica o
+  // escopo de setor do gestor_setor.
+  const sessao = await obterSessaoOperador();
+  if (!sessao) {
+    return new NextResponse("Não autorizado.", {
+      status: 401,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   const params = request.nextUrl.searchParams;
 
   const inicioParam = params.get("inicio");
@@ -44,11 +50,12 @@ export async function GET(request: NextRequest) {
     dataFim,
     status,
     formaPagamento,
+    setorId: setorIdParaFiltro(sessao),
   });
 
   const cabecalho = ["Código", "Data", "Cliente", "Valor", "Forma de pagamento", "Motorista", "Situação"];
   const linhas = itens.map((item) =>
-    [
+    linhaCsv([
       item.numero,
       item.data,
       item.cliente,
@@ -56,18 +63,19 @@ export async function GET(request: NextRequest) {
       FORMA_PAGAMENTO_LABEL[item.formaPagamento],
       item.motoboy ?? "",
       STATUS_LABEL[item.status],
-    ]
-      .map(celulaCsv)
-      .join(";")
+    ])
   );
 
   // BOM UTF-8 no início: sem isso o Excel (bem comum aqui, ver pt-BR) lê
   // acentos como caracteres corrompidos ao abrir o CSV direto.
-  const csv = "﻿" + [cabecalho.join(";"), ...linhas].join("\r\n") + "\r\n";
+  const csv = "﻿" + [cabecalho.join(SEPARADOR_CSV), ...linhas].join("\r\n") + "\r\n";
 
   const nomeBase = `relatorio-entregas${dataInicio ? `_${dataInicio}` : ""}${dataFim ? `_a_${dataFim}` : ""}`;
   const nomeArquivo = `${nomeBase}.csv`;
 
+  // O arquivamento em disco é uma cópia de segurança: se falhar (disco
+  // cheio, permissão), o usuário ainda recebe o relatório — só registramos
+  // o erro para a manutenção ver.
   try {
     await arquivarRelatorioCsv(nomeBase, csv);
   } catch (error) {
@@ -94,6 +102,7 @@ export async function GET(request: NextRequest) {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${nomeArquivo}"`,
+      "Cache-Control": "private, no-store",
     },
   });
 }
