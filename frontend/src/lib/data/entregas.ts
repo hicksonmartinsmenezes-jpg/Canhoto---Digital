@@ -382,9 +382,19 @@ export async function getAtividadeRecente(
         alteradoEm: entregaHistorico.alteradoEm,
         observacao: entregaHistorico.observacao,
         numero: entregas.numero,
+        motoristaNome: motoboys.nome,
       })
       .from(entregaHistorico)
       .innerJoin(entregas, eq(entregaHistorico.entregaId, entregas.id))
+      // Quem concluiu: o motoboy que gravou a mudança; se não houver, o
+      // motorista da entrega.
+      .leftJoin(
+        motoboys,
+        eq(
+          motoboys.id,
+          sql`coalesce(${entregaHistorico.alteradoPorMotoboy}, ${entregas.motoboyId})`
+        )
+      )
       .where(
         and(
           // Linhas de auditoria (só dados alterados, mesmo status) não são
@@ -420,7 +430,7 @@ export async function getAtividadeRecente(
         id: `historico-${historico.id}`,
         hora: rotuloQuando(historico.alteradoEm),
         titulo: "Entrega concluída",
-        descricao: `O motorista concluiu a entrega #${historico.numero} com foto da entrega.`,
+        descricao: `${historico.motoristaNome ? `O motorista ${historico.motoristaNome}` : "O motorista"} concluiu a entrega #${historico.numero} com foto da entrega.`,
         cor: "info",
         timestamp: historico.alteradoEm,
       });

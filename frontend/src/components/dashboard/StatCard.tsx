@@ -14,7 +14,7 @@ interface StatCardProps {
   icon?: ReactNode;
   /** Remove o fundo do ícone quando a tela pede visual mais limpo. */
   iconBare?: boolean;
-  /** Métrica secundária compacta à direita do valor (ex.: "Eficiência 78,6%"). */
+  /** Métrica secundária compacta no canto esquerdo, oposta ao valor (ex.: "Eficiência 78,6%"). */
   mini?: { label: string; value: string };
   /** "accent" = card em destaque (gradiente âmbar → laranja, texto branco
    * sólido) — hoje só o card "Total de entregas" do Dashboard usa. Mesmo
@@ -51,53 +51,56 @@ export function StatCard({
         {label}
       </p>
       <div className="mt-3 flex items-end justify-between gap-2">
-        <h3
-          className={`text-[36px] font-bold leading-none tracking-tight ${accent ? "text-white" : "text-[#0F172A]"}`}
-        >
-          {value}
-        </h3>
-
-        {(trend || icon || mini) && (
-          <div className="flex items-center gap-2">
-            {trend && (
-              <span
-                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1 text-[13px] font-semibold ${
-                  accent
-                    ? "border-white/30 bg-white/15 text-white"
-                    : trend.tone === "good"
-                      ? "border-emerald-600/25 bg-emerald-600/10 text-[#1F2937]"
-                      : "border-red-600/25 bg-red-600/10 text-[#1F2937]"
-                }`}
-              >
-                <TrendingUp className="size-[11px]" strokeWidth={3} />
-                {trend.value}
-              </span>
-            )}
-
-            {icon && (
-              <span
-                className={`grid size-10 shrink-0 place-items-center ${iconBare ? (accent ? "text-white" : "text-black") : `rounded-xl ${accent ? "bg-white/15 text-white" : "bg-amber-500/10 text-black"}`}`}
-              >
-                {icon}
-              </span>
-            )}
-
-            {mini && (
-              <div className="flex flex-col items-end">
-                <span
-                  className={`text-[10px] font-bold uppercase ${accent ? "text-white" : "text-emerald-700"}`}
-                >
-                  {mini.label}
-                </span>
-                <span
-                  className={`text-sm font-semibold tabular-nums ${accent ? "text-white" : ""}`}
-                >
-                  {mini.value}
-                </span>
-              </div>
-            )}
+        {/* "Em rota" etc. fica no canto esquerdo; valor e badges no direito. */}
+        {mini ? (
+          <div className="flex flex-col items-start">
+            <span
+              className={`text-[10px] font-bold uppercase ${accent ? "text-white" : "text-emerald-700"}`}
+            >
+              {mini.label}
+            </span>
+            <span
+              className={`text-sm font-semibold tabular-nums ${accent ? "text-white" : ""}`}
+            >
+              {mini.value}
+            </span>
           </div>
-        )}
+        ) : null}
+
+        <div className="ml-auto flex items-end gap-2">
+          <h3
+            className={`text-[36px] font-bold leading-none tracking-tight ${accent ? "text-white" : "text-[#0F172A]"}`}
+          >
+            {value}
+          </h3>
+
+          {(trend || icon) && (
+            <div className="flex items-center gap-2">
+              {trend && (
+                <span
+                  className={`inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1 text-[13px] font-semibold ${
+                    accent
+                      ? "border-white/30 bg-white/15 text-white"
+                      : trend.tone === "good"
+                        ? "border-emerald-600/25 bg-emerald-600/10 text-[#1F2937]"
+                        : "border-red-600/25 bg-red-600/10 text-[#1F2937]"
+                  }`}
+                >
+                  <TrendingUp className="size-[11px]" strokeWidth={3} />
+                  {trend.value}
+                </span>
+              )}
+
+              {icon && (
+                <span
+                  className={`grid size-10 shrink-0 place-items-center ${iconBare ? (accent ? "text-white" : "text-black") : `rounded-xl ${accent ? "bg-white/15 text-white" : "bg-amber-500/10 text-black"}`}`}
+                >
+                  {icon}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       {/* Contraste (20/08/2026): subtítulo escurecido um tom (slate-600 em
           vez de slate-500) pra melhorar legibilidade em monitores mais

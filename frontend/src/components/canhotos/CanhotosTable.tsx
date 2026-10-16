@@ -47,7 +47,6 @@ export function CanhotosTable({
       <EmptyState
         icon={Package}
         title="Nenhuma entrega aguardando saída ou em rota"
-        action={{ label: "Adicionar Entrega", href: "/canhotos/nova" }}
       />
     );
   }
