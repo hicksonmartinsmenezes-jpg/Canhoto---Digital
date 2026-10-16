@@ -25,7 +25,7 @@ export interface MensagemPush {
 
 export type ResultadoEnvio = "ok" | "token-invalido" | "erro";
 
-export const CANAL_ANDROID_ENTREGAS = "entregas";
+const CANAL_ANDROID_ENTREGAS = "entregas";
 
 let contaEmCache: ContaServicoFirebase | null | undefined;
 let acessoEmCache: { token: string; expiraEm: number } | null = null;
