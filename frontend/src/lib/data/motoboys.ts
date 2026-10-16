@@ -106,7 +106,7 @@ export async function getMotoboyPorTelefone(
   return motoboy ?? null;
 }
 
-export async function getMotoboyNome(id: string): Promise<string | null> {
+async function getMotoboyNome(id: string): Promise<string | null> {
   const db = getDb();
   if (!db) return null;
 
