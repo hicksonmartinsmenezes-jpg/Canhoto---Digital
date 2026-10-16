@@ -12,6 +12,10 @@ import { maskCepInput, maskCurrencyInput, maskPhoneInput, parseCurrencyInput } f
 import { criarEntrega } from "@/app/canhotos/nova/actions";
 import type { MotoboyOption } from "@/lib/data/motoboys";
 import type { FormaPagamento } from "@/types/database";
+import {
+  classificarEnterWizard,
+  tentarAdquirirTravaEnvio,
+} from "./wizard-keyboard";
 
 interface AdicionarEntregaWizardProps {
   motoboys: MotoboyOption[];
@@ -73,11 +77,15 @@ export function AdicionarEntregaWizard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const stepRef = useRef<1 | 2 | 3>(1);
+  const [revisaoPronta, setRevisaoPronta] = useState(false);
+  const revisaoProntaRef = useRef(false);
   // Direção da transição entre etapas — 1 = avançando (conteúdo novo entra
   // pela direita), -1 = voltando (entra pela esquerda). Guia a animação de
   // slide do conteúdo do card abaixo.
   const [direcao, setDirecao] = useState<1 | -1>(1);
   const [erro, setErro] = useState<string | null>(null);
+  const travaEnvioRef = useRef(false);
   const [form, setForm] = useState<FormState>({
     data: hoje,
     clienteNome: "",
@@ -113,7 +121,16 @@ export function AdicionarEntregaWizard({
 
   function irPara(novoStep: 1 | 2 | 3) {
     setDirecao(novoStep > step ? 1 : -1);
+    stepRef.current = novoStep;
+    revisaoProntaRef.current = false;
+    setRevisaoPronta(false);
     setStep(novoStep);
+  }
+
+  function concluirAnimacaoRevisao() {
+    if (stepRef.current !== 3) return;
+    revisaoProntaRef.current = true;
+    setRevisaoPronta(true);
   }
 
   // Foco automático no primeiro campo de cada etapa, sem precisar clicar.
@@ -147,54 +164,75 @@ export function AdicionarEntregaWizard({
     irPara(3);
   }
 
-  function salvar() {
+  function aoEnviar(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (
+      !tentarAdquirirTravaEnvio(
+        travaEnvioRef,
+        pending,
+        step,
+        revisaoProntaRef.current
+      )
+    ) {
+      return;
+    }
+
     setErro(null);
     startTransition(async () => {
-      const resultado = await criarEntrega({
-        data: form.data,
-        clienteNome: form.clienteNome,
-        numeroPedido: form.numeroPedido,
-        numeroNfe: form.numeroNfe,
-        valorPagamento: parseCurrencyInput(form.valorPagamento),
-        formaPagamento: form.formaPagamento,
-        motoboyId: form.motoboyId,
-        clienteTelefone: form.clienteTelefone,
-        endereco: form.endereco,
-        cep: form.cep,
-        observacoes: form.observacoes,
-      });
+      try {
+        const resultado = await criarEntrega({
+          data: form.data,
+          clienteNome: form.clienteNome,
+          numeroPedido: form.numeroPedido,
+          numeroNfe: form.numeroNfe,
+          valorPagamento: parseCurrencyInput(form.valorPagamento),
+          formaPagamento: form.formaPagamento,
+          motoboyId: form.motoboyId,
+          clienteTelefone: form.clienteTelefone,
+          endereco: form.endereco,
+          cep: form.cep,
+          observacoes: form.observacoes,
+        });
 
-      if (!resultado.ok) {
-        setErro(resultado.error ?? "Não foi possível salvar a entrega.");
-        return;
+        if (!resultado.ok) {
+          setErro(resultado.error ?? "Não foi possível salvar a entrega.");
+          return;
+        }
+
+        if (form.motoboyId) {
+          window.localStorage.setItem(ULTIMO_MOTOBOY_KEY, form.motoboyId);
+        }
+
+        router.push("/canhotos");
+        router.refresh();
+      } finally {
+        travaEnvioRef.current = false;
       }
-
-      if (form.motoboyId) {
-        window.localStorage.setItem(ULTIMO_MOTOBOY_KEY, form.motoboyId);
-      }
-
-      router.push("/canhotos");
-      router.refresh();
     });
   }
 
-  // Enter avança de etapa (equivalente a clicar "Avançar"/"Confirmar e
-  // salvar") a partir de qualquer campo que não seja a textarea de
-  // observações — lá o Enter precisa continuar quebrando linha normalmente.
-  function aoPressionarTecla(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (e.key !== "Enter") return;
+  function aoPressionarTecla(e: React.KeyboardEvent<HTMLFormElement>) {
     const alvo = e.target as HTMLElement;
-    if (alvo.tagName === "TEXTAREA") return;
+    const inputType = alvo instanceof HTMLInputElement ? alvo.type : undefined;
+    const buttonType = alvo instanceof HTMLButtonElement ? alvo.type : undefined;
+    const acao = classificarEnterWizard(
+      e.key,
+      alvo.tagName,
+      inputType,
+      step,
+      pending,
+      buttonType
+    );
 
-    if (e.ctrlKey || e.metaKey || step === 3) {
+    if (acao === "ignorar" || acao === "manter") return;
+    if (acao === "bloquear") {
       e.preventDefault();
-      if (step === 3) salvar();
       return;
     }
 
     e.preventDefault();
     if (step === 1) irParaEtapa2();
-    else if (step === 2) irParaEtapa3();
+    if (step === 2) irParaEtapa3();
   }
 
   const motoboySelecionado = motoboys.find((m) => m.id === form.motoboyId);
@@ -206,7 +244,11 @@ export function AdicionarEntregaWizard({
     : null;
 
   return (
-    <div className="mx-auto max-w-3xl" onKeyDown={aoPressionarTecla}>
+    <form
+      className="mx-auto max-w-3xl"
+      onSubmit={aoEnviar}
+      onKeyDown={aoPressionarTecla}
+    >
       {/* Indicador de etapas */}
       <div className="mb-7 flex items-center">
         {ETAPAS.map((etapa, i) => (
@@ -411,6 +453,7 @@ export function AdicionarEntregaWizard({
             exit="exit"
             transition={{ type: "spring", duration: 0.3, bounce: 0 }}
             className="flex flex-col gap-6"
+            onAnimationComplete={concluirAnimacaoRevisao}
           >
             <div>
               <div className="mb-3 flex items-center justify-between">
@@ -495,6 +538,7 @@ export function AdicionarEntregaWizard({
 
           {step < 3 ? (
             <button
+              key="advance"
               type="button"
               onClick={step === 1 ? irParaEtapa2 : irParaEtapa3}
               className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97]"
@@ -504,9 +548,9 @@ export function AdicionarEntregaWizard({
             </button>
           ) : (
             <button
-              type="button"
-              disabled={pending}
-              onClick={salvar}
+              key="submit"
+              type="submit"
+              disabled={pending || !revisaoPronta}
               className="inline-flex items-center gap-1.5 bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-amber-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
             >
               {pending ? (
@@ -518,15 +562,12 @@ export function AdicionarEntregaWizard({
                 <>
                   <Check className="size-4" />
                   Confirmar e salvar
-                  <span className="ml-1 text-xs font-normal text-white/60">
-                    (Ctrl+Enter)
-                  </span>
                 </>
               )}
             </button>
           )}
         </div>
       </Card>
-    </div>
+    </form>
   );
 }
