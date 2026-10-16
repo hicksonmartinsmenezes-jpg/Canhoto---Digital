@@ -30,7 +30,7 @@ export function PageHeader({
   mostrarTreinamento = true,
 }: PageHeaderProps) {
   return (
-    <div className="-mx-6 -mt-6 mb-6 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/60 px-6 py-4 lg:-mx-8 lg:-mt-8 lg:px-8">
+    <div className="-mx-4 -mt-4 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/60 px-4 py-4 sm:-mx-6 sm:-mt-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:px-8">
       <div className="flex items-center gap-3 border-l-4 border-[#0A1F44] pl-3">
         <h1 className="text-lg font-bold tracking-tight text-[#0A1F44]">
           {title}

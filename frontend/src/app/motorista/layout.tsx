@@ -10,7 +10,7 @@ import { MotoristaServiceWorkerRegister } from "@/components/motorista/Motorista
 export const metadata: Metadata = {
   title: "Motorista | Canhoto Digital",
   description:
-    "App de entregas para motoristas da Rildon Eletropeças: entregas do dia, rota, assinatura e comprovantes.",
+    "App de entregas para motoristas da Rildon Eletropeças: entregas do dia, rota e comprovantes.",
   manifest: "/motorista-manifest.webmanifest",
   // iOS Safari não lê o Web App Manifest pra decidir o modo "standalone" —
   // depende desses meta tags apple-specific em vez disso.

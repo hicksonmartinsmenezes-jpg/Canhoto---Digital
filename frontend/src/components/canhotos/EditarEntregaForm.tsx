@@ -218,6 +218,9 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
             </div>
           </div>
 
+          {/* Entrega pendente: sem bloco de situação (a conclusão é do motorista
+              e o cancelamento é feito na tela da entrega). */}
+          {entrega.status !== "pendente" && (
           <div>
             <h2 className="mb-4 text-[15px] font-bold">Situação</h2>
             <div className="max-w-xs">
@@ -234,6 +237,10 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                         ? valor === "entregue"
                         : valor !== "entregue"
                     )
+                    .map(([valor, rotulo]) =>
+                      // Cancelada: "Pendente" aqui significa reativar.
+                      valor === "pendente" ? ([valor, "Reativar (pendente)"] as const) : ([valor, rotulo] as const)
+                    )
                     .map(([valor, rotulo]) => (
                       <option key={valor} value={valor}>
                         {rotulo}
@@ -244,10 +251,11 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
               <p className="mt-2 text-xs leading-5 text-slate-500">
                 {entrega.status === "entregue"
                   ? "Entrega concluída com comprovante: o status fica preservado."
-                  : "A conclusão da entrega é feita pelo motorista após registrar a foto da entrega e a assinatura do cliente."}
+                  : "Entrega cancelada. Escolha \"Reativar\" para ela voltar à fila do motorista."}
               </p>
             </div>
           </div>
+          )}
         </div>
 
         {erro && (
@@ -258,10 +266,11 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
 
         <div className="mt-7 flex items-center justify-between border-t border-slate-200 pt-5">
           <Link
-            href="/canhotos"
+            href={`/canhotos/${entrega.id}`}
+            prefetch={false}
             className="text-sm font-bold text-slate-500 hover:text-slate-700"
           >
-            Cancelar
+            Voltar sem salvar
           </Link>
           <button
             type="button"

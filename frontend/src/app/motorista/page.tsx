@@ -9,13 +9,16 @@ import {
   Navigation,
   Package,
   Phone,
+  Route,
   UserRound,
 } from "lucide-react";
 import { type MotoristaView } from "@/components/motorista/MotoristaBottomNav";
 import { MotoristaTabs } from "@/components/motorista/MotoristaTabs";
 import { MotoristaAutoRefresh } from "@/components/motorista/MotoristaAutoRefresh";
+import { MotoristaAvisoEntregas } from "@/components/motorista/MotoristaAvisoEntregas";
 import { MotoristaEntregasHoje } from "@/components/motorista/MotoristaEntregasHoje";
 import { MotoristaEnvioPendente } from "@/components/motorista/MotoristaEnvioPendente";
+import { MotoristaPushNativo } from "@/components/motorista/MotoristaPushNativo";
 import { MotoristaPreparoOffline } from "@/components/motorista/MotoristaPreparoOffline";
 import { MotoristaHistorico } from "@/components/motorista/MotoristaHistorico";
 import { MotoristaLocationTracker } from "@/components/motorista/MotoristaLocationTracker";
@@ -26,6 +29,7 @@ import {
 } from "@/lib/data/entregas";
 import { getMotoboyPerfil } from "@/lib/data/motoboys";
 import { getDistanciaLojaAteDestinoKm } from "@/lib/distancia-loja";
+import { maskPhoneInput } from "@/lib/format";
 import { obterMotoristaAutorizado } from "@/lib/motorista-authorization";
 import { sairMotorista } from "./actions";
 
@@ -102,6 +106,15 @@ export default async function MotoristaPage({
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
       <MotoristaAutoRefresh />
+      <MotoristaAvisoEntregas
+        motoboyId={motoboyId}
+        entregas={entregas.map((entrega) => ({
+          id: entrega.id,
+          numero: entrega.numero,
+          clienteNome: entrega.clienteNome,
+          status: entrega.status,
+        }))}
+      />
       <MotoristaPreparoOffline
         entregaIds={entregas
           .filter((entrega) => entrega.status === "pendente")
@@ -136,15 +149,15 @@ export default async function MotoristaPage({
             {proximaEntrega ? (
               <section className="mt-4 border-t border-white/15 pt-4">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-9 place-items-center rounded-full bg-[#1F73F1] text-white">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-5 shrink-0 items-center justify-center text-white">
                       {proximaEntrega.horaSaida ? (
-                        <Navigation className="size-4" />
+                        <Route className="size-5" />
                       ) : (
-                        <Package className="size-4" />
+                        <Package className="size-5" />
                       )}
                     </span>
-                    <span className="text-xs font-black">
+                    <span className="text-sm font-black leading-5">
                       {proximaEntrega.horaSaida
                         ? "Entrega em andamento"
                         : "Próxima entrega"}
@@ -152,7 +165,7 @@ export default async function MotoristaPage({
                   </div>
 
                   {proximaEntrega.horaSaida && (
-                    <span className="rounded-full bg-[#1F73F1] px-2.5 py-1 text-[10px] font-black text-white">
+                    <span className="text-[11px] font-black text-white">
                       Em rota
                     </span>
                   )}
@@ -167,21 +180,22 @@ export default async function MotoristaPage({
                     {proximaEntrega.endereco && (
                       <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium leading-5 text-white/70">
                         <MapPin className="mt-0.5 size-3.5 shrink-0 text-white/55" />
-                        <span className="line-clamp-1">
+                        <span className="line-clamp-2">
                           {proximaEntrega.endereco}
                         </span>
                       </p>
                     )}
                   </div>
 
-                  <span className="shrink-0 pb-0.5 text-[15px] font-medium tabular-nums text-white/90">
-                    {distanciaAteDestino === null
-                      ? "— km"
-                      : `${distanciaAteDestino.toLocaleString("pt-BR", {
-                          minimumFractionDigits: 1,
-                          maximumFractionDigits: 1,
-                        })} km`}
-                  </span>
+                  {/* Sem distância calculada, não mostra nada (antes ficava "— km"). */}
+                  {distanciaAteDestino !== null && (
+                    <span className="shrink-0 pb-0.5 text-[15px] font-medium tabular-nums text-white/90">
+                      {`${distanciaAteDestino.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })} km`}
+                    </span>
+                  )}
                 </div>
 
                 <Link
@@ -221,10 +235,6 @@ export default async function MotoristaPage({
                     Motorista
                   </p>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#15924A] px-2.5 py-1 text-[10px] font-black">
-                  <CheckCircle2 className="size-3" />
-                  Ativo
-                </span>
               </div>
             </>
           </div>
@@ -234,6 +244,7 @@ export default async function MotoristaPage({
         conteudos={{
           entregas: (
           <>
+            <MotoristaPushNativo />
             <MotoristaEnvioPendente />
             <section className="border-b border-slate-200 bg-white px-4 py-3">
               <div className="flex items-center justify-between gap-4">
@@ -279,24 +290,6 @@ export default async function MotoristaPage({
           ),
           perfil: (
           <section className="bg-white">
-            <div className="border-b border-slate-200 px-4 py-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
-                Nome
-              </p>
-              <p className="mt-1 text-base font-black text-[#0A1F44]">
-                {nome}
-              </p>
-            </div>
-
-            <div className="border-b border-slate-200 px-4 py-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
-                Função
-              </p>
-              <p className="mt-1 text-sm font-bold text-[#0A1F44]">
-                Motorista
-              </p>
-            </div>
-
             {perfil?.telefone && (
               <div className="border-b border-slate-200 px-4 py-4">
                 <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
@@ -307,7 +300,7 @@ export default async function MotoristaPage({
                   className="mt-1 inline-flex items-center gap-2 text-sm font-bold text-[#0A1F44]"
                 >
                   <Phone className="size-4 text-[#315A8E]" />
-                  {perfil.telefone}
+                  {maskPhoneInput(perfil.telefone)}
                 </a>
               </div>
             )}

@@ -1,8 +1,8 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { entregas } from "@/lib/db/schema";
+import { entregaAnexos, entregas } from "@/lib/db/schema";
 import { formatBRL, formatCep } from "@/lib/format";
 import { montarEnderecoRoteavel } from "@/lib/endereco-rota";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
@@ -25,6 +25,16 @@ export interface EntregaMotoristaDetalhe {
   status: StatusEntrega;
   horaSaida: string | null;
   clienteAssinouEm: string | null;
+  /** Rota com várias paradas a que a entrega pertence (null = entrega solta). */
+  rota: {
+    /** Posição desta entrega na rota (1 = primeira parada). */
+    posicao: number;
+    total: number;
+    /** Próxima parada ainda em aberto, depois desta (null = não há). */
+    proximaId: string | null;
+  } | null;
+  /** Comprovantes já recebidos pelo servidor (só preenchido quando concluída). */
+  comprovantes: { foto: boolean; produto: number; pix: boolean };
 }
 
 export async function getEntregaMotoristaDetalhe(
@@ -52,6 +62,8 @@ export async function getEntregaMotoristaDetalhe(
       status: entregas.status,
       horaSaida: entregas.horaSaida,
       clienteAssinouEm: entregas.clienteAssinouEm,
+      rotaId: entregas.rotaId,
+      rotaOrdem: entregas.rotaOrdem,
     })
     .from(entregas)
     .where(
@@ -63,6 +75,50 @@ export async function getEntregaMotoristaDetalhe(
     .limit(1);
 
   if (!entrega) return null;
+
+  const comprovantes = { foto: false, produto: 0, pix: false };
+  if (entrega.status === "entregue") {
+    const anexos = await db
+      .select({ tipo: entregaAnexos.tipo })
+      .from(entregaAnexos)
+      .where(eq(entregaAnexos.entregaId, entrega.id));
+    for (const anexo of anexos) {
+      if (anexo.tipo === "foto") comprovantes.foto = true;
+      else if (anexo.tipo === "foto_produto") comprovantes.produto += 1;
+      else if (anexo.tipo === "comprovante_pix") comprovantes.pix = true;
+    }
+  }
+
+  let rota: EntregaMotoristaDetalhe["rota"] = null;
+  if (entrega.rotaId && entrega.rotaOrdem !== null) {
+    const paradas = await db
+      .select({
+        id: entregas.id,
+        ordem: entregas.rotaOrdem,
+        status: entregas.status,
+      })
+      .from(entregas)
+      .where(
+        and(
+          eq(entregas.rotaId, entrega.rotaId),
+          eq(entregas.motoboyId, motoboyId)
+        )
+      )
+      .orderBy(asc(entregas.rotaOrdem));
+
+    if (paradas.length > 1) {
+      const proxima = paradas.find(
+        (parada) =>
+          (parada.ordem ?? 0) > (entrega.rotaOrdem ?? 0) &&
+          parada.status === "pendente"
+      );
+      rota = {
+        posicao: entrega.rotaOrdem,
+        total: paradas.length,
+        proximaId: proxima?.id ?? null,
+      };
+    }
+  }
 
   const enderecoRoteavel = await montarEnderecoRoteavel({
     endereco: entrega.endereco ?? "",
@@ -89,5 +145,7 @@ export async function getEntregaMotoristaDetalhe(
     status: entrega.status,
     horaSaida: entrega.horaSaida,
     clienteAssinouEm: entrega.clienteAssinouEm,
+    rota,
+    comprovantes,
   };
 }

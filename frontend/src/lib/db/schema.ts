@@ -8,6 +8,7 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  smallint,
   text,
   time,
   timestamp,
@@ -41,6 +42,8 @@ export const tipoAnexoEntregaEnum = pgEnum("tipo_anexo_entrega", [
   "assinatura_cliente",
   "foto",
   "comprovante_pix",
+  "foto_produto",
+  "danfe_pdf",
 ]);
 
 export const tipoGastoVeiculoEnum = pgEnum("tipo_gasto_veiculo", [
@@ -161,6 +164,35 @@ export const motoboyLocalizacoes = pgTable(
   ]
 );
 
+// 0014: celulares dos motoristas que aceitaram notificações (push do app).
+export const dispositivosPush = pgTable(
+  "dispositivos_push",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    motoboyId: uuid("motoboy_id")
+      .notNull()
+      .references(() => motoboys.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    plataforma: text("plataforma").notNull().default("android"),
+    criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    atualizadoEm: timestamp("atualizado_em", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_dispositivos_push_motoboy").on(table.motoboyId),
+    check(
+      "ck_dispositivos_push_token",
+      sql`length(${table.token}) between 20 and 4096`
+    ),
+  ]
+);
+
 export const veiculos = pgTable(
   "veiculos",
   {
@@ -170,6 +202,10 @@ export const veiculos = pgTable(
     modelo: text("modelo").notNull(),
     ano: integer("ano"),
     ativo: boolean("ativo").notNull().default(true),
+    // 0013: motorista responsável (opcional).
+    motoboyId: uuid("motoboy_id").references(() => motoboys.id, {
+      onDelete: "set null",
+    }),
     criadoEm: timestamp("criado_em", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
@@ -182,6 +218,7 @@ export const veiculos = pgTable(
   },
   (table) => [
     index("idx_veiculos_ativo").on(table.ativo),
+    index("idx_veiculos_motoboy").on(table.motoboyId),
     check(
       "ck_veiculos_placa",
       sql`${table.placa} ~ '^[A-Z0-9]{7}$'`
@@ -294,6 +331,10 @@ export const entregas = pgTable(
     }).notNull(),
     formaPagamento: formaPagamentoEnum("forma_pagamento").notNull(),
     horaSaida: time("hora_saida"),
+    // Rota com várias paradas (migration 0016): entregas da mesma rota têm o
+    // mesmo rotaId; rotaOrdem é a posição na ordem de visita (1 = primeira).
+    rotaId: uuid("rota_id"),
+    rotaOrdem: smallint("rota_ordem"),
     motoboyId: uuid("motoboy_id").references(() => motoboys.id),
     clienteAssinouEm: timestamp("cliente_assinou_em", {
       withTimezone: true,

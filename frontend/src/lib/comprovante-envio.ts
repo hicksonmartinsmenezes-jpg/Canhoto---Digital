@@ -2,7 +2,10 @@
 // interface e recebe tudo de fora (leitura, gravação, envio) para poder ser
 // testado sem navegador nem servidor.
 
-import type { RascunhoComprovante } from "@/lib/comprovante-pendente";
+import {
+  fotosDoProduto,
+  type RascunhoComprovante,
+} from "@/lib/comprovante-pendente";
 
 /** Rascunho velho demais é descartado (entrega provavelmente já resolvida). */
 export const VALIDADE_RASCUNHO_MS = 14 * 24 * 60 * 60 * 1000;
@@ -79,10 +82,14 @@ export function montarFormData(rascunho: RascunhoComprovante): FormData {
     );
   }
 
-  formData.set(
-    "assinatura",
-    new File([rascunho.assinatura], "assinatura.png", { type: "image/png" })
-  );
+  for (const [indice, foto] of fotosDoProduto(rascunho).entries()) {
+    formData.append(
+      "fotoProduto",
+      new File([foto], `foto-produto-${indice + 1}.${extensaoDaFoto(foto.type)}`, {
+        type: foto.type,
+      })
+    );
+  }
 
   return formData;
 }

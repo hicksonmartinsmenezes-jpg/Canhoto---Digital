@@ -7,6 +7,10 @@ import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
 import { entregaHistorico, entregas, motoboys } from "@/lib/db/schema";
 import { checarRateLimit } from "@/lib/rate-limit";
+import {
+  avisarEntregaNovaAoMotorista,
+  avisarEntregaRetiradaDoMotorista,
+} from "@/lib/push/avisar-motorista";
 import { geocodificarEntregaGratis } from "@/lib/geocodificacao-gratis";
 import {
   descreverAlteracoes,
@@ -162,7 +166,7 @@ export async function atualizarEntrega(
         return {
           ok: false as const,
           error:
-            "A entrega só pode ser concluída pelo fluxo do motorista com foto da entrega e assinatura.",
+            "A entrega só pode ser concluída pelo fluxo do motorista com a foto da entrega.",
         };
       }
 
@@ -171,6 +175,15 @@ export async function atualizarEntrega(
           ok: false as const,
           error:
             "Uma entrega concluída com comprovante não pode voltar para outro status.",
+        };
+      }
+
+      // Cancelar tem ação própria (com motivo obrigatório no histórico).
+      if (input.status === "cancelado" && atual.status !== "cancelado") {
+        return {
+          ok: false as const,
+          error:
+            "Para cancelar, use o botão Cancelar entrega — o motivo fica registrado no histórico.",
         };
       }
 
@@ -251,11 +264,26 @@ export async function atualizarEntrega(
         });
       }
 
-      return { ok: true as const };
+      return {
+        ok: true as const,
+        motoboyAnterior: atual.motoboyId,
+        motoboyNovo,
+        reativada: atual.status === "cancelado" && input.status === "pendente",
+      };
     });
 
     if (!resultadoTransacao.ok) {
       return resultadoTransacao;
+    }
+
+    // Push ao motorista: ficou com a entrega (nova ou reativada) ou perdeu-a.
+    // Em segundo plano; falha de aviso nunca afeta a edição.
+    const { motoboyAnterior, motoboyNovo, reativada } = resultadoTransacao;
+    if (motoboyNovo && (motoboyNovo !== motoboyAnterior || reativada)) {
+      void avisarEntregaNovaAoMotorista(id);
+    }
+    if (motoboyAnterior && motoboyAnterior !== motoboyNovo) {
+      void avisarEntregaRetiradaDoMotorista(id, motoboyAnterior, "reatribuida");
     }
   } catch (error) {
     return {

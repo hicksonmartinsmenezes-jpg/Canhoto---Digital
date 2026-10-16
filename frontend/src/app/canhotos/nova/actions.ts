@@ -7,6 +7,7 @@ import { entregas } from "@/lib/db/schema";
 import { obterSetorPadraoId } from "@/lib/data/setores";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
+import { avisarEntregaNovaAoMotorista } from "@/lib/push/avisar-motorista";
 import { geocodificarEntregaGratis } from "@/lib/geocodificacao-gratis";
 import type { FormaPagamento } from "@/types/database";
 
@@ -27,6 +28,10 @@ export interface CriarEntregaInput {
 export interface CriarEntregaResult {
   ok: boolean;
   error?: string;
+  /** Número da entrega criada (para o aviso "Entrega #123 cadastrada"). */
+  numero?: number;
+  /** Id da entrega criada (para anexar documentos em seguida). */
+  id?: string;
 }
 
 export async function criarEntrega(
@@ -66,6 +71,11 @@ export async function criarEntrega(
     return { ok: false, error: "Selecione a forma de pagamento." };
   }
 
+  // Endereço obrigatório: o motorista e o Waze dependem dele.
+  if (input.endereco.trim().length < 5) {
+    return { ok: false, error: "Informe o endereço de entrega (rua, número e bairro)." };
+  }
+
   const cep = input.cep.replace(/\D/g, "");
   if (cep && cep.length !== 8) {
     return { ok: false, error: "Informe um CEP válido com 8 dígitos." };
@@ -84,8 +94,10 @@ export async function criarEntrega(
       ? operador.setorId
       : await obterSetorPadraoId();
 
+  let numero: number | undefined;
+  let entregaId: string | undefined;
   try {
-    await db.insert(entregas).values({
+    const [criada] = await db.insert(entregas).values({
       data: input.data,
       clienteNome,
       clienteTelefone: input.clienteTelefone.trim() || null,
@@ -107,7 +119,9 @@ export async function criarEntrega(
         operador.tipo === "admin" && !operador.colaboradorId
           ? operador.usuarioAdminId
           : null,
-    });
+    }).returning({ id: entregas.id, numero: entregas.numero });
+    numero = criada?.numero;
+    entregaId = criada?.id;
   } catch (error) {
     return {
       ok: false,
@@ -115,8 +129,13 @@ export async function criarEntrega(
     };
   }
 
+  // Notificação ao motorista (push): em segundo plano, nunca atrasa nem derruba o cadastro.
+  if (entregaId && input.motoboyId) {
+    void avisarEntregaNovaAoMotorista(entregaId);
+  }
+
   revalidatePath("/canhotos");
   revalidatePath("/motorista");
   revalidatePath("/");
-  return { ok: true };
+  return { ok: true, numero, id: entregaId };
 }

@@ -6,6 +6,8 @@ import { obterAdminAutenticado } from "@/lib/admin-auth";
 import { obterSessaoOperador } from "@/lib/sessao-operador";
 import { GET } from "./route";
 
+type RelatorioItem = Awaited<ReturnType<typeof getRelatorioEntregas>>["itens"][number];
+
 vi.mock("@/lib/data/entregas", () => ({ getRelatorioEntregas: vi.fn() }));
 vi.mock("@/lib/relatorios-storage", () => ({ arquivarRelatorioCsv: vi.fn() }));
 vi.mock("@/lib/admin-auth", () => ({ obterAdminAutenticado: vi.fn() }));
@@ -14,40 +16,61 @@ vi.mock("@/lib/sessao-operador", () => ({
   setorIdParaFiltro: vi.fn(() => undefined),
 }));
 
-function relatorioComCliente(cliente: string) {
+function itemRelatorio(sobrescrever: Partial<RelatorioItem> = {}): RelatorioItem {
   return {
-    itens: [{
-      id: "1",
-      numero: "123",
-      data: "2026-10-10",
-      cliente,
-      valor: "10,00",
-      valorNumerico: 10,
-      formaPagamento: "pix" as const,
-      motoboy: "Motorista",
-      status: "entregue" as const,
-    }],
-    totais: { quantidade: 1, valorTotal: "10", ticketMedio: "10", porFormaPagamento: [] },
+    id: "1",
+    numero: "123",
+    data: "2026-10-10",
+    cliente: "Cliente",
+    telefone: null,
+    endereco: null,
+    numeroNfe: null,
+    numeroPedido: null,
+    valor: "10,00",
+    valorNumerico: 10,
+    formaPagamento: "pix",
+    motoboy: "Motorista",
+    status: "entregue",
+    situacao: "entregue",
+    horaSaida: null,
+    concluidaEm: null,
+    ...sobrescrever,
   };
+}
+
+function relatorioDe(item: RelatorioItem) {
+  return {
+    itens: [item],
+    totais: {
+      quantidade: 1,
+      entregues: 1,
+      canceladas: 0,
+      valorTotal: "10",
+      valorEntregue: "10",
+      ticketMedio: "10",
+      porFormaPagamento: [],
+    },
+  };
+}
+
+function relatorioComCliente(cliente: string) {
+  return relatorioDe(itemRelatorio({ cliente }));
 }
 
 describe("exportação CSV do relatório", () => {
   beforeEach(() => {
     vi.mocked(obterSessaoOperador).mockResolvedValue({ tipo: "admin" } as never);
-    vi.mocked(getRelatorioEntregas).mockResolvedValue({
-      itens: [{
-        id: "1",
-        numero: "=1+1",
-        data: "+2026-10-10",
-        cliente: " -cliente;teste",
-        valor: "\t@SUM(A1)",
-        valorNumerico: 0,
-        formaPagamento: "pix",
-        motoboy: "\r-SUM(A1)",
-        status: "entregue",
-      }],
-      totais: { quantidade: 1, valorTotal: "0", ticketMedio: "0", porFormaPagamento: [] },
-    });
+    vi.mocked(getRelatorioEntregas).mockResolvedValue(
+      relatorioDe(
+        itemRelatorio({
+          numero: "=1+1",
+          data: "+2026-10-10",
+          cliente: " -cliente;teste",
+          valorNumerico: 0,
+          motoboy: "\r-SUM(A1)",
+        })
+      )
+    );
     vi.mocked(arquivarRelatorioCsv).mockRejectedValue(
       Object.assign(new Error("erro privado"), { code: "EACCES" })
     );
@@ -73,8 +96,10 @@ describe("exportação CSV do relatório", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/csv");
-    expect(csv).toContain("Código;Data;Cliente;Valor;Forma de pagamento;Motorista;Situação");
-    expect(csv).toContain("'=1+1;'+2026-10-10;\"' -cliente;teste\";'\t@SUM(A1);Pix;\"'\r-SUM(A1)\";Entregue");
+    expect(csv).toContain(
+      "Código;Data;Cliente;Telefone;Endereço;NF-e;Pedido;Valor (R$);Forma de pagamento;Motorista;Situação;Saída;Concluída em"
+    );
+    expect(csv).toContain("'=1+1;'+2026-10-10;\"' -cliente;teste\";;;;;0,00;Pix;\"'\r-SUM(A1)\";Entregue;;");
     expect(arquivarRelatorioCsv).toHaveBeenCalledOnce();
     expect(erroLog).toHaveBeenCalledWith(
       expect.stringMatching(/^\[CSV_ARCHIVE_FAILED\] data_hora=.* usuario=admin%40example\.com motivo=EACCES$/)
@@ -84,20 +109,9 @@ describe("exportação CSV do relatório", () => {
   });
 
   it("escapa delimitadores, aspas e quebras de linha dentro de uma célula", async () => {
-    vi.mocked(getRelatorioEntregas).mockResolvedValueOnce({
-      itens: [{
-        id: "1",
-        numero: "123",
-        data: "2026-10-10",
-        cliente: 'Cliente; "Especial"\r\nRua 2',
-        valor: "10,00",
-        valorNumerico: 10,
-        formaPagamento: "pix",
-        motoboy: "Motorista",
-        status: "entregue",
-      }],
-      totais: { quantidade: 1, valorTotal: "10", ticketMedio: "10", porFormaPagamento: [] },
-    });
+    vi.mocked(getRelatorioEntregas).mockResolvedValueOnce(
+      relatorioComCliente('Cliente; "Especial"\r\nRua 2')
+    );
 
     const response = await GET(new NextRequest("http://localhost/relatorios/exportar"));
     const csv = await response.text();

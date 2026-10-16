@@ -235,6 +235,13 @@
   var TEMPO_SONDA_MS = 8000;
   var CHAVE_OVERRIDE = "motorista_server_url_override";
   var CHAVE_CACHE = "motorista_server_url_cache";
+  // Gravada pelo próprio app do motorista (dentro do servidor) quando a lista do
+  // dia e a tela "sem conexão" já ficaram guardadas no aparelho. Só com ela o
+  // app salvo pode ser aberto sem o servidor responder.
+  var CHAVE_OFFLINE_PRONTO = "motorista_offline_pronto";
+  // O app volta para cá com ?reconectar=1 quando percebe que o endereço do
+  // servidor mudou: aí não abre o app salvo, procura o endereço novo.
+  var FORCAR_RECONEXAO = /[?&]reconectar=1/.test(window.location.search);
 
   var elBody = document.body;
   var elTelaSplash = document.getElementById("telaSplash");
@@ -316,7 +323,7 @@
     // Já abriu o app neste aparelho: dá para abrir a cópia guardada, mesmo sem
     // conexão (o app guarda a lista do dia e deixa finalizar entregas offline).
     elBtnAbrirSalvo.style.display = "none";
-    urlSalva().then(function (url) {
+    urlOfflinePronto().then(function (url) {
       if (url && elTelaConfig.classList.contains("ativa")) {
         elBtnAbrirSalvo.style.display = "";
       }
@@ -331,14 +338,10 @@
     }
   }
 
-  // Último endereço usado neste aparelho (digitado ou vindo da config da loja).
-  function urlSalva() {
-    return prefGet(CHAVE_OVERRIDE).then(function (override) {
-      var valido = normalizarBase(override);
-      if (valido) return valido;
-      return prefGet(CHAVE_CACHE).then(function (cache) {
-        return normalizarBase(cache);
-      });
+  // Endereço cujo app já está guardado no aparelho (ou null se nunca ficou pronto).
+  function urlOfflinePronto() {
+    return prefGet(CHAVE_OFFLINE_PRONTO).then(function (valor) {
+      return normalizarBase(valor);
     });
   }
 
@@ -346,7 +349,7 @@
   // aparelho e funciona sem internet.
   function abrirDireto(base) {
     tentativaAtual++;
-    mostrarSplash("Sem conexão — abrindo o app salvo…");
+    mostrarSplash("Abrindo o app salvo…");
     setTimeout(function () {
       window.location.replace(base + CAMINHO_DESTINO);
     }, 300);
@@ -395,12 +398,21 @@
       }, 150);
     }).catch(function () {
       if (minhaTentativa !== tentativaAtual) return;
-      // Sem internet no aparelho: abre a cópia guardada em vez de pedir endereço.
-      if (navigator.onLine === false) {
-        abrirDireto(base);
+      function pedirEndereco() {
+        mostrarConfig("", base, "Informe o endereço atual do servidor da loja.");
+      }
+      // Mesmo endereço de sempre e o app já guardado no aparelho: abre sozinho
+      // (funciona sem internet e volta a conectar quando o servidor voltar).
+      // Endereço diferente (túnel trocado) ou app nunca guardado: pede o endereço.
+      if (FORCAR_RECONEXAO) {
+        pedirEndereco();
         return;
       }
-      mostrarConfig("", base, "Informe o endereço atual do servidor da loja.");
+      urlOfflinePronto().then(function (pronto) {
+        if (minhaTentativa !== tentativaAtual) return;
+        if (pronto && pronto === base) abrirDireto(base);
+        else pedirEndereco();
+      });
     });
   }
 
@@ -429,13 +441,13 @@
     var minhaTentativa = tentativaAtual;
 
     // Aparelho sem internet: nem tenta achar o servidor, abre o app salvo.
-    if (navigator.onLine === false) {
-      urlSalva().then(function (url) {
+    if (navigator.onLine === false && !FORCAR_RECONEXAO) {
+      urlOfflinePronto().then(function (url) {
         if (minhaTentativa !== tentativaAtual) return;
         if (url) {
           abrirDireto(url);
         } else {
-          mostrarConfig("Sem internet e nenhum servidor salvo neste aparelho. Conecte-se uma vez para configurar.");
+          mostrarConfig("Sem internet. Abra o app uma vez com internet para ele poder funcionar sem conexão.");
         }
       });
       return;
@@ -494,7 +506,7 @@
   });
 
   elBtnAbrirSalvo.addEventListener("click", function () {
-    urlSalva().then(function (url) {
+    urlOfflinePronto().then(function (url) {
       if (url) abrirDireto(url);
     });
   });

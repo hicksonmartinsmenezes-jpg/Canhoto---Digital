@@ -34,7 +34,7 @@ export function ActivityTimeline({ atividades }: ActivityTimelineProps) {
               </span>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-bold">{item.titulo}</p>
-                <span className="text-[10px] font-bold tabular-nums text-slate-500 uppercase">
+                <span className="shrink-0 whitespace-nowrap text-[11px] font-bold tabular-nums text-slate-500">
                   {item.hora}
                 </span>
               </div>

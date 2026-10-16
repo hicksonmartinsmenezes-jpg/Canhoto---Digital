@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft, MoreVertical } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { EntregaMotoristaDetalheView } from "@/components/motorista/EntregaMotoristaDetalheView";
 import { MotoristaLocationTracker } from "@/components/motorista/MotoristaLocationTracker";
 import { MotoristaWakeLock } from "@/components/motorista/MotoristaWakeLock";
@@ -49,12 +49,9 @@ export default async function MotoristaEntregaPage({
             </p>
           </div>
 
-          <span
-            aria-hidden="true"
-            className="grid size-10 place-items-center rounded-full text-white/70"
-          >
-            <MoreVertical className="size-5" />
-          </span>
+          {/* Espaço do mesmo tamanho do botão voltar, só para centralizar o
+              título (antes havia um "⋮" que parecia botão e não fazia nada). */}
+          <span aria-hidden="true" className="size-10" />
         </div>
       </header>
 

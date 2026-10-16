@@ -1,6 +1,7 @@
 // Rascunho do comprovante de entrega guardado no próprio celular (IndexedDB).
 //
-// Foto, assinatura e (se houver) comprovante Pix são salvos aqui ANTES de
+// A foto da entrega e, se houver, o comprovante Pix e as fotos do produto são
+// salvos aqui ANTES de
 // qualquer envio. Se o sinal cair, o Android matar o app ou a página
 // recarregar, nada se perde: o rascunho continua no aparelho até o servidor
 // confirmar. Só código de navegador — não importar em Server Components.
@@ -11,7 +12,10 @@ export interface RascunhoComprovante {
   rotulo: string | null;
   fotoEntrega: Blob;
   comprovantePix: Blob | null;
-  assinatura: Blob;
+  /** Fotos do produto (opcionais). */
+  fotosProduto?: Blob[];
+  /** Campo antigo (uma só foto). Use `fotosDoProduto()` para ler. */
+  fotoProduto?: Blob | null;
   criadoEm: number;
   tentativas: number;
   /** O servidor recusou (não é falha de rede): para o reenvio automático. */
@@ -24,7 +28,15 @@ export interface NovoRascunhoComprovante {
   rotulo?: string | null;
   fotoEntrega: Blob;
   comprovantePix?: Blob | null;
-  assinatura: Blob;
+  fotosProduto?: Blob[];
+}
+
+/** Fotos do produto do rascunho, inclusive de rascunhos do formato antigo. */
+export function fotosDoProduto(rascunho: RascunhoComprovante): Blob[] {
+  if (rascunho.fotosProduto && rascunho.fotosProduto.length > 0) {
+    return rascunho.fotosProduto;
+  }
+  return rascunho.fotoProduto ? [rascunho.fotoProduto] : [];
 }
 
 const NOME_BANCO = "canhoto-motorista";
@@ -94,7 +106,7 @@ export async function salvarRascunho(
     rotulo: novo.rotulo ?? null,
     fotoEntrega: novo.fotoEntrega,
     comprovantePix: novo.comprovantePix ?? null,
-    assinatura: novo.assinatura,
+    fotosProduto: novo.fotosProduto ?? [],
     criadoEm: Date.now(),
     tentativas: 0,
     rejeitado: false,

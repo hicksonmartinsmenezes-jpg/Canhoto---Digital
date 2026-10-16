@@ -1,14 +1,24 @@
 import Link from "next/link";
-import { Download, FileBarChart, Filter, Package, Wallet, X } from "lucide-react";
+import {
+  Download,
+  Eye,
+  FileBarChart,
+  Filter,
+  Package,
+  Wallet,
+  X,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { CampoPeriodo } from "@/components/ui/CampoPeriodo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getRelatorioEntregas } from "@/lib/data/entregas";
+import { getMotoboys } from "@/lib/data/motoboys";
 import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
 import {
   FORMA_PAGAMENTO_LABEL,
-  STATUS_BADGE_CLASSES,
-  STATUS_LABEL,
+  SITUACAO_TEXT_CLASSES,
+  SITUACAO_LABEL,
   isDataIsoValida,
   isFormaPagamento,
   isStatusEntrega,
@@ -24,6 +34,7 @@ interface RelatoriosPageProps {
     fim?: string;
     status?: string;
     forma?: string;
+    motorista?: string;
   }>;
 }
 
@@ -47,22 +58,42 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
   // nenhum recorte — o usuário ainda pode limpar/trocar pelo formulário.
   const dataInicio = isDataIsoValida(params.inicio) ? params.inicio : padrao.inicio;
   const dataFim = isDataIsoValida(params.fim) ? params.fim : padrao.fim;
-  const status = isStatusEntrega(params.status) ? params.status : undefined;
+  // Só entregue e cancelado: o que está em aberto fica na tela Entregas.
+  const status =
+    isStatusEntrega(params.status) && params.status !== "pendente"
+      ? params.status
+      : undefined;
   const formaPagamento = isFormaPagamento(params.forma) ? params.forma : undefined;
+  const motoboyId =
+    params.motorista && /^[0-9a-f-]{36}$/i.test(params.motorista)
+      ? params.motorista
+      : undefined;
 
   const sessao = await obterSessaoOperador();
-  const { itens, totais } = await getRelatorioEntregas({
-    dataInicio,
-    dataFim,
-    status,
-    formaPagamento,
-    setorId: setorIdParaFiltro(sessao),
-  });
+  const [{ itens, totais }, motoboys] = await Promise.all([
+    getRelatorioEntregas({
+      dataInicio,
+      dataFim,
+      status,
+      formaPagamento,
+      motoboyId,
+      setorId: setorIdParaFiltro(sessao),
+    }),
+    getMotoboys(),
+  ]);
 
-  const temFiltroExtra = Boolean(status || formaPagamento);
+  const temFiltroExtra = Boolean(status || formaPagamento || motoboyId);
   const queryExport = new URLSearchParams({ inicio: dataInicio, fim: dataFim });
   if (status) queryExport.set("status", status);
   if (formaPagamento) queryExport.set("forma", formaPagamento);
+  if (motoboyId) queryExport.set("motorista", motoboyId);
+
+  // Link de cada entrega: abre os dados completos e volta para estes filtros.
+  const voltarParaRelatorio = encodeURIComponent(
+    `/relatorios?${queryExport.toString()}`
+  );
+  const linkDaEntrega = (id: string) =>
+    `/canhotos/${id}?voltar=${voltarParaRelatorio}`;
 
   return (
     <div>
@@ -74,21 +105,18 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
         <StatCard
           label="Entregas no período"
           value={String(totais.quantidade)}
-          sub={`${dataInicio.split("-").reverse().join("/")} a ${dataFim.split("-").reverse().join("/")}`}
           icon={<Package className="size-5" strokeWidth={2} />}
           iconBare
         />
         <StatCard
           label="Valor total"
           value={totais.valorTotal}
-          sub=""
           icon={<Wallet className="size-5" strokeWidth={2} />}
           iconBare
         />
         <StatCard
           label="Ticket médio"
           value={totais.ticketMedio}
-          sub=""
           icon={<FileBarChart className="size-5" strokeWidth={2} />}
           iconBare
         />
@@ -103,28 +131,13 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
             component. O botão "Exportar CSV" também é um link GET, pros
             mesmos filtros — ver /relatorios/exportar/route.ts. */}
         <form className="flex flex-wrap items-end gap-3 px-6 py-5">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-              De
-            </span>
-            <input
-              type="date"
-              name="inicio"
-              defaultValue={dataInicio}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none transition-colors focus:border-slate-400"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-              Até
-            </span>
-            <input
-              type="date"
-              name="fim"
-              defaultValue={dataFim}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none transition-colors focus:border-slate-400"
-            />
-          </label>
+          <CampoPeriodo
+            nomeInicio="inicio"
+            nomeFim="fim"
+            valorInicio={dataInicio}
+            valorFim={dataFim}
+            className="gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
+          />
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
               Situação
@@ -136,7 +149,6 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
             >
               <option value="">Todas</option>
               <option value="entregue">Entregue</option>
-              <option value="pendente">Pendente</option>
               <option value="cancelado">Cancelado</option>
             </select>
           </label>
@@ -158,6 +170,24 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
             </select>
           </label>
 
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Motorista
+            </span>
+            <select
+              name="motorista"
+              defaultValue={motoboyId ?? ""}
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none transition-colors focus:border-slate-400"
+            >
+              <option value="">Todos</option>
+              {motoboys.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <button
             type="submit"
             aria-label="Aplicar filtros"
@@ -169,7 +199,8 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
           {temFiltroExtra && (
             <Link
               href={`/relatorios?inicio=${dataInicio}&fim=${dataFim}`}
-              aria-label="Limpar filtros de situação e pagamento"
+              prefetch={false}
+              aria-label="Limpar filtros de situação, pagamento e motorista"
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 transition-[transform,color,border-color] duration-150 hover:border-red-500/40 hover:text-red-600 active:scale-95"
             >
               <X className="size-4" />
@@ -177,13 +208,17 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
             </Link>
           )}
 
-          <Link
+          {/* <a> comum (não <Link>): o <Link> pré-carregava a rota de
+              exportação sozinho, gerando e arquivando CSVs sem ninguém
+              pedir. */}
+          <a
             href={`/relatorios/exportar?${queryExport.toString()}`}
+            download
             className="ml-auto inline-flex items-center gap-1.5 bg-[#0A1F44] px-4 py-2 text-sm font-bold text-white transition-[transform,background-color] duration-150 hover:bg-[#0A1F44]/90 active:scale-[0.97]"
           >
             <Download className="size-4" />
             Exportar CSV
-          </Link>
+          </a>
         </form>
       </Card>
 
@@ -201,44 +236,78 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left">
+            <table className="w-full min-w-[1000px] table-fixed border-collapse text-left">
+              <colgroup>
+                <col className="w-[88px]" />
+                <col className="w-[116px]" />
+                <col />
+                <col className="w-[132px]" />
+                <col className="w-[132px]" />
+                <col className="w-[156px]" />
+                <col className="w-[132px]" />
+                <col className="w-[148px]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-400">
-                  <th className="px-6 py-3.5 font-bold">Código</th>
-                  <th className="px-6 py-3.5 font-bold">Data</th>
-                  <th className="px-6 py-3.5 font-bold">Cliente</th>
-                  <th className="px-6 py-3.5 font-bold">Valor</th>
-                  <th className="px-6 py-3.5 font-bold">Pagamento</th>
-                  <th className="px-6 py-3.5 font-bold">Motorista</th>
-                  <th className="px-6 py-3.5 font-bold">Situação</th>
+                  <th className="py-3.5 pl-6 pr-3 font-bold">Código</th>
+                  <th className="px-3 py-3.5 font-bold">Data</th>
+                  <th className="px-3 py-3.5 font-bold">Cliente</th>
+                  <th className="py-3.5 pl-3 pr-8 text-right font-bold">Valor</th>
+                  <th className="px-3 py-3.5 font-bold">Pagamento</th>
+                  <th className="px-3 py-3.5 font-bold">Motorista</th>
+                  <th className="px-3 py-3.5 font-bold">Situação</th>
+                  <th className="py-3.5 pl-3 pr-6 text-right font-bold">Dados</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-sm text-slate-700">
                 {itens.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-b border-slate-100 text-sm transition-colors last:border-b-0 hover:bg-slate-50/70"
+                    className="border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/70"
                   >
-                    <td className="px-6 py-4 font-medium tabular-nums text-slate-500">
+                    <td className="whitespace-nowrap py-3.5 pl-6 pr-3 align-middle font-medium tabular-nums text-slate-500">
                       {item.numero}
                     </td>
-                    <td className="px-6 py-4 tabular-nums text-slate-500">{item.data}</td>
-                    <td className="px-6 py-4 font-semibold">{item.cliente}</td>
-                    <td className="px-6 py-4 tabular-nums">{item.valor}</td>
-                    <td className="px-6 py-4 text-slate-500">
+                    <td className="whitespace-nowrap px-3 py-3.5 align-middle tabular-nums">
+                      {item.data}
+                    </td>
+                    <td className="truncate px-3 py-3.5 align-middle font-semibold text-slate-900">
+                      <Link
+                        href={linkDaEntrega(item.id)}
+                        prefetch={false}
+                        className="hover:text-[#1768D8] hover:underline"
+                      >
+                        {item.cliente}
+                      </Link>
+                    </td>
+                    <td className="whitespace-nowrap py-3.5 pl-3 pr-8 text-right align-middle tabular-nums">
+                      {item.valor}
+                    </td>
+                    <td className="truncate px-3 py-3.5 align-middle">
                       {FORMA_PAGAMENTO_LABEL[item.formaPagamento]}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="truncate px-3 py-3.5 align-middle">
                       <span className={item.motoboy ? "" : "text-slate-300"}>
                         {item.motoboy ?? "—"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3.5 align-middle">
                       <span
-                        className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${STATUS_BADGE_CLASSES[item.status]}`}
+                        className={`flex items-center whitespace-nowrap text-sm font-semibold ${SITUACAO_TEXT_CLASSES[item.situacao]}`}
                       >
-                        {STATUS_LABEL[item.status]}
+                        {SITUACAO_LABEL[item.situacao]}
                       </span>
+                    </td>
+                    <td className="py-3.5 pl-3 pr-6 text-right align-middle">
+                      <Link
+                        href={linkDaEntrega(item.id)}
+                        prefetch={false}
+                        aria-label={`Ver dados da entrega ${item.numero}`}
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap border border-slate-300 px-3 py-1.5 text-xs font-bold text-black transition hover:border-black hover:bg-slate-50"
+                      >
+                        <Eye className="size-4" />
+                        Ver dados
+                      </Link>
                     </td>
                   </tr>
                 ))}

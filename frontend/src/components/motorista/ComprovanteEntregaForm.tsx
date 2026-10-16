@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import {
   Camera,
   CheckCircle2,
-  Eraser,
   Loader2,
-  PenLine,
+  Package,
+  Plus,
   ReceiptText,
+  X,
 } from "lucide-react";
 import { confirmarEntrega } from "@/app/motorista/actions";
 import { comprimirImagem } from "@/lib/comprimir-imagem";
+import { MAX_FOTOS_PRODUTO } from "@/lib/comprovante-limites";
 import { salvarRascunho } from "@/lib/comprovante-pendente";
 import { ComprovanteGuardadoPainel } from "@/components/motorista/ComprovanteGuardadoPainel";
 import {
@@ -21,6 +23,12 @@ import {
 import type { FormaPagamento } from "@/types/database";
 
 const TAMANHO_MAX_FOTO = 8 * 1024 * 1024;
+
+interface FotoProdutoLocal {
+  id: string;
+  arquivo: File;
+  url: string;
+}
 
 export function ComprovanteEntregaForm({
   entregaId,
@@ -36,15 +44,12 @@ export function ComprovanteEntregaForm({
   const { rascunhos, enviando, enviarAgora, descartar, recarregar } =
     useRascunhosComprovante(entregaId);
   const rascunhoGuardado = rascunhos[0] ?? null;
-  const temRascunhoGuardado = rascunhoGuardado !== null;
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const desenhandoRef = useRef(false);
-  const assinaturaMarcadaRef = useRef(false);
   const [fotoEntrega, setFotoEntrega] = useState<File | null>(null);
   const [fotoEntregaUrl, setFotoEntregaUrl] = useState<string | null>(null);
   const [comprovantePix, setComprovantePix] = useState<File | null>(null);
   const [comprovantePixUrl, setComprovantePixUrl] = useState<string | null>(null);
-  const [temAssinatura, setTemAssinatura] = useState(false);
+  const [fotosProduto, setFotosProduto] = useState<FotoProdutoLocal[]>([]);
+  const fotosProdutoRef = useRef<FotoProdutoLocal[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   // Foto sendo reduzida no aparelho (leva ~1 s): segura o botão Finalizar.
@@ -80,100 +85,16 @@ export function ComprovanteEntregaForm({
   }, [comprovantePixUrl]);
 
   useEffect(() => {
-    // Com um comprovante guardado o formulário não aparece (sem canvas);
-    // ao descartar, o canvas volta e precisa ser preparado de novo.
-    if (temRascunhoGuardado) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    fotosProdutoRef.current = fotosProduto;
+  }, [fotosProduto]);
 
-    const largura = Math.max(canvas.clientWidth, 1);
-    const altura = Math.max(canvas.clientHeight, 1);
-    const escala = Math.max(window.devicePixelRatio || 1, 1);
-
-    canvas.width = Math.round(largura * escala);
-    canvas.height = Math.round(altura * escala);
-
-    const contexto = canvas.getContext("2d");
-    if (!contexto) return;
-
-    contexto.fillStyle = "#ffffff";
-    contexto.fillRect(0, 0, canvas.width, canvas.height);
-    contexto.strokeStyle = "#0A1F44";
-    contexto.lineWidth = 2.25 * escala;
-    contexto.lineCap = "round";
-    contexto.lineJoin = "round";
-  }, [temRascunhoGuardado]);
-
-  function pontoNoCanvas(evento: React.PointerEvent<HTMLCanvasElement>) {
-    const canvas = evento.currentTarget;
-    const retangulo = canvas.getBoundingClientRect();
-
-    return {
-      x: (evento.clientX - retangulo.left) * (canvas.width / retangulo.width),
-      y: (evento.clientY - retangulo.top) * (canvas.height / retangulo.height),
+  useEffect(() => {
+    return () => {
+      for (const foto of fotosProdutoRef.current) {
+        URL.revokeObjectURL(foto.url);
+      }
     };
-  }
-
-  function iniciarAssinatura(evento: React.PointerEvent<HTMLCanvasElement>) {
-    const contexto = evento.currentTarget.getContext("2d");
-    if (!contexto) return;
-
-    evento.currentTarget.setPointerCapture(evento.pointerId);
-    desenhandoRef.current = true;
-
-    const ponto = pontoNoCanvas(evento);
-    contexto.beginPath();
-    contexto.moveTo(ponto.x, ponto.y);
-  }
-
-  function desenharAssinatura(evento: React.PointerEvent<HTMLCanvasElement>) {
-    if (!desenhandoRef.current) return;
-
-    const contexto = evento.currentTarget.getContext("2d");
-    if (!contexto) return;
-
-    const ponto = pontoNoCanvas(evento);
-    contexto.lineTo(ponto.x, ponto.y);
-    contexto.stroke();
-
-    if (!assinaturaMarcadaRef.current) {
-      assinaturaMarcadaRef.current = true;
-      setTemAssinatura(true);
-    }
-  }
-
-  function encerrarAssinatura(evento: React.PointerEvent<HTMLCanvasElement>) {
-    desenhandoRef.current = false;
-
-    if (evento.currentTarget.hasPointerCapture(evento.pointerId)) {
-      evento.currentTarget.releasePointerCapture(evento.pointerId);
-    }
-  }
-
-  function limparAssinatura() {
-    const canvas = canvasRef.current;
-    const contexto = canvas?.getContext("2d");
-    if (!canvas || !contexto) return;
-
-    contexto.fillStyle = "#ffffff";
-    contexto.fillRect(0, 0, canvas.width, canvas.height);
-    contexto.strokeStyle = "#0A1F44";
-    assinaturaMarcadaRef.current = false;
-    setTemAssinatura(false);
-  }
-
-  async function gerarArquivoAssinatura(): Promise<File | null> {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, "image/png");
-    });
-
-    if (!blob) return null;
-
-    return new File([blob], "assinatura.png", { type: "image/png" });
-  }
+  }, []);
 
   function validarImagem(arquivo: File): string | null {
     if (!arquivo.type.startsWith("image/")) {
@@ -209,6 +130,39 @@ export function ComprovanteEntregaForm({
 
     setFotoEntrega(reduzida);
     setFotoEntregaUrl(URL.createObjectURL(reduzida));
+  }
+
+  async function adicionarFotoProduto(arquivo: File | undefined) {
+    setErro(null);
+    if (!arquivo) return;
+
+    const reduzida = await prepararImagem(arquivo);
+
+    const erroImagem = validarImagem(reduzida);
+    if (erroImagem) {
+      setErro(erroImagem);
+      return;
+    }
+
+    setFotosProduto((atuais) => {
+      if (atuais.length >= MAX_FOTOS_PRODUTO) return atuais;
+      return [
+        ...atuais,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          arquivo: reduzida,
+          url: URL.createObjectURL(reduzida),
+        },
+      ];
+    });
+  }
+
+  function removerFotoProduto(id: string) {
+    setFotosProduto((atuais) => {
+      const removida = atuais.find((foto) => foto.id === id);
+      if (removida) URL.revokeObjectURL(removida.url);
+      return atuais.filter((foto) => foto.id !== id);
+    });
   }
 
   async function selecionarComprovantePix(arquivo: File | undefined) {
@@ -251,27 +205,17 @@ export function ComprovanteEntregaForm({
       return;
     }
 
-    if (!temAssinatura) {
-      setErro("Peça ao cliente para assinar antes de confirmar.");
-      return;
-    }
-
     startTransition(async () => {
-      const assinatura = await gerarArquivoAssinatura();
-
-      if (!assinatura) {
-        setErro("Não foi possível preparar a assinatura. Tente novamente.");
-        return;
-      }
+      const pixParaEnviar = formaPagamento === "pix" ? comprovantePix : null;
 
       // 1) Guarda tudo no aparelho ANTES de enviar: se o sinal cair, o app for
-      //    fechado ou a página recarregar, a foto e a assinatura não se perdem.
+      //    fechado ou a página recarregar, as fotos não se perdem.
       const guardado = await salvarRascunho({
         entregaId,
         rotulo: rotulo ?? null,
         fotoEntrega,
-        comprovantePix: formaPagamento === "pix" ? comprovantePix : null,
-        assinatura,
+        comprovantePix: pixParaEnviar,
+        fotosProduto: fotosProduto.map((foto) => foto.arquivo),
       });
 
       if (guardado) {
@@ -287,20 +231,20 @@ export function ComprovanteEntregaForm({
       }
 
       // O aparelho não permitiu guardar (navegação restrita): envio direto,
-      // mantendo a foto e a assinatura na tela se falhar.
+      // mantendo as fotos na tela se falhar.
       const formData = new FormData();
       formData.set("fotoEntrega", fotoEntrega);
-      if (formaPagamento === "pix" && comprovantePix) {
-        formData.set("comprovantePix", comprovantePix);
+      if (pixParaEnviar) formData.set("comprovantePix", pixParaEnviar);
+      for (const foto of fotosProduto) {
+        formData.append("fotoProduto", foto.arquivo);
       }
-      formData.set("assinatura", assinatura);
 
       let resultado: Awaited<ReturnType<typeof confirmarEntrega>>;
       try {
         resultado = await confirmarEntrega(entregaId, formData);
       } catch {
         setErro(
-          "Sem conexão com o servidor. Confira o sinal e toque em confirmar de novo — a foto e a assinatura foram mantidas."
+          "Sem conexão com o servidor. Confira o sinal e toque em confirmar de novo — as fotos foram mantidas."
         );
         return;
       }
@@ -321,8 +265,10 @@ export function ComprovanteEntregaForm({
       setFotoEntregaUrl(null);
       setComprovantePix(null);
       setComprovantePixUrl(null);
-      assinaturaMarcadaRef.current = false;
-      setTemAssinatura(false);
+      for (const foto of fotosProdutoRef.current) {
+        URL.revokeObjectURL(foto.url);
+      }
+      setFotosProduto([]);
       setErro(null);
     });
   }
@@ -356,7 +302,7 @@ export function ComprovanteEntregaForm({
           </div>
         )}
 
-        <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#1768D8] bg-white px-4 py-3 text-sm font-black text-[#1768D8] transition hover:bg-[#F5F9FF]">
+        <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">
           <Camera className="size-4" />
           {fotoEntrega ? "Tirar outra foto" : "Tirar foto da entrega"}
           <input
@@ -368,6 +314,85 @@ export function ComprovanteEntregaForm({
             onChange={(event) => selecionarFotoEntrega(event.target.files?.[0])}
           />
         </label>
+      </div>
+
+      <div className="mt-5 border-t border-slate-100 pt-5">
+        <p className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
+          Fotos do produto{" "}
+          <span className="font-semibold normal-case tracking-normal text-slate-400">
+            (opcional)
+          </span>
+        </p>
+
+        {fotosProduto.length === 0 ? (
+          <label
+            className={`inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 ${pending ? "pointer-events-none opacity-50" : ""}`}
+          >
+            <Package className="size-4" />
+            Tirar foto do produto
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              disabled={pending}
+              onChange={(event) => {
+                const arquivo = event.target.files?.[0];
+                event.target.value = "";
+                void adicionarFotoProduto(arquivo);
+              }}
+            />
+          </label>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {fotosProduto.map((foto, indice) => (
+              <div
+                key={foto.id}
+                className="relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={foto.url}
+                  alt={`Prévia da foto do produto ${indice + 1}`}
+                  className="size-full object-cover"
+                />
+                <button
+                  type="button"
+                  aria-label={`Remover foto do produto ${indice + 1}`}
+                  disabled={pending}
+                  onClick={() => removerFotoProduto(foto.id)}
+                  className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-black/60 text-white transition hover:bg-black/75 disabled:opacity-50"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            ))}
+
+            {fotosProduto.length < MAX_FOTOS_PRODUTO && (
+              <label
+                className={`flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-300 bg-white text-slate-600 transition hover:border-[#1768D8] hover:bg-[#F5F9FF] hover:text-[#1768D8] ${pending ? "pointer-events-none opacity-50" : ""}`}
+              >
+                <Plus className="size-6" />
+                <span className="text-[11px] font-black">
+                  Adicionar
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="sr-only"
+                  disabled={pending}
+                  onChange={(event) => {
+                    const arquivo = event.target.files?.[0];
+                    // Permite escolher a mesma foto de novo depois de remover.
+                    event.target.value = "";
+                    void adicionarFotoProduto(arquivo);
+                  }}
+                />
+              </label>
+            )}
+          </div>
+        )}
       </div>
 
       {formaPagamento === "pix" && (
@@ -406,41 +431,6 @@ export function ComprovanteEntregaForm({
           </label>
         </div>
       )}
-
-      <div className="mt-5 border-t border-slate-100 pt-5">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
-            Assinatura do cliente
-          </p>
-          <button
-            type="button"
-            disabled={pending || !temAssinatura}
-            onClick={limparAssinatura}
-            className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Eraser className="size-3.5" />
-            Limpar
-          </button>
-        </div>
-
-        <div className="relative overflow-hidden rounded-2xl border border-slate-300 bg-white">
-          {!temAssinatura && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-slate-400">
-              <PenLine className="size-4" />
-              Assine aqui
-            </div>
-          )}
-          <canvas
-            ref={canvasRef}
-            aria-label="Área para assinatura do cliente"
-            className="h-40 w-full touch-none"
-            onPointerDown={iniciarAssinatura}
-            onPointerMove={desenharAssinatura}
-            onPointerUp={encerrarAssinatura}
-            onPointerCancel={encerrarAssinatura}
-          />
-        </div>
-      </div>
 
       {erro && (
         <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">

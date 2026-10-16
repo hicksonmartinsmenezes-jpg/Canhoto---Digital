@@ -64,7 +64,8 @@ export function MotoboysManager({ motoboys }: MotoboysManagerProps) {
       <Card className="overflow-hidden">
         <div className="border-b border-slate-200 px-6 py-5">
           <h2 className="text-[15px] font-bold">
-            {motoboys.length} motoristas cadastrados
+            {motoboys.length}{" "}
+            {motoboys.length === 1 ? "motorista cadastrado" : "motoristas cadastrados"}
           </h2>
         </div>
 
@@ -245,6 +246,14 @@ function FormModal({
   // não clicou "Salvar", gerar o PIN agora usaria o telefone antigo (ou
   // nenhum). Trava o botão até os dois baterem, pra não confundir.
   const telefoneMudou = telefone !== telefoneInicial;
+  const [avisoCopia, setAvisoCopia] = useState<string | null>(null);
+
+  function copiar(texto: string, aviso: string) {
+    void navigator.clipboard
+      ?.writeText(texto)
+      .then(() => setAvisoCopia(aviso))
+      .catch(() => setAvisoCopia("Não foi possível copiar — anote à mão."));
+  }
 
   function salvar() {
     if (!nome.trim()) {
@@ -256,6 +265,12 @@ function FormModal({
       const resultado = await onSalvar(nome, telefone, ativo);
       if (!resultado.ok) {
         setErro(resultado.error ?? "Não foi possível salvar.");
+        return;
+      }
+      // Cadastro novo com telefone: mostra o PIN gerado antes de fechar.
+      if (resultado.pin) {
+        setPinGerado(resultado.pin);
+        setTemPin(true);
         return;
       }
       onSucesso();
@@ -307,7 +322,9 @@ function FormModal({
       <label className="mb-1.5 mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">
         Telefone
         <span className="ml-1 font-medium normal-case text-slate-400">
-          (opcional — necessário pra gerar o PIN de acesso ao app)
+          {motoboy
+            ? "(necessário para o acesso ao app)"
+            : "(com telefone, o PIN de acesso ao app é gerado ao salvar)"}
         </span>
       </label>
       <input
@@ -339,7 +356,7 @@ function FormModal({
       {/* Seção de PIN — só existe em "Editar" (precisa de um id já salvo). O
           app do motorista em si (login, telas) ainda não existe (sub-issues
           #29 e #30) — isso aqui só prepara o acesso. */}
-      {motoboy && (
+      {(motoboy || pinGerado) && (
         <div className="mt-5 rounded-xl border border-slate-200/70 bg-slate-50/50 p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
@@ -358,6 +375,7 @@ function FormModal({
           </div>
 
           {pinGerado ? (
+            <>
             <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2.5">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">
@@ -370,12 +388,32 @@ function FormModal({
               <button
                 type="button"
                 aria-label="Copiar PIN"
-                onClick={() => navigator.clipboard?.writeText(pinGerado)}
+                title="Copiar PIN"
+                onClick={() => copiar(pinGerado, "PIN copiado")}
                 className="rounded-lg border border-amber-300 p-2 text-amber-700 transition-[transform] duration-150 hover:bg-amber-100 active:scale-90"
               >
                 <Copy className="size-4" />
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() =>
+                copiar(
+                  `Seu acesso ao app de entregas Rildon Express:\nTelefone: ${telefone}\nPIN: ${pinGerado}\nAbra o app, informe o telefone e o PIN e toque em Entrar.`,
+                  "Mensagem copiada — cole no WhatsApp do motorista"
+                )
+              }
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:border-amber-500/40 hover:text-amber-700"
+            >
+              <Copy className="size-3.5" />
+              Copiar mensagem para o motorista
+            </button>
+            {avisoCopia && (
+              <p role="status" className="mt-1.5 text-xs font-semibold text-emerald-700">
+                {avisoCopia}
+              </p>
+            )}
+            </>
           ) : (
             <button
               type="button"

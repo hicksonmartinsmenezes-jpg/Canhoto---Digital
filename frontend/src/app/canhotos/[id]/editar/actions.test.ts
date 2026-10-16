@@ -156,7 +156,7 @@ describe("edição administrativa de entrega", () => {
     expect(resultado).toEqual({
       ok: false,
       error:
-        "A entrega só pode ser concluída pelo fluxo do motorista com foto da entrega e assinatura.",
+        "A entrega só pode ser concluída pelo fluxo do motorista com a foto da entrega.",
     });
     expect(tx.update).not.toHaveBeenCalled();
   });
@@ -273,7 +273,7 @@ describe("edição administrativa de entrega", () => {
     expect(tx.update).not.toHaveBeenCalled();
   });
 
-  it("permite cancelar uma entrega pendente e registra histórico", async () => {
+  it("não cancela pela edição: cancelamento exige a ação com motivo", async () => {
     const { tx, insertValues } = configurarDb("pendente");
 
     const resultado = await atualizarEntrega("entrega-1", {
@@ -281,12 +281,26 @@ describe("edição administrativa de entrega", () => {
       status: "cancelado",
     });
 
+    expect(resultado.ok).toBe(false);
+    expect(resultado.error).toMatch(/Cancelar entrega/);
+    expect(tx.update).not.toHaveBeenCalled();
+    expect(insertValues).not.toHaveBeenCalled();
+  });
+
+  it("permite reativar uma entrega cancelada e registra histórico", async () => {
+    const { tx, insertValues } = configurarDb("cancelado");
+
+    const resultado = await atualizarEntrega("entrega-1", {
+      ...inputBase,
+      status: "pendente",
+    });
+
     expect(resultado).toEqual({ ok: true });
     expect(tx.update).toHaveBeenCalledTimes(1);
     expect(insertValues).toHaveBeenCalledWith({
       entregaId: "entrega-1",
-      statusAnterior: "pendente",
-      statusNovo: "cancelado",
+      statusAnterior: "cancelado",
+      statusNovo: "pendente",
       alteradoPor: null,
       alteradoPorAdmin: "admin-1",
     });

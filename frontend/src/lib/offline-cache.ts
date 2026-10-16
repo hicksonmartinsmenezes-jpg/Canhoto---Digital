@@ -4,17 +4,37 @@
 
 const PREFIXO_CACHE_PAGINAS = "motorista-paginas-";
 
-/** Pede ao service worker para baixar e guardar estas páginas (e seus arquivos). */
-export async function pedirPrecarga(caminhos: string[]): Promise<void> {
+const TEMPO_PRECARGA_MS = 90_000;
+
+/**
+ * Pede ao service worker para baixar e guardar estas páginas (e seus arquivos).
+ * Devolve true quando a lista e a tela "sem conexão" ficaram guardadas, ou
+ * false se não deu (sem service worker, sem internet, tempo esgotado).
+ */
+export async function pedirPrecarga(caminhos: string[]): Promise<boolean> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-    return;
+    return false;
   }
 
   try {
     const registro = await navigator.serviceWorker.ready;
-    registro.active?.postMessage({ tipo: "precarregar", urls: caminhos });
+    const ativo = registro.active;
+    if (!ativo) return false;
+
+    return await new Promise<boolean>((resolve) => {
+      const canal = new MessageChannel();
+      const timer = window.setTimeout(() => resolve(false), TEMPO_PRECARGA_MS);
+
+      canal.port1.onmessage = (evento: MessageEvent<{ ok?: boolean }>) => {
+        window.clearTimeout(timer);
+        resolve(evento.data?.ok === true);
+      };
+
+      ativo.postMessage({ tipo: "precarregar", urls: caminhos }, [canal.port2]);
+    });
   } catch {
     // Sem service worker: o app segue funcionando só com internet.
+    return false;
   }
 }
 
