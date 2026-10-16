@@ -1,9 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [],
-  "ignoreDependencies": [
-    "wait-on"
-  ],
+  "ignore": ["public/motorista-sw.js"],
+  "ignoreDependencies": ["wait-on", "@capacitor/preferences"],
   "rules": {
     "files": "error",
     "dependencies": "error",

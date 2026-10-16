@@ -43,7 +43,7 @@ const NOMES_RESERVADOS_WINDOWS = new Set([
   "lpt9",
 ]);
 
-export function nomeSeguroParaPasta(valor: string): string {
+function nomeSeguroParaPasta(valor: string): string {
   const normalizado = valor
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
