@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export function diretorioRaizRelatorios(): string {
+function diretorioRaizRelatorios(): string {
   const configurado = process.env.CANHOTO_RELATORIOS_DIR?.trim();
   if (configurado) return path.resolve(configurado);
 

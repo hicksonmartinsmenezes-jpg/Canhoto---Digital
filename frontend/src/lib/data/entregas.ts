@@ -486,7 +486,7 @@ export interface RelatorioFiltros {
   setorId?: string | null;
 }
 
-export interface RelatorioEntregaItem {
+interface RelatorioEntregaItem {
   id: string;
   numero: string;
   data: string;
@@ -498,13 +498,13 @@ export interface RelatorioEntregaItem {
   status: StatusEntrega;
 }
 
-export interface RelatorioPorFormaPagamento {
+interface RelatorioPorFormaPagamento {
   formaPagamento: FormaPagamento;
   quantidade: number;
   valor: string;
 }
 
-export interface RelatorioTotais {
+interface RelatorioTotais {
   quantidade: number;
   valorTotal: string;
   ticketMedio: string;

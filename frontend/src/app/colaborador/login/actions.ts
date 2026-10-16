@@ -119,7 +119,7 @@ export async function entrarColaborador(
   return { ok: true };
 }
 
-export async function sairColaborador(): Promise<void> {
+async function sairColaborador(): Promise<void> {
   await encerrarSessaoColaborador();
   redirect("/colaborador/login");
 }
