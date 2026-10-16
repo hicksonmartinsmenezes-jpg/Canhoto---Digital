@@ -108,9 +108,6 @@ export default async function EntregaDetalhePage({
               {SITUACAO_LABEL[situacao]}
             </span>
           </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Consulta dos dados e comprovantes registrados para esta entrega.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -263,9 +260,6 @@ export default async function EntregaDetalhePage({
             <h2 className="text-[15px] font-bold text-[#0A1F44]">
               Comprovante de entrega
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Foto da entrega e, quando informados, fotos do produto e comprovante Pix.
-            </p>
           </div>
 
           {comprovantes.length === 0 ? (
@@ -326,10 +320,6 @@ export default async function EntregaDetalhePage({
               <History className="size-4" />
               Histórico
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Mudanças de situação e alterações de valor, pagamento, cliente,
-              motorista ou data — com quem fez e quando.
-            </p>
           </div>
 
           {historico.length === 0 ? (

@@ -71,7 +71,6 @@ export default async function DashboardPage() {
 
         <div className="col-span-6 xl:col-span-3">
           <MotoristasStatCard
-            ativos={stats.motoristasAtivos}
             emRotaIniciais={motoristasEmRota}
           />
         </div>
