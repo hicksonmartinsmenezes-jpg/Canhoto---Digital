@@ -3,6 +3,7 @@ import { getRelatorioEntregas } from "@/lib/data/entregas";
 import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
 import { linhaCsv, SEPARADOR_CSV } from "@/lib/csv";
 import { arquivarRelatorioCsv } from "@/lib/relatorios-storage";
+import { obterAdminAutenticado } from "@/lib/admin-auth";
 import {
   FORMA_PAGAMENTO_LABEL,
   STATUS_LABEL,
@@ -78,7 +79,23 @@ export async function GET(request: NextRequest) {
   try {
     await arquivarRelatorioCsv(nomeBase, csv);
   } catch (error) {
-    console.error("Falha ao arquivar relatório CSV localmente.", error);
+    let usuario = "indisponivel";
+    try {
+      const email = (await obterAdminAutenticado())?.email;
+      usuario = email ? encodeURIComponent(email) : usuario;
+    } catch {
+      // A falha ao consultar a identidade também não deve impedir o download.
+    }
+    const codigoErro =
+      typeof error === "object" && error !== null && "code" in error &&
+      typeof error.code === "string" && /^[A-Z0-9_]+$/.test(error.code)
+        ? error.code
+        : error instanceof Error
+          ? error.name
+          : "ErroDesconhecido";
+    console.error(
+      `[CSV_ARCHIVE_FAILED] data_hora=${new Date().toISOString()} usuario=${usuario} motivo=${codigoErro}`
+    );
   }
 
   return new NextResponse(csv, {
