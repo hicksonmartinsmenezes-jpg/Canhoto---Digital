@@ -6,7 +6,7 @@ import type { RascunhoVisivel } from "@/components/motorista/useRascunhosComprov
 
 /**
  * Mostra um comprovante que está guardado no aparelho esperando envio (ou
- * recusado pelo servidor), com as miniaturas da foto e da assinatura para o
+ * recusado pelo servidor), com as miniaturas das fotos para o
  * motorista ter certeza de que nada se perdeu.
  */
 export function ComprovanteGuardadoPainel({
@@ -61,29 +61,34 @@ export function ComprovanteGuardadoPainel({
               {rascunho.rejeitado
                 ? (rascunho.mensagem ??
                   "Confira a entrega com a loja antes de enviar de novo.")
-                : "A foto e a assinatura estão salvas. Vamos enviar sozinhos assim que o sinal voltar — pode seguir para a próxima entrega."}
+                : "As fotos estão salvas. Vamos enviar sozinhas assim que o sinal voltar — pode seguir para a próxima entrega."}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-3 gap-2">
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={rascunho.fotoUrl}
             alt="Foto da entrega guardada"
-            className="h-28 w-full object-cover"
+            className="h-24 w-full object-cover"
           />
         </div>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={rascunho.assinaturaUrl}
-            alt="Assinatura guardada"
-            className="h-28 w-full object-contain p-2"
-          />
-        </div>
+        {rascunho.fotosProdutoUrls.map((url, indice) => (
+          <div
+            key={url}
+            className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={url}
+              alt={`Foto do produto ${indice + 1} guardada`}
+              className="h-24 w-full object-cover"
+            />
+          </div>
+        ))}
       </div>
 
       <button
@@ -108,7 +113,7 @@ export function ComprovanteGuardadoPainel({
       {confirmandoDescarte ? (
         <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-3">
           <p className="text-xs font-semibold text-slate-700">
-            Apagar a foto e a assinatura guardadas e refazer a entrega do zero?
+            Apagar as fotos guardadas e refazer a entrega do zero?
           </p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button

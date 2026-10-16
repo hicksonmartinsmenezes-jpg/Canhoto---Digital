@@ -46,33 +46,30 @@ export default async function DashboardPage() {
         mostrarTreinamento={sessao?.tipo === "admin"}
       />
 
-      <div className="grid grid-cols-12 gap-5">
-        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+      <div className="grid grid-cols-12 gap-3 sm:gap-5 [&>*]:min-w-0">
+        <div className="col-span-6 xl:col-span-3">
           <StatCard
             label="Total de entregas"
             value={stats.totalEntregas.toLocaleString("pt-BR")}
-            sub=""
             variant="accent"
           />
         </div>
 
-        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+        <div className="col-span-6 xl:col-span-3">
           <StatCard
             label="Entregues"
             value={stats.entregues.toLocaleString("pt-BR")}
-            sub=""
           />
         </div>
 
-        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+        <div className="col-span-6 xl:col-span-3">
           <StatCard
             label="Pendentes"
             value={stats.pendentes.toLocaleString("pt-BR")}
-            sub=""
           />
         </div>
 
-        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+        <div className="col-span-6 xl:col-span-3">
           <MotoristasStatCard
             ativos={stats.motoristasAtivos}
             emRotaIniciais={motoristasEmRota}

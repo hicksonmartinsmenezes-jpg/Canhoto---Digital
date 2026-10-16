@@ -56,8 +56,12 @@ export async function GET(
     !anexo ||
     !sessaoPodeAcessarSetor(sessao, anexo.setorId) ||
     (anexo.tipo !== "foto" &&
+      anexo.tipo !== "foto_produto" &&
       anexo.tipo !== "comprovante_pix" &&
-      anexo.tipo !== "assinatura_cliente")
+      anexo.tipo !== "assinatura_cliente" &&
+      anexo.tipo !== "xml_nfe" &&
+      anexo.tipo !== "xml_cte" &&
+      anexo.tipo !== "danfe_pdf")
   ) {
     return new Response("Comprovante não encontrado.", {
       status: 404,
@@ -75,12 +79,16 @@ export async function GET(
 
   try {
     const bytes = await readFile(arquivo.caminho);
+    // XML não abre na tela (pode trazer folha de estilo): sempre baixa.
+    const ehXml = arquivo.mime === "application/xml";
 
     return new Response(new Uint8Array(bytes), {
       status: 200,
       headers: {
         "Content-Type": arquivo.mime,
-        "Content-Disposition": "inline",
+        "Content-Disposition": ehXml
+          ? `attachment; filename="nota-${id.slice(0, 8)}.xml"`
+          : "inline",
         "Cache-Control": "private, no-store, max-age=0",
         "X-Content-Type-Options": "nosniff",
       },

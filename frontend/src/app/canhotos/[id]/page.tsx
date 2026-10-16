@@ -1,12 +1,16 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
   Camera,
   Clock3,
+  Download,
   ExternalLink,
+  FileText,
   History,
   MapPin,
+  Package,
   PenLine,
   ReceiptText,
   SquarePen,
@@ -14,8 +18,10 @@ import {
 } from "lucide-react";
 import {
   getComprovantesEntrega,
+  getDocumentosEntrega,
   getEntregaById,
   getHistoricoEntrega,
+  type EntregaComprovante,
 } from "@/lib/data/entregas";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import {
@@ -24,9 +30,12 @@ import {
 } from "@/lib/sessao-operador";
 import {
   FORMA_PAGAMENTO_LABEL,
-  STATUS_BADGE_CLASSES,
+  SITUACAO_TEXT_CLASSES,
+  SITUACAO_LABEL,
+  situacaoEntrega,
   STATUS_LABEL,
 } from "@/lib/status";
+import { CancelarEntregaBotao } from "@/components/canhotos/CancelarEntregaBotao";
 
 export const dynamic = "force-dynamic";
 
@@ -39,16 +48,24 @@ function formatarDataHora(valor: string): string {
 
 export default async function EntregaDetalhePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ voltar?: string }>;
 }) {
   const sessao = await obterSessaoOperador();
   if (!sessao) redirect("/login");
 
   const { id } = await params;
-  const [entrega, comprovantes, historico] = await Promise.all([
+  // Quem chegou pelos Relatórios volta para eles, com os mesmos filtros. Só
+  // aceita caminho interno de /relatorios (nada de endereço de outro site).
+  const { voltar } = await searchParams;
+  const veioDosRelatorios =
+    typeof voltar === "string" && /^\/relatorios\?[\w=&%.-]{0,300}$/.test(voltar);
+  const [entrega, comprovantes, documentos, historico] = await Promise.all([
     getEntregaById(id),
     getComprovantesEntrega(id),
+    getDocumentosEntrega(id),
     getHistoricoEntrega(id),
   ]);
 
@@ -56,10 +73,14 @@ export default async function EntregaDetalhePage({
 
   // Entrega concluída só o Admin edita (ver editar/actions.ts).
   const podeEditar = sessao.tipo === "admin" || entrega.status !== "entregue";
+  const situacao = situacaoEntrega(entrega.status, entrega.horaSaida);
 
   const fotos = comprovantes.filter((item) => item.tipo === "foto");
   const comprovantesPix = comprovantes.filter(
     (item) => item.tipo === "comprovante_pix"
+  );
+  const fotosProduto = comprovantes.filter(
+    (item) => item.tipo === "foto_produto"
   );
   const assinaturas = comprovantes.filter(
     (item) => item.tipo === "assinatura_cliente"
@@ -70,11 +91,11 @@ export default async function EntregaDetalhePage({
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link
-            href="/canhotos"
+            href={veioDosRelatorios ? voltar! : "/canhotos"}
             className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-[#0A1F44]"
           >
             <ArrowLeft className="size-4" />
-            Voltar para Entregas
+            {veioDosRelatorios ? "Voltar para Relatórios" : "Voltar para Entregas"}
           </Link>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -82,9 +103,9 @@ export default async function EntregaDetalhePage({
               Entrega #{entrega.numero}
             </h1>
             <span
-              className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${STATUS_BADGE_CLASSES[entrega.status]}`}
+              className={`flex items-center gap-2 whitespace-nowrap text-sm font-semibold ${SITUACAO_TEXT_CLASSES[situacao]}`}
             >
-              {STATUS_LABEL[entrega.status]}
+              {SITUACAO_LABEL[situacao]}
             </span>
           </div>
           <p className="mt-1 text-sm text-slate-500">
@@ -92,15 +113,25 @@ export default async function EntregaDetalhePage({
           </p>
         </div>
 
-        {podeEditar && (
-          <Link
-            href={`/canhotos/${entrega.id}/editar`}
-            className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0A1F44]/90"
-          >
-            <SquarePen className="size-4" />
-            Editar entrega
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {entrega.status === "pendente" && (
+            <CancelarEntregaBotao
+              id={entrega.id}
+              numero={`#${entrega.numero}`}
+              cliente={entrega.clienteNome}
+            />
+          )}
+          {podeEditar && (
+            <Link
+              href={`/canhotos/${entrega.id}/editar`}
+              prefetch={false}
+              className="inline-flex items-center gap-2 bg-[#0A1F44] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#0A1F44]/90"
+            >
+              <SquarePen className="size-4" />
+              Editar entrega
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-12 gap-5">
@@ -197,6 +228,33 @@ export default async function EntregaDetalhePage({
                 {entrega.observacoes || "—"}
               </dd>
             </div>
+            {documentos.length > 0 && (
+              <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
+                <dt className="font-semibold text-slate-500">Documentos</dt>
+                <dd className="flex flex-col items-start gap-2">
+                  {documentos.map((doc) => (
+                    <a
+                      key={doc.id}
+                      href={`/api/entregas/anexos/${doc.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 font-semibold text-[#1768D8] hover:underline"
+                    >
+                      {doc.tipo === "danfe_pdf" ? (
+                        <FileText className="size-4" />
+                      ) : (
+                        <Download className="size-4" />
+                      )}
+                      {doc.tipo === "danfe_pdf"
+                        ? "PDF da nota (DANFE)"
+                        : doc.tipo === "xml_cte"
+                          ? "XML do CT-e"
+                          : "XML da NF-e"}
+                    </a>
+                  ))}
+                </dd>
+              </div>
+            )}
           </dl>
         </section>
 
@@ -206,7 +264,7 @@ export default async function EntregaDetalhePage({
               Comprovante de entrega
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Foto da entrega, assinatura do cliente e comprovante Pix quando informado.
+              Foto da entrega e, quando informados, fotos do produto e comprovante Pix.
             </p>
           </div>
 
@@ -219,173 +277,44 @@ export default async function EntregaDetalhePage({
                 Nenhum comprovante registrado
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                A foto da entrega e a assinatura aparecerão aqui após a conclusão pelo motorista.
+                A foto da entrega aparecerá aqui após a conclusão pelo motorista.
               </p>
             </div>
           ) : (
             <div className="grid gap-5 p-6 md:grid-cols-2">
-              <div>
-                <div className="mb-3 flex items-center gap-2">
-                  <Camera className="size-4 text-[#0A1F44]" />
-                  <h3 className="text-sm font-bold text-slate-800">
-                    Foto da entrega
-                  </h3>
-                </div>
-
-                {fotos.length > 0 ? (
-                  <div className="space-y-4">
-                    {fotos.map((foto) => (
-                      <div key={foto.id}>
-                        <a
-                          href={`/api/entregas/anexos/${foto.id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="block overflow-hidden border border-slate-200 bg-slate-50"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={`/api/entregas/anexos/${foto.id}`}
-                            alt="Foto da entrega"
-                            className="h-64 w-full object-contain"
-                          />
-                        </a>
-                        <div className="mt-2 flex items-start justify-between gap-3 text-xs text-slate-500">
-                          <div>
-                            <p>
-                              {foto.capturadoPorMotoboy
-                                ? `Enviado por ${foto.capturadoPorMotoboy}`
-                                : "Motorista não identificado"}
-                            </p>
-                            <p>{formatarDataHora(foto.capturadoEm)}</p>
-                          </div>
-                          <a
-                            href={`/api/entregas/anexos/${foto.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 font-semibold text-[#0A1F44] hover:underline"
-                          >
-                            Ampliar
-                            <ExternalLink className="size-3.5" />
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
-                    Foto não registrada.
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <div className="mb-3 flex items-center gap-2">
-                  <PenLine className="size-4 text-[#0A1F44]" />
-                  <h3 className="text-sm font-bold text-slate-800">
-                    Assinatura do cliente
-                  </h3>
-                </div>
-
-                {assinaturas.length > 0 ? (
-                  <div className="space-y-4">
-                    {assinaturas.map((assinatura) => (
-                      <div key={assinatura.id}>
-                        <a
-                          href={`/api/entregas/anexos/${assinatura.id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="block border border-slate-200 bg-white"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={`/api/entregas/anexos/${assinatura.id}`}
-                            alt="Assinatura do cliente"
-                            className="h-64 w-full object-contain p-4"
-                          />
-                        </a>
-                        <div className="mt-2 flex items-start justify-between gap-3 text-xs text-slate-500">
-                          <div>
-                            <p>
-                              {assinatura.capturadoPorMotoboy
-                                ? `Coletada por ${assinatura.capturadoPorMotoboy}`
-                                : "Motorista não identificado"}
-                            </p>
-                            <p>{formatarDataHora(assinatura.capturadoEm)}</p>
-                          </div>
-                          <a
-                            href={`/api/entregas/anexos/${assinatura.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 font-semibold text-[#0A1F44] hover:underline"
-                          >
-                            Ampliar
-                            <ExternalLink className="size-3.5" />
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
-                    Assinatura não registrada.
-                  </p>
-                )}
-              </div>
-
-              {entrega.formaPagamento === "pix" && (
-                <div className="md:col-span-2">
-                  <div className="mb-3 flex items-center gap-2">
-                    <ReceiptText className="size-4 text-[#0A1F44]" />
-                    <h3 className="text-sm font-bold text-slate-800">
-                      Comprovante Pix
-                    </h3>
-                  </div>
-
-                  {comprovantesPix.length > 0 ? (
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {comprovantesPix.map((comprovante) => (
-                        <div key={comprovante.id}>
-                          <a
-                            href={`/api/entregas/anexos/${comprovante.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="block overflow-hidden border border-slate-200 bg-slate-50"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={`/api/entregas/anexos/${comprovante.id}`}
-                              alt="Comprovante de pagamento Pix"
-                              className="h-64 w-full object-contain"
-                            />
-                          </a>
-                          <div className="mt-2 flex items-start justify-between gap-3 text-xs text-slate-500">
-                            <div>
-                              <p>
-                                {comprovante.capturadoPorMotoboy
-                                  ? `Enviado por ${comprovante.capturadoPorMotoboy}`
-                                  : "Motorista não identificado"}
-                              </p>
-                              <p>{formatarDataHora(comprovante.capturadoEm)}</p>
-                            </div>
-                            <a
-                              href={`/api/entregas/anexos/${comprovante.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 font-semibold text-[#0A1F44] hover:underline"
-                            >
-                              Ampliar
-                              <ExternalLink className="size-3.5" />
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
-                      Comprovante Pix não registrado.
-                    </p>
-                  )}
-                </div>
+              <BlocoComprovante
+                titulo="Foto da entrega"
+                icone={<Camera className="size-4 text-[#0A1F44]" />}
+                itens={fotos}
+                alt="Foto da entrega"
+                vazio="Foto não registrada."
+              />
+              {fotosProduto.length > 0 && (
+                <BlocoComprovante
+                  titulo={fotosProduto.length > 1 ? "Fotos do produto" : "Foto do produto"}
+                  icone={<Package className="size-4 text-[#0A1F44]" />}
+                  itens={fotosProduto}
+                  alt="Foto do produto"
+                />
+              )}
+              {comprovantesPix.length > 0 && (
+                <BlocoComprovante
+                  titulo="Comprovante Pix"
+                  icone={<ReceiptText className="size-4 text-[#0A1F44]" />}
+                  itens={comprovantesPix}
+                  alt="Comprovante de pagamento Pix"
+                />
+              )}
+              {/* Entregas antigas: a assinatura não é mais coletada, mas as já
+                  gravadas continuam disponíveis. */}
+              {assinaturas.length > 0 && (
+                <BlocoComprovante
+                  titulo="Assinatura do cliente"
+                  icone={<PenLine className="size-4 text-[#0A1F44]" />}
+                  itens={assinaturas}
+                  alt="Assinatura do cliente"
+                  fundoBranco
+                />
               )}
             </div>
           )}
@@ -438,6 +367,76 @@ export default async function EntregaDetalhePage({
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function BlocoComprovante({
+  titulo,
+  icone,
+  itens,
+  alt,
+  vazio,
+  fundoBranco = false,
+}: {
+  titulo: string;
+  icone: ReactNode;
+  itens: EntregaComprovante[];
+  alt: string;
+  vazio?: string;
+  fundoBranco?: boolean;
+}) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        {icone}
+        <h3 className="text-sm font-bold text-slate-800">{titulo}</h3>
+      </div>
+
+      {itens.length > 0 ? (
+        <div className="space-y-4">
+          {itens.map((item) => (
+            <div key={item.id}>
+              <a
+                href={`/api/entregas/anexos/${item.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className={`block overflow-hidden border border-slate-200 ${fundoBranco ? "bg-white" : "bg-slate-50"}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/entregas/anexos/${item.id}`}
+                  alt={alt}
+                  className={`h-64 w-full object-contain ${fundoBranco ? "p-4" : ""}`}
+                />
+              </a>
+              <div className="mt-2 flex items-start justify-between gap-3 text-xs text-slate-500">
+                <div>
+                  <p>
+                    {item.capturadoPorMotoboy
+                      ? `Enviado por ${item.capturadoPorMotoboy}`
+                      : "Motorista não identificado"}
+                  </p>
+                  <p>{formatarDataHora(item.capturadoEm)}</p>
+                </div>
+                <a
+                  href={`/api/entregas/anexos/${item.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-[#0A1F44] hover:underline"
+                >
+                  Ampliar
+                  <ExternalLink className="size-3.5" />
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
+          {vazio}
+        </p>
+      )}
     </div>
   );
 }

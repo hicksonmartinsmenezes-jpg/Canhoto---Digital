@@ -2,7 +2,7 @@ import "server-only";
 
 import { asc, desc, eq, gte } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { veiculoGastos, veiculos } from "@/lib/db/schema";
+import { motoboys, veiculoGastos, veiculos } from "@/lib/db/schema";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import {
   formatarPlaca,
@@ -22,6 +22,7 @@ export async function getVeiculosData(): Promise<VeiculosData> {
   if (!db) {
     return {
       veiculos: [],
+      motoboys: [],
       gastosRecentes: [],
       resumo: {
         ativos: 0,
@@ -34,7 +35,7 @@ export async function getVeiculosData(): Promise<VeiculosData> {
 
   const inicioMes = inicioMesAtual();
 
-  const [listaVeiculos, gastosMes, gastosRecentesRows] = await Promise.all([
+  const [listaVeiculos, gastosMes, gastosRecentesRows, listaMotoboys] = await Promise.all([
     db
       .select({
         id: veiculos.id,
@@ -43,8 +44,11 @@ export async function getVeiculosData(): Promise<VeiculosData> {
         modelo: veiculos.modelo,
         ano: veiculos.ano,
         ativo: veiculos.ativo,
+        motoboyId: veiculos.motoboyId,
+        motoboyNome: motoboys.nome,
       })
       .from(veiculos)
+      .leftJoin(motoboys, eq(veiculos.motoboyId, motoboys.id))
       .orderBy(desc(veiculos.ativo), asc(veiculos.marca), asc(veiculos.modelo)),
     db
       .select({
@@ -71,6 +75,11 @@ export async function getVeiculosData(): Promise<VeiculosData> {
       .innerJoin(veiculos, eq(veiculoGastos.veiculoId, veiculos.id))
       .orderBy(desc(veiculoGastos.data), desc(veiculoGastos.criadoEm))
       .limit(30),
+    db
+      .select({ id: motoboys.id, nome: motoboys.nome })
+      .from(motoboys)
+      .where(eq(motoboys.ativo, true))
+      .orderBy(asc(motoboys.nome)),
   ]);
 
   const gastoPorVeiculo = new Map<string, number>();
@@ -100,6 +109,7 @@ export async function getVeiculosData(): Promise<VeiculosData> {
         gastoMes: formatBRL(gastoMesNumerico),
       };
     }),
+    motoboys: listaMotoboys,
     gastosRecentes: gastosRecentesRows.map((gasto) => ({
       id: gasto.id,
       veiculoId: gasto.veiculoId,

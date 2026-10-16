@@ -58,7 +58,17 @@ self.addEventListener("message", (event) => {
   const urls = dados.urls.filter(
     (u) => typeof u === "string" && u.startsWith("/motorista")
   );
-  event.waitUntil(precarregar(urls).catch(() => {}));
+  // Quem pediu recebe a resposta pela porta: "ok" só se a lista e a tela
+  // "sem conexão" ficaram mesmo guardadas (o app nativo usa isso para saber
+  // que já pode abrir sem internet).
+  const porta = event.ports && event.ports[0];
+  event.waitUntil(
+    precarregar(urls)
+      .catch(() => {})
+      .then(async () => {
+        if (porta) porta.postMessage({ ok: await prontoParaUsarOffline() });
+      })
+  );
 });
 
 self.addEventListener("fetch", (event) => {
@@ -239,6 +249,21 @@ async function navegacao(event) {
 }
 
 // ----------------------------------------------------------------- precarga
+
+async function prontoParaUsarOffline() {
+  try {
+    const estatico = await caches.open(CACHE_ESTATICO);
+    const paginas = await caches.open(CACHE_PAGINAS);
+    const offline = await estatico.match(PAGINA_OFFLINE);
+    const lista = await paginas.match("/motorista", {
+      ignoreSearch: true,
+      ignoreVary: true,
+    });
+    return Boolean(offline && lista);
+  } catch {
+    return false;
+  }
+}
 
 function chunksCitados(texto) {
   const achados = new Set();

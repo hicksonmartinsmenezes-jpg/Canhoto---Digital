@@ -6,6 +6,15 @@ import { RefreshCw } from "lucide-react";
 // Rede de segurança do app do motorista: qualquer erro inesperado ao montar
 // uma tela cai aqui em vez da página de erro padrão do Next (em inglês e sem
 // saída). Quase sempre é sinal fraco — tentar de novo resolve.
+// Resumo curto do erro para quem for dar suporte (sem dados sensíveis: só a
+// mensagem do navegador e o código do servidor).
+function detalheTecnico(error: Error & { digest?: string }): string {
+  const partes = [error.name, error.message?.slice(0, 160), error.digest]
+    .filter(Boolean)
+    .join(" · ");
+  return partes || "sem detalhes";
+}
+
 export default function ErroMotorista({
   error,
   reset,
@@ -26,6 +35,10 @@ export default function ErroMotorista({
         <p className="mt-2 text-sm text-slate-600">
           Confira o sinal do celular e tente de novo. Suas entregas e
           comprovantes já enviados não foram afetados.
+        </p>
+
+        <p className="mt-3 break-words text-[11px] leading-4 text-slate-400">
+          {detalheTecnico(error)}
         </p>
 
         <button

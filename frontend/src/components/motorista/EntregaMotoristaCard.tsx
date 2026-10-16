@@ -7,6 +7,7 @@ import {
   Navigation,
 } from "lucide-react";
 import type { EntregaMotorista } from "@/lib/data/entregas";
+import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 
 export function EntregaMotoristaCard({
   entrega,
@@ -42,17 +43,17 @@ export function EntregaMotoristaCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                entregue
-                  ? "bg-[#E7F8EF] text-[#169653]"
-                  : emRota
-                    ? "bg-[#E9F2FF] text-[#1768D8]"
+            {!emRota && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+                  entregue
+                    ? "bg-[#E7F8EF] text-[#169653]"
                     : "text-[#D96B0B]"
-              }`}
-            >
-              {entregue ? "Concluída" : emRota ? "Em andamento" : "Pendente"}
-            </span>
+                }`}
+              >
+                {entregue ? "Concluída" : "Pendente"}
+              </span>
+            )}
             <span className="text-[11px] font-extrabold text-slate-500">
               {entrega.numero}
             </span>
@@ -65,18 +66,33 @@ export function EntregaMotoristaCard({
           {entrega.endereco && (
             <p className="mt-1.5 flex items-start gap-1.5 text-[12px] font-medium leading-5 text-slate-500">
               <MapPin className="mt-0.5 size-3.5 shrink-0 text-[#315A8E]" />
-              <span className="line-clamp-1">
+              <span className="line-clamp-2">
                 {entrega.endereco}
                 {entrega.cep ? ` · CEP ${entrega.cep}` : ""}
               </span>
             </p>
           )}
 
-          {emRota && entrega.horaSaida && (
-            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-bold text-[#1768D8]">
-              <Clock3 className="size-3.5" />
-              Saída às {entrega.horaSaida.slice(0, 5)}
-            </p>
+          {(!entregue || (emRota && entrega.horaSaida)) && (
+            <div className="mt-1.5 flex items-center justify-between gap-3">
+              {!entregue ? (
+                <p className="min-w-0 truncate text-[12px] font-bold text-[#0A1F44]">
+                  {entrega.valor}{" "}
+                  <span className="font-semibold text-slate-500">
+                    · {FORMA_PAGAMENTO_LABEL[entrega.formaPagamento]}
+                  </span>
+                </p>
+              ) : (
+                <span />
+              )}
+
+              {emRota && entrega.horaSaida && (
+                <p className="flex shrink-0 items-center gap-1.5 text-[11px] font-bold text-[#1768D8]">
+                  <Clock3 className="size-3.5" />
+                  Saída às {entrega.horaSaida.slice(0, 5)}
+                </p>
+              )}
+            </div>
           )}
         </div>
 

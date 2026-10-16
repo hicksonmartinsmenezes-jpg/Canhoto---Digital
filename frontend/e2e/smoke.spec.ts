@@ -12,6 +12,7 @@ const ROTAS: { path: string; heading: string }[] = [
   { path: "/motoboys", heading: "Motoristas" },
   { path: "/relatorios", heading: "Relatórios" },
   { path: "/veiculos", heading: "Gestão de Veículos" },
+  { path: "/canhotos/nova", heading: "Adicionar Entrega" },
 ];
 
 for (const rota of ROTAS) {
@@ -46,18 +47,19 @@ test("submenu Cadastros da barra lateral expande e recolhe", async ({ page }) =>
   await expect(linkColaboradores).toHaveCount(0);
 });
 
-test("wizard Adicionar Entrega avança e volta entre as etapas sem gravar nada", async ({ page }) => {
+test("Adicionar Entrega valida os campos obrigatórios sem gravar nada", async ({ page }) => {
   await page.goto("/canhotos/nova");
 
-  await expect(page.getByRole("heading", { name: "Dados do documento" })).toBeVisible();
-  // A Etapa 1 exige o nome do cliente antes de avançar (validação em
-  // irParaEtapa2, AdicionarEntregaWizard.tsx) — sem preencher, o clique em
-  // "Avançar" fica na mesma etapa e mostra uma mensagem de erro.
+  await expect(page.getByRole("heading", { name: "Cliente e endereço" })).toBeVisible();
+  // Tela única: salvar sem preencher mostra o primeiro campo que falta e não
+  // chama o servidor (validação em AdicionarEntregaForm.tsx).
+  await page.getByRole("button", { name: "Salvar entrega" }).click();
+  // (o Next também tem um role="alert" vazio, o anunciador de rotas)
+  await expect(page.getByText("Informe o nome do cliente.")).toBeVisible();
   await page.getByPlaceholder("Nome do cliente").fill("Cliente de teste (E2E)");
-  await page.getByRole("button", { name: "Avançar" }).click();
-  await expect(page.getByRole("heading", { name: "Dados da entrega" })).toBeVisible();
-  await page.getByRole("button", { name: "Voltar" }).click();
-  await expect(page.getByRole("heading", { name: "Dados do documento" })).toBeVisible();
+  await page.getByRole("button", { name: "Salvar entrega" }).click();
+  await expect(page.getByText(/Informe o endereço de entrega/)).toBeVisible();
+  await expect(page).toHaveURL(/\/canhotos\/nova$/);
 });
 
 test("estado vazio de Motoristas mostra a ação para cadastrar o primeiro motorista", async ({ page }) => {

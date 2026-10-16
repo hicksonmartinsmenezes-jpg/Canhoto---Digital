@@ -17,7 +17,6 @@ function rascunho(
     rotulo: "#1 · Cliente",
     fotoEntrega: new Blob(["foto"], { type: "image/jpeg" }),
     comprovantePix: null,
-    assinatura: new Blob(["assinatura"], { type: "image/png" }),
     criadoEm: AGORA - 60_000,
     tentativas: 0,
     rejeitado: false,
@@ -50,17 +49,44 @@ describe("montarFormData", () => {
 
     const foto = formData.get("fotoEntrega") as File;
     const pix = formData.get("comprovantePix") as File;
-    const assinatura = formData.get("assinatura") as File;
 
     expect(foto.type).toBe("image/jpeg");
     expect(foto.name).toBe("foto-entrega.jpg");
     expect(pix.name).toBe("comprovante-pix.png");
-    expect(assinatura.type).toBe("image/png");
+    expect(formData.has("assinatura")).toBe(false);
     expect(foto.size).toBe(4);
   });
 
-  it("não inclui comprovante Pix quando não existe", () => {
-    expect(montarFormData(rascunho()).has("comprovantePix")).toBe(false);
+  it("não inclui comprovante Pix nem foto do produto quando não existem", () => {
+    const formData = montarFormData(rascunho());
+    expect(formData.has("comprovantePix")).toBe(false);
+    expect(formData.has("fotoProduto")).toBe(false);
+  });
+
+  it("inclui todas as fotos do produto, na ordem", () => {
+    const formData = montarFormData(
+      rascunho({
+        fotosProduto: [
+          new Blob(["produto-1"], { type: "image/webp" }),
+          new Blob(["produto-2"], { type: "image/jpeg" }),
+        ],
+      })
+    );
+    const produtos = formData.getAll("fotoProduto") as File[];
+    expect(produtos.map((foto) => foto.name)).toEqual([
+      "foto-produto-1.webp",
+      "foto-produto-2.jpg",
+    ]);
+    expect(produtos[0].type).toBe("image/webp");
+  });
+
+  it("aceita rascunho antigo com uma só foto do produto", () => {
+    const formData = montarFormData(
+      rascunho({ fotoProduto: new Blob(["produto"], { type: "image/png" }) })
+    );
+    const produtos = formData.getAll("fotoProduto") as File[];
+    expect(produtos).toHaveLength(1);
+    expect(produtos[0].name).toBe("foto-produto-1.png");
   });
 });
 

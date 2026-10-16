@@ -11,6 +11,7 @@ import {
   Search,
 } from "lucide-react";
 import type { EntregaHistoricoMotorista } from "@/lib/data/entregas";
+import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 
 type Periodo = "hoje" | "7dias" | "30dias" | "todas";
 
@@ -177,13 +178,6 @@ export function MotoristaHistorico({
         </div>
       </div>
 
-      <div className="flex items-center justify-between px-1">
-        <p className="text-[12px] font-bold text-slate-500">
-          {filtradas.length}{" "}
-          {filtradas.length === 1 ? "entrega encontrada" : "entregas encontradas"}
-        </p>
-      </div>
-
       {filtradas.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-5 py-9 text-center">
           <Search className="mx-auto size-6 text-slate-400" />
@@ -239,6 +233,12 @@ export function MotoristaHistorico({
                         <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
                           <Clock3 className="size-3.5" />
                           {horaEntrega ?? "Horário não registrado"}
+                          <span className="ml-auto font-black text-[#0A1F44]">
+                            {entrega.valor}
+                          </span>
+                          <span className="text-slate-400">
+                            {FORMA_PAGAMENTO_LABEL[entrega.formaPagamento]}
+                          </span>
                         </p>
                       </div>
 

@@ -12,6 +12,8 @@ import { gerarPin, hashPin, normalizarTelefone } from "@/lib/motorista-auth";
 export interface MotoboyActionResult {
   ok: boolean;
   error?: string;
+  /** Só no cadastro com telefone: PIN gerado na hora (mostrado uma vez). */
+  pin?: string;
 }
 
 const ERRO_BANCO =
@@ -43,11 +45,15 @@ export async function criarMotoboy(
   }
 
   const telefoneLimpo = normalizarTelefone(telefone);
+  // Com telefone, o acesso ao app já sai pronto: antes era preciso salvar,
+  // abrir Editar e tocar em "Gerar PIN".
+  const pin = telefoneLimpo ? gerarPin() : undefined;
 
   try {
     await db.insert(motoboys).values({
       nome: nomeLimpo,
       telefone: telefoneLimpo || null,
+      pinHash: pin ? hashPin(pin) : null,
     });
   } catch (error) {
     if (codigoErroPostgres(error) === "23505") {
@@ -63,7 +69,7 @@ export async function criarMotoboy(
   }
 
   revalidatePath("/motoboys");
-  return { ok: true };
+  return { ok: true, pin };
 }
 
 export async function atualizarMotoboy(
