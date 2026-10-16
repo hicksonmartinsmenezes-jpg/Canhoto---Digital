@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRelatorioEntregas } from "@/lib/data/entregas";
 import { arquivarRelatorioCsv } from "@/lib/relatorios-storage";
+import { obterAdminAutenticado } from "@/lib/admin-auth";
 import {
   FORMA_PAGAMENTO_LABEL,
   STATUS_LABEL,
@@ -15,14 +16,14 @@ import {
 // o jeito mais simples de disparar o download do navegador sem
 // JavaScript extra no client.
 //
-// Escapa célula pro formato CSV (RFC 4180): envolve em aspas e duplica
-// aspas internas sempre que o valor contém separador, aspas ou quebra de
-// linha — nome de cliente é texto livre e pode conter vírgula.
+// Neutraliza fórmulas e escapa células CSV: envolve em aspas e duplica
+// aspas internas sempre que o valor contém separador, aspas ou quebra de linha.
 function celulaCsv(valor: string): string {
-  if (/[",\n]/.test(valor)) {
-    return `"${valor.replace(/"/g, '""')}"`;
+  const valorSeguro = /^[\t\r ]*[=+\-@]/.test(valor) ? `'${valor}` : valor;
+  if (/[;"\r\n]/.test(valorSeguro)) {
+    return `"${valorSeguro.replace(/"/g, '""')}"`;
   }
-  return valor;
+  return valorSeguro;
 }
 
 export async function GET(request: NextRequest) {
@@ -57,12 +58,12 @@ export async function GET(request: NextRequest) {
       STATUS_LABEL[item.status],
     ]
       .map(celulaCsv)
-      .join(",")
+      .join(";")
   );
 
   // BOM UTF-8 no início: sem isso o Excel (bem comum aqui, ver pt-BR) lê
   // acentos como caracteres corrompidos ao abrir o CSV direto.
-  const csv = "﻿" + [cabecalho.join(","), ...linhas].join("\r\n") + "\r\n";
+  const csv = "﻿" + [cabecalho.join(";"), ...linhas].join("\r\n") + "\r\n";
 
   const nomeBase = `relatorio-entregas${dataInicio ? `_${dataInicio}` : ""}${dataFim ? `_a_${dataFim}` : ""}`;
   const nomeArquivo = `${nomeBase}.csv`;
@@ -70,16 +71,22 @@ export async function GET(request: NextRequest) {
   try {
     await arquivarRelatorioCsv(nomeBase, csv);
   } catch (error) {
-    console.error("Falha ao arquivar relatório CSV localmente.", error);
-    return new NextResponse(
-      "Não foi possível arquivar o relatório localmente. Tente novamente.",
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-store",
-        },
-      }
+    let usuario = "indisponivel";
+    try {
+      const email = (await obterAdminAutenticado())?.email;
+      usuario = email ? encodeURIComponent(email) : usuario;
+    } catch {
+      // A falha ao consultar a identidade também não deve impedir o download.
+    }
+    const codigoErro =
+      typeof error === "object" && error !== null && "code" in error &&
+      typeof error.code === "string" && /^[A-Z0-9_]+$/.test(error.code)
+        ? error.code
+        : error instanceof Error
+          ? error.name
+          : "ErroDesconhecido";
+    console.error(
+      `[CSV_ARCHIVE_FAILED] data_hora=${new Date().toISOString()} usuario=${usuario} motivo=${codigoErro}`
     );
   }
 
