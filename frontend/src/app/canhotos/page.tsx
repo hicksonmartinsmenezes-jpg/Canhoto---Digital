@@ -10,16 +10,19 @@ export const dynamic = "force-dynamic";
 
 interface CanhotosPageProps {
   // Next 16: searchParams chega como Promise em Server Component.
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; semNfe?: string }>;
 }
 
 export default async function CanhotosPage({ searchParams }: CanhotosPageProps) {
-  const { status: statusParam } = await searchParams;
+  const { status: statusParam, semNfe: semNfeParam } = await searchParams;
+  const semNfe = semNfeParam === "1";
   // searchParam é string solta (pode vir vazia, ausente ou lixo) — só usa
   // como filtro se bater com um dos 3 status reais (Issue #7).
   const status = isStatusEntrega(statusParam) ? statusParam : undefined;
   const sessao = await obterSessaoOperador();
-  const entregas = await getEntregas(status, setorIdParaFiltro(sessao));
+  const entregas = await getEntregas(status, setorIdParaFiltro(sessao), {
+    semNfe,
+  });
 
   return (
     <div>
@@ -38,11 +41,27 @@ export default async function CanhotosPage({ searchParams }: CanhotosPageProps) 
       </div>
 
       <Card className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-end gap-3 border-b border-slate-200 px-6 py-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-5">
+          {semNfe ? (
+            <p className="inline-flex items-center gap-2 text-sm text-slate-600">
+              <span className="font-semibold">
+                Mostrando só entregas sem número de NF-e
+              </span>
+              <Link
+                href="/canhotos"
+                className="font-semibold text-amber-600 underline-offset-2 hover:underline"
+              >
+                Ver todas
+              </Link>
+            </p>
+          ) : (
+            <span />
+          )}
           {/* Form GET simples: recarrega a página com ?status=..., sem
               precisar de client component pra um filtro tão direto (ver
               princípio "evitar overengineering" no AGENTS.md). */}
           <form className="flex items-center gap-2">
+            {semNfe && <input type="hidden" name="semNfe" value="1" />}
             <select
               name="status"
               defaultValue={status ?? ""}

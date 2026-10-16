@@ -273,7 +273,13 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
     db
       .select({ total: count() })
       .from(entregas)
-      .where(and(isNull(entregas.numeroNfe), filtroSetor)),
+      .where(
+        and(
+          isNull(entregas.numeroNfe),
+          ne(entregas.status, "cancelado"),
+          filtroSetor
+        )
+      ),
   ]);
 
   const aguardandoSaidaTotal = aguardandoSaida[0]?.total ?? 0;
@@ -298,6 +304,7 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
       titulo: `${pluralEntregas(semNfeTotal)} sem número de NF-e`,
       descricao: "Cadastro incompleto — dificulta a consulta depois.",
       tom: "info",
+      href: "/canhotos?semNfe=1",
     });
   }
 
@@ -434,7 +441,8 @@ export interface EntregaListItem {
 
 export async function getEntregas(
   status?: StatusEntrega,
-  setorId?: string | null
+  setorId?: string | null,
+  opcoes: { semNfe?: boolean } = {}
 ): Promise<EntregaListItem[]> {
   const db = getDb();
   if (!db) return [];
@@ -443,6 +451,10 @@ export async function getEntregas(
   const filtros = [
     status ? eq(entregas.status, status) : undefined,
     setorId ? eq(entregas.setorId, setorId) : undefined,
+    // Mesmo critério do alerta "sem número de NF-e" do Dashboard: canceladas
+    // não precisam de nota, então não entram na lista.
+    opcoes.semNfe ? isNull(entregas.numeroNfe) : undefined,
+    opcoes.semNfe ? ne(entregas.status, "cancelado") : undefined,
   ].filter((f): f is NonNullable<typeof f> => f !== undefined);
 
   const rows = await db
