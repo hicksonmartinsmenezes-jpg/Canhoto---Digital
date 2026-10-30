@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  /* node-unrar-js carrega um .wasm do próprio pacote em tempo de execução:
+   * deixar fora do bundle do servidor faz o arquivo ser achado em
+   * node_modules, como a biblioteca espera. */
+  serverExternalPackages: ["node-unrar-js"],
   /* Upload de comprovantes (Issue #68): o Next limita Server Actions a 1 MB
    * por padrão. Foto da entrega, comprovante Pix opcional e assinatura são
    * validados novamente no servidor. */

@@ -144,3 +144,118 @@ export function lerDadosNfe(texto: string): DadosNfe {
 
   return dados;
 }
+
+// --- Leitura a partir do texto do PDF (DANFE) ---------------------------
+//
+// O DANFE é só a representação visual da mesma NF-e: não tem tags, cada
+// emissor pode diagramar um pouco diferente, e um PDF escaneado não tem
+// nem texto pra ler. Por isso essa leitura é "melhor esforço" — bem menos
+// confiável que lerDadosNfe (XML) — e só deve ser usada quando não há XML
+// anexado. Dois pontos são sólidos mesmo assim: a chave de acesso (44
+// dígitos com formato fixo, de onde vem o nº da nota) e o rótulo "VALOR
+// TOTAL DA NOTA", que o layout padrão do DANFE sempre imprime.
+
+function aposRotulo(
+  texto: string,
+  rotulo: RegExp,
+  distancia = 150
+): string | undefined {
+  const m = rotulo.exec(texto);
+  if (!m) return undefined;
+  return texto.slice(m.index + m[0].length, m.index + m[0].length + distancia);
+}
+
+function campoAposRotulo(
+  texto: string,
+  rotulo: RegExp,
+  pararEm: RegExp
+): string | undefined {
+  const resto = aposRotulo(texto, rotulo, 200);
+  if (!resto) return undefined;
+  const fim = pararEm.exec(resto);
+  const trecho = fim ? resto.slice(0, fim.index) : resto;
+  const linha = trecho
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.length > 0);
+  return linha || undefined;
+}
+
+/** Nº da NF-e embutido na chave de acesso (posições 26–34, sem zeros à esquerda). */
+function nNfDaChaveAcesso(chave44Digitos: string): string | undefined {
+  const nNF = chave44Digitos.slice(25, 34).replace(/^0+/, "");
+  return nNF || undefined;
+}
+
+function extrairChaveAcesso(texto: string): string | undefined {
+  const resto = aposRotulo(texto, /CHAVE\s+DE\s+ACESSO/i, 220);
+  if (!resto) return undefined;
+  const digitos = resto.replace(/\D/g, "");
+  return digitos.length >= 44 ? digitos.slice(0, 44) : undefined;
+}
+
+function extrairValorTotalDanfe(texto: string): number | undefined {
+  const resto = aposRotulo(texto, /VALOR\s+TOTAL\s+DA\s+NOTA(?:\s+FISCAL)?/i, 80);
+  const m = resto && /(\d{1,3}(?:\.\d{3})*,\d{2})/.exec(resto);
+  if (!m) return undefined;
+  const valor = Number(m[1].replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(valor) && valor > 0 ? valor : undefined;
+}
+
+function extrairCepDanfe(texto: string): string | undefined {
+  const resto = aposRotulo(texto, /\bCEP\b/i, 60);
+  const m = resto && /(\d{5})-?(\d{3})/.exec(resto);
+  return m ? m[1] + m[2] : undefined;
+}
+
+function extrairTelefoneDanfe(texto: string): string | undefined {
+  const resto = aposRotulo(texto, /FONE\s*\/?\s*FAX|\bFONE\b/i, 60);
+  const m = resto && /\(?(\d{2})\)?[\s.-]?(\d{4,5})[\s.-]?(\d{4})\b/.exec(resto);
+  if (!m) return undefined;
+  const numero = m[1] + m[2] + m[3];
+  return numero.length === 10 || numero.length === 11 ? numero : undefined;
+}
+
+/**
+ * Lê do texto extraído do DANFE (PDF) os mesmos campos de lerDadosNfe,
+ * usando os rótulos fixos do layout padrão de DANFE. Melhor esforço: ao
+ * contrário do XML, não há garantia de que todos os campos sejam
+ * encontrados ou de que estejam corretos — confira antes de salvar.
+ */
+export function lerDadosNfeDoTextoDanfe(texto: string): DadosNfe {
+  const dados: DadosNfe = {};
+
+  const chave = extrairChaveAcesso(texto);
+  if (chave) {
+    const numeroNfe = nNfDaChaveAcesso(chave);
+    if (numeroNfe) dados.numeroNfe = numeroNfe;
+  }
+
+  const nome = campoAposRotulo(
+    texto,
+    /NOME\s*\/?\s*RAZ[ÃA]O\s+SOCIAL/i,
+    /\bCNPJ\b|\bCPF\b|DATA\s+DA\s+EMISS/i
+  );
+  if (nome) dados.clienteNome = nome;
+
+  const endereco = campoAposRotulo(
+    texto,
+    /ENDERE[ÇC]O/i,
+    /BAIRRO|DISTRITO|\bCEP\b|DATA\s+DA\s+SA[IÍ]DA/i
+  );
+  if (endereco) dados.endereco = endereco;
+
+  const cep = extrairCepDanfe(texto);
+  if (cep) dados.cep = cep;
+
+  const telefone = extrairTelefoneDanfe(texto);
+  if (telefone) dados.clienteTelefone = telefone;
+
+  const pedido = /\bPedido:?\s*(\d{1,20})\b/i.exec(texto)?.[1];
+  if (pedido) dados.numeroPedido = pedido;
+
+  const valor = extrairValorTotalDanfe(texto);
+  if (valor) dados.valor = valor;
+
+  return dados;
+}

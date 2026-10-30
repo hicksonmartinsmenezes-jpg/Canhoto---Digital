@@ -16,6 +16,8 @@ import {
 } from "@/lib/format";
 import { criarEntrega } from "@/app/canhotos/nova/actions";
 import { anexarDocumentosEntrega } from "@/app/canhotos/nova/anexos-actions";
+import { abrirPacoteRar } from "@/app/canhotos/nova/pacote-actions";
+import { lerDanfePdf } from "@/app/canhotos/nova/danfe-pdf-actions";
 import {
   MAX_BYTES_PDF,
   MAX_BYTES_XML,
@@ -23,7 +25,14 @@ import {
   extensaoDocumento,
   lerDadosNfe,
   tipoDoXmlFiscal,
+  type DadosNfe,
 } from "@/lib/documento-fiscal";
+import {
+  PacoteErro,
+  bytesDeBase64,
+  extrairDocumentosDoZip,
+  formatoCompactado,
+} from "@/lib/arquivo-compactado";
 import type { MotoboyOption } from "@/lib/data/motoboys";
 import type { ClienteRecente } from "@/lib/data/entregas";
 import type { FormaPagamento } from "@/types/database";
@@ -73,6 +82,7 @@ export function AdicionarEntregaForm({
   const [documentos, setDocumentos] = useState<File[]>([]);
   const [docErro, setDocErro] = useState<string | null>(null);
   const [docAviso, setDocAviso] = useState<string | null>(null);
+  const [abrindoPacote, setAbrindoPacote] = useState(false);
   // Entrega já gravada, mas com anexo pendente (falhou o envio dos documentos).
   const [entregaCriada, setEntregaCriada] = useState<{
     id: string;
@@ -125,20 +135,113 @@ export function AdicionarEntregaForm({
     }));
   }
 
-  // Escolheu XML/PDF: confere tipo e tamanho; o XML da NF-e também preenche
-  // os campos (cliente, endereço, telefone, CEP, nota, pedido, valor, pagamento).
+  // Pacote compactado escolhido: abre e segue com os XML/PDF de dentro, como se
+  // o operador tivesse escolhido cada um solto. O .zip é aberto aqui mesmo; o
+  // .rar sobe para o servidor, que sabe abrir esse formato (ver pacote-actions).
+  // Devolve null quando algo deu errado (a mensagem já foi mostrada).
+  async function abrirPacotes(escolhidos: File[]): Promise<File[] | null> {
+    const soltos: File[] = [];
+    for (const arquivo of escolhidos) {
+      const formato = formatoCompactado(arquivo.name);
+      if (!formato) {
+        soltos.push(arquivo);
+        continue;
+      }
+      if (formato !== "zip" && formato !== "rar") {
+        setDocErro(
+          `"${arquivo.name}": compacte como .zip ou .rar para anexar o pacote.`
+        );
+        return null;
+      }
+      try {
+        const dentro =
+          formato === "zip"
+            ? await extrairDocumentosDoZip(arquivo)
+            : await abrirPacoteNoServidor(arquivo);
+        if (dentro === null) return null;
+        if (dentro.length === 0) {
+          setDocErro(`"${arquivo.name}" não tem nenhum XML ou PDF dentro.`);
+          return null;
+        }
+        soltos.push(...dentro);
+      } catch (erro) {
+        setDocErro(
+          erro instanceof PacoteErro
+            ? erro.message
+            : `Não foi possível abrir "${arquivo.name}".`
+        );
+        return null;
+      }
+    }
+    return soltos;
+  }
+
+  // .rar: só o servidor sabe abrir. Volta a mesma coisa que o .zip devolve aqui
+  // — os documentos de dentro, como File. Nada é gravado nessa ida.
+  async function abrirPacoteNoServidor(arquivo: File): Promise<File[] | null> {
+    const dados = new FormData();
+    dados.append("pacote", arquivo);
+    setAbrindoPacote(true);
+    try {
+      const resposta = await abrirPacoteRar(dados);
+      if (!resposta.ok) {
+        setDocErro(resposta.error);
+        return null;
+      }
+      return resposta.documentos.map(
+        (documento) =>
+          new File([bytesDeBase64(documento.base64) as BlobPart], documento.nome, {
+            type: documento.tipo,
+          })
+      );
+    } catch {
+      setDocErro(`Não foi possível abrir "${arquivo.name}" — tente de novo.`);
+      return null;
+    } finally {
+      setAbrindoPacote(false);
+    }
+  }
+
+  function preencherComDados(dados: DadosNfe) {
+    setForm((f) => ({
+      ...f,
+      clienteNome: dados.clienteNome ?? f.clienteNome,
+      endereco: dados.endereco ?? f.endereco,
+      cep: dados.cep ? formatCep(dados.cep) : f.cep,
+      clienteTelefone: dados.clienteTelefone
+        ? maskPhoneInput(dados.clienteTelefone)
+        : f.clienteTelefone,
+      numeroNfe: dados.numeroNfe ?? f.numeroNfe,
+      numeroPedido: dados.numeroPedido ?? f.numeroPedido,
+      valorPagamento: dados.valor
+        ? maskCurrencyInput(String(Math.round(dados.valor * 100)))
+        : f.valorPagamento,
+      formaPagamento: dados.formaPagamento ?? f.formaPagamento,
+    }));
+  }
+
+  // Escolheu XML/PDF/ZIP: confere tipo e tamanho; o XML da NF-e preenche os
+  // campos (cliente, endereço, telefone, CEP, nota, pedido, valor,
+  // pagamento). Sem XML, tenta o mesmo a partir do primeiro PDF (DANFE) —
+  // bem menos confiável, por isso só roda quando não há XML no lote.
   async function adicionarDocumentos(lista: FileList | null) {
     if (!lista || lista.length === 0) return;
     setDocErro(null);
     setDocAviso(null);
 
+    const soltos = await abrirPacotes(Array.from(lista));
+    if (!soltos) return;
+
     const novos: File[] = [];
     let dadosXml: ReturnType<typeof lerDadosNfe> | null = null;
+    let primeiroPdf: File | null = null;
 
-    for (const arquivo of Array.from(lista)) {
+    for (const arquivo of soltos) {
       const ext = extensaoDocumento(arquivo.name);
       if (!ext) {
-        setDocErro(`"${arquivo.name}": anexe apenas arquivos XML ou PDF.`);
+        setDocErro(
+          `"${arquivo.name}": anexe apenas arquivos XML, PDF ou um pacote .zip/.rar.`
+        );
         return;
       }
       const maximo = ext === "xml" ? MAX_BYTES_XML : MAX_BYTES_PDF;
@@ -161,6 +264,8 @@ export function AdicionarEntregaForm({
           return;
         }
         dadosXml ??= lerDadosNfe(texto);
+      } else {
+        primeiroPdf ??= arquivo;
       }
       const repetido = [...documentos, ...novos].some(
         (d) => d.name === arquivo.name && d.size === arquivo.size
@@ -175,23 +280,26 @@ export function AdicionarEntregaForm({
     setDocumentos((atuais) => [...atuais, ...novos]);
 
     if (dadosXml) {
-      const d = dadosXml;
-      setForm((f) => ({
-        ...f,
-        clienteNome: d.clienteNome ?? f.clienteNome,
-        endereco: d.endereco ?? f.endereco,
-        cep: d.cep ? formatCep(d.cep) : f.cep,
-        clienteTelefone: d.clienteTelefone
-          ? maskPhoneInput(d.clienteTelefone)
-          : f.clienteTelefone,
-        numeroNfe: d.numeroNfe ?? f.numeroNfe,
-        numeroPedido: d.numeroPedido ?? f.numeroPedido,
-        valorPagamento: d.valor
-          ? maskCurrencyInput(String(Math.round(d.valor * 100)))
-          : f.valorPagamento,
-        formaPagamento: d.formaPagamento ?? f.formaPagamento,
-      }));
+      preencherComDados(dadosXml);
       setDocAviso("Campos preenchidos com os dados do XML.");
+      return;
+    }
+
+    if (primeiroPdf) {
+      const dados = new FormData();
+      dados.append("documento", primeiroPdf);
+      let resultado: Awaited<ReturnType<typeof lerDanfePdf>>;
+      try {
+        resultado = await lerDanfePdf(dados);
+      } catch {
+        return; // PDF já foi anexado; só não preenche os campos.
+      }
+      if (resultado.ok && resultado.dados) {
+        preencherComDados(resultado.dados);
+        setDocAviso(
+          "Campos preenchidos a partir do PDF (DANFE) — a leitura do PDF é menos confiável que a do XML, confira os dados antes de salvar."
+        );
+      }
     }
   }
 
@@ -419,7 +527,7 @@ export function AdicionarEntregaForm({
               ref={arquivoRef}
               type="file"
               multiple
-              accept=".xml,.pdf,application/xml,text/xml,application/pdf"
+              accept=".xml,.pdf,.zip,.rar,application/xml,text/xml,application/pdf,application/zip,application/vnd.rar"
               className="sr-only"
               tabIndex={-1}
               onChange={(e) => {
@@ -430,15 +538,22 @@ export function AdicionarEntregaForm({
             <button
               type="button"
               onClick={() => arquivoRef.current?.click()}
-              disabled={documentos.length >= MAX_DOCUMENTOS_ENTREGA}
+              disabled={abrindoPacote || documentos.length >= MAX_DOCUMENTOS_ENTREGA}
               className="inline-flex items-center gap-1.5 border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Paperclip className="size-4" />
-              Anexar documento (XML ou PDF)
+              {abrindoPacote ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Paperclip className="size-4" />
+              )}
+              {abrindoPacote ? "Abrindo pacote..." : "Anexar documento (XML, PDF, ZIP ou RAR)"}
             </button>
             <p className="mt-1.5 text-xs text-slate-500">
               Ao anexar o XML da NF-e, cliente, endereço, valor e demais dados
-              da nota são preenchidos.
+              da nota são preenchidos. O XML pode vir compactado em .zip ou
+              .rar — o pacote é aberto e os documentos de dentro entram sozinhos.
+              Sem XML, um PDF (DANFE) também tenta preencher os mesmos campos,
+              mas com menos confiança — confira antes de salvar.
             </p>
             {documentos.length > 0 && (
               <ul className="mt-2 space-y-1.5">

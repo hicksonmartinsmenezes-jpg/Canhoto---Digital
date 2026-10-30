@@ -3,6 +3,7 @@ import {
   ehPdf,
   extensaoDocumento,
   lerDadosNfe,
+  lerDadosNfeDoTextoDanfe,
   tipoDoXmlFiscal,
 } from "./documento-fiscal";
 
@@ -76,5 +77,69 @@ describe("documento fiscal", () => {
     expect(extensaoDocumento("foto.png")).toBeNull();
     expect(ehPdf(new TextEncoder().encode("%PDF-1.7 ..."))).toBe(true);
     expect(ehPdf(new TextEncoder().encode("<xml>"))).toBe(false);
+  });
+});
+
+describe("leitura do texto do DANFE (PDF)", () => {
+  const DANFE_TEXTO = `DANFE
+Documento Auxiliar da Nota Fiscal Eletrônica
+Nº 004.512
+SÉRIE 001
+CHAVE DE ACESSO
+2826 1012 3456 7800 0199 5500 1000 0045 1211 2345 6780
+DESTINATÁRIO / REMETENTE
+NOME/RAZÃO SOCIAL
+HICKSON MARTINS LTDA
+CNPJ/CPF
+12.345.678/0001-99
+DATA DA EMISSÃO
+28/10/2026
+ENDEREÇO
+RUA DAS FLORES, 120
+BAIRRO/DISTRITO
+CENTRO
+CEP
+49010-000
+MUNICÍPIO
+FONE/FAX
+(79) 99999-8888
+UF
+SE
+CÁLCULO DO IMPOSTO
+VALOR TOTAL DA NOTA
+1.234,56
+DADOS ADICIONAIS
+INFORMAÇÕES COMPLEMENTARES
+FONTE: IBPT  Pedido: 887352  Vend: JOSE`;
+
+  it("lê nº da nota (pela chave de acesso), destinatário, cep, telefone, pedido e valor", () => {
+    expect(lerDadosNfeDoTextoDanfe(DANFE_TEXTO)).toEqual({
+      numeroNfe: "4512",
+      clienteNome: "HICKSON MARTINS LTDA",
+      endereco: "RUA DAS FLORES, 120",
+      cep: "49010000",
+      clienteTelefone: "79999998888",
+      numeroPedido: "887352",
+      valor: 1234.56,
+    });
+  });
+
+  it("decodifica o nº da nota mesmo com a chave sem espaços", () => {
+    const dados = lerDadosNfeDoTextoDanfe(
+      "CHAVE DE ACESSO\n28261012345678000199550010000045121123456780\nDESTINATÁRIO"
+    );
+    expect(dados.numeroNfe).toBe("4512");
+  });
+
+  it("não quebra e retorna campos vazios quando o texto não tem nada reconhecível", () => {
+    expect(lerDadosNfeDoTextoDanfe("texto qualquer, sem DANFE nenhum")).toEqual(
+      {}
+    );
+  });
+
+  it("ignora chave de acesso incompleta", () => {
+    expect(
+      lerDadosNfeDoTextoDanfe("CHAVE DE ACESSO\n1234 5678\nDESTINATÁRIO")
+    ).toEqual({});
   });
 });
