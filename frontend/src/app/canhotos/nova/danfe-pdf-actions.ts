@@ -55,7 +55,8 @@ export async function lerDanfePdf(
   let texto: string;
   try {
     texto = await extrairTextoPdf(bytes);
-  } catch {
+  } catch (error) {
+    console.error("lerDanfePdf: falha ao extrair texto do PDF", error);
     return { ok: false, error: "Não foi possível ler o texto do PDF." };
   }
 
