@@ -131,6 +131,23 @@ FONTE: IBPT  Pedido: 887352  Vend: JOSE`;
     expect(dados.numeroNfe).toBe("4512");
   });
 
+  it("acha a chave de acesso mesmo quando o bloco do protocolo de autorização separa o rótulo dos dígitos (DANFE real)", () => {
+    // Reproduz um layout real em que o pdf.js extrai "CHAVE DE ACESSO" e só
+    // bem mais adiante (depois do protocolo de autorização, nº de página e
+    // texto de consulta de autenticidade) os 44 dígitos de fato aparecem.
+    const dados = lerDadosNfeDoTextoDanfe(
+      `CHAVE DE ACESSO
+PROTOCOLO DE AUTORIZAÇÃO DE USO
+228260026289593 Nº   30/10/2026 11:18 Data
+DADOS DOS PRODUTOS/SERVIÇOS
+1 /   1
+Consulta de autenticidade no portal nacional da NF-e
+www.nfe.fazenda.gov.br/portal ou no site da Sefaz Autorizada
+28.2610.05.504.249/0001-58-55-001-000.320.352-195.661.307-9`
+    );
+    expect(dados.numeroNfe).toBe("320352");
+  });
+
   it("não quebra e retorna campos vazios quando o texto não tem nada reconhecível", () => {
     expect(lerDadosNfeDoTextoDanfe("texto qualquer, sem DANFE nenhum")).toEqual(
       {}

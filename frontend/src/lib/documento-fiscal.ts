@@ -188,6 +188,20 @@ function nNfDaChaveAcesso(chave44Digitos: string): string | undefined {
 }
 
 function extrairChaveAcesso(texto: string): string | undefined {
+  // A chave de 44 dígitos nem sempre fica logo após o rótulo "CHAVE DE
+  // ACESSO" na ordem em que o pdf.js extrai o texto (varia por layout de
+  // DANFE, e às vezes o bloco do protocolo de autorização entra no meio).
+  // Em vez de depender da proximidade do rótulo, procura em todo o texto
+  // por uma sequência de dígitos (com separadores . - / e espaço, como a
+  // chave costuma vir impressa) que resulte em exatamente 44 dígitos —
+  // comprimento praticamente exclusivo da chave de acesso num DANFE.
+  const candidatos = texto.match(/\d[\d .\-/]{38,80}\d/g) ?? [];
+  for (const candidato of candidatos) {
+    const digitos = candidato.replace(/\D/g, "");
+    if (digitos.length === 44) return digitos;
+  }
+  // Fallback: tenta a janela próxima ao rótulo, caso o texto não tenha
+  // separadores entre os dígitos (ex. 44 dígitos corridos).
   const resto = aposRotulo(texto, /CHAVE\s+DE\s+ACESSO/i, 220);
   if (!resto) return undefined;
   const digitos = resto.replace(/\D/g, "");
