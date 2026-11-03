@@ -30,9 +30,9 @@ export async function definirCookieSessaoColaborador(
 
   cookieStore.set(COLABORADOR_COOKIE_NAME, token, {
     httpOnly: true,
-    // Em produção, o Canhoto é servido pelo Caddy via HTTPS. Em desenvolvimento
-    // local, HTTP continua permitido para acesso por IP da rede da loja.
-    secure: process.env.NODE_ENV === "production",
+    // A infraestrutura HTTPS ativa esta opção explicitamente. O modo local
+    // continua aceitando HTTP, inclusive quando executado com "next start".
+    secure: process.env.SESSION_COOKIE_SECURE === "true",
     sameSite: "lax",
     path: "/",
     maxAge: Math.floor(COLABORADOR_SESSAO_DURACAO_MS / 1000),
