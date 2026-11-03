@@ -21,7 +21,7 @@ defaults:
     working-directory: frontend
 
 env:
-  NODE_VERSION: 22
+  NODE_VERSION: 24
 
 jobs:
   postgres-schema:
