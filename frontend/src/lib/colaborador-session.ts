@@ -30,9 +30,9 @@ export async function definirCookieSessaoColaborador(
 
   cookieStore.set(COLABORADOR_COOKIE_NAME, token, {
     httpOnly: true,
-    // Portal roda sempre em HTTP interno na rede da loja, nunca atrás do
-    // Cloudflare Tunnel — ver o mesmo ajuste em admin-session.ts.
-    secure: false,
+    // A infraestrutura HTTPS ativa esta opção explicitamente. O modo local
+    // continua aceitando HTTP, inclusive quando executado com "next start".
+    secure: process.env.SESSION_COOKIE_SECURE === "true",
     sameSite: "lax",
     path: "/",
     maxAge: Math.floor(COLABORADOR_SESSAO_DURACAO_MS / 1000),

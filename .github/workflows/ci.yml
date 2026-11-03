@@ -21,7 +21,7 @@ defaults:
     working-directory: frontend
 
 env:
-  NODE_VERSION: 22
+  NODE_VERSION: 26
 
 jobs:
   postgres-schema:
@@ -161,6 +161,11 @@ jobs:
       # Roda sem DATABASE_URL de propósito. getDb() devolve null e a camada
       # de leitura retorna o estado vazio que a UI já sabe renderizar.
       - run: npm run build
+      - name: Build da imagem Docker de produção
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_MAP_TILE_URL="https://tile.openstreetmap.org/{z}/{x}/{y}.png" \
+            --tag canhoto-digital:ci .
 
   e2e:
     runs-on: ubuntu-latest
