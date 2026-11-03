@@ -30,9 +30,9 @@ export async function definirCookieSessaoColaborador(
 
   cookieStore.set(COLABORADOR_COOKIE_NAME, token, {
     httpOnly: true,
-    // Portal roda sempre em HTTP interno na rede da loja, nunca atrás do
-    // Cloudflare Tunnel — ver o mesmo ajuste em admin-session.ts.
-    secure: false,
+    // Em produção, o Canhoto é servido pelo Caddy via HTTPS. Em desenvolvimento
+    // local, HTTP continua permitido para acesso por IP da rede da loja.
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: Math.floor(COLABORADOR_SESSAO_DURACAO_MS / 1000),
