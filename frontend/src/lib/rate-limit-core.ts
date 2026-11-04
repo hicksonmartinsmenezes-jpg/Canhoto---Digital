@@ -1,7 +1,5 @@
-// Núcleo puro da lógica de rate limit (janela deslizante) — sem depender de
-// "server-only" nem de "next/headers", justamente para poder ser testado
-// isoladamente com Vitest (rodar fora de uma requisição Next.js real). O
-// wrapper que expõe isso pras Server Actions fica em @/lib/rate-limit.
+// Núcleo puro do limite por IP (janela deslizante), sem dependências de
+// Next.js, para permitir testes unitários isolados.
 
 export interface Registro {
   timestamps: number[];
@@ -32,38 +30,8 @@ export function avaliarJanela(
   return { permitido: true, restante: limite - registro.timestamps.length };
 }
 
-// Conta ocorrências dentro da janela SEM registrar uma nova — usado no
-// bloqueio por conta (só falhas de login contam, tentativas bem-sucedidas
-// não).
-export function contarNaJanela(
-  registros: Map<string, Registro>,
-  chave: string,
-  agora: number,
-  janelaMs: number
-): number {
-  const registro = registros.get(chave);
-  if (!registro) return 0;
-  registro.timestamps = registro.timestamps.filter((t) => agora - t < janelaMs);
-  return registro.timestamps.length;
-}
-
-export function registrarOcorrencia(
-  registros: Map<string, Registro>,
-  chave: string,
-  agora: number,
-  janelaMs: number
-): void {
-  const registro = registros.get(chave) ?? { timestamps: [] };
-  registro.timestamps = registro.timestamps.filter((t) => agora - t < janelaMs);
-  registro.timestamps.push(agora);
-  registros.set(chave, registro);
-}
-
-// Escolhe o IP do cliente a partir dos cabeçalhos. `cf-connecting-ip` é
-// sobrescrito pelo Cloudflare (o cliente não consegue forjar quando entra
-// pelo túnel); `x-forwarded-for` pode vir preenchido pelo próprio cliente,
-// então só entra como fallback e usando a ÚLTIMA entrada (a que o proxy
-// mais próximo acrescentou), nunca a primeira.
+// cf-connecting-ip é definido pelo Cloudflare na borda. x-forwarded-for
+// pode conter entradas enviadas pelo cliente; por isso usamos a última.
 export function escolherIpDoCliente(h: {
   get(nome: string): string | null;
 }): string {
