@@ -31,14 +31,6 @@ DECLARE
   v_agora timestamptz := clock_timestamp();
   v_linha record;
 BEGIN
-  IF p_acao NOT IN ('entrarAdmin', 'entrarColaborador', 'loginMotorista') THEN
-    RAISE EXCEPTION 'Ação de login inválida.';
-  END IF;
-
-  IF p_identificador_hash !~ '^[a-f0-9]{64}$' THEN
-    RAISE EXCEPTION 'Identificador de login inválido.';
-  END IF;
-
   INSERT INTO login_rate_limits (
     acao,
     identificador_hash,
