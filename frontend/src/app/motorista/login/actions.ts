@@ -8,13 +8,11 @@
 // por tentativa e erro quais telefones existem no sistema.
 
 import { redirect } from "next/navigation";
+import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 import {
-  checarRateLimit,
-  contaBloqueadaPorFalhas,
-  limparFalhasLogin,
-  RATE_LIMIT_ESTRITO,
-  registrarFalhaLogin,
-} from "@/lib/rate-limit";
+  limparTentativasLogin,
+  reservarTentativaLogin,
+} from "@/lib/login-rate-limit";
 import { getMotoboyPorTelefone } from "@/lib/data/motoboys";
 import { hashPin, normalizarTelefone, verificarPin } from "@/lib/motorista-auth";
 import { definirCookieSessaoMotorista } from "@/lib/motorista-session";
@@ -57,7 +55,19 @@ export async function loginMotorista(
     return { ok: false, error: "Informe o PIN de 4 dígitos." };
   }
 
-  if (contaBloqueadaPorFalhas("loginMotorista", telefone)) {
+  let tentativaPermitida: boolean;
+  try {
+    tentativaPermitida = await reservarTentativaLogin(
+      "loginMotorista",
+      telefone
+    );
+  } catch {
+    return {
+      ok: false,
+      error: "Serviço de autenticação temporariamente indisponível. Tente novamente.",
+    };
+  }
+  if (!tentativaPermitida) {
     return { ok: false, error: MENSAGEM_CONTA_BLOQUEADA };
   }
 
@@ -68,10 +78,17 @@ export async function loginMotorista(
       : HASH_FICTICIO;
   const pinConfere = verificarPin(pin, hashParaComparar);
   if (!motoboy || !motoboy.ativo || !motoboy.pinHash || !pinConfere) {
-    registrarFalhaLogin("loginMotorista", telefone);
     return { ok: false, error: MENSAGEM_INVALIDA };
   }
-  limparFalhasLogin("loginMotorista", telefone);
+
+  try {
+    await limparTentativasLogin("loginMotorista", telefone);
+  } catch {
+    return {
+      ok: false,
+      error: "Serviço de autenticação temporariamente indisponível. Tente novamente.",
+    };
+  }
 
   const sessaoCriada = await definirCookieSessaoMotorista(motoboy.id);
   if (!sessaoCriada) {
