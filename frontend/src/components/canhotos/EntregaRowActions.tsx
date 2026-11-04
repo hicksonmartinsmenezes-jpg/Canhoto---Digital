@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
@@ -46,7 +47,9 @@ export function EntregaRowActions({
   compacto = false,
 }: EntregaRowActionsProps) {
   const router = useRouter();
+  const botaoRef = useRef<HTMLButtonElement>(null);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [posicaoMenu, setPosicaoMenu] = useState<{ top: number; right: number } | null>(null);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -63,6 +66,31 @@ export function EntregaRowActions({
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
+  }, [menuAberto]);
+
+  // O menu é renderizado via portal (fora da tabela com scroll horizontal):
+  // dentro do container "overflow-x-auto" da CanhotosTable, um elemento
+  // position:absolute que ultrapassa a borda da tabela fica cortado (o
+  // navegador computa overflow-y:auto junto quando só overflow-x é
+  // definido). Calculamos a posição em viewport (position:fixed) a partir
+  // do botão e fechamos ao rolar/redimensionar em vez de reposicionar —
+  // o menu é efêmero, não vale a complexidade de acompanhar o scroll.
+  useEffect(() => {
+    if (!menuAberto) return;
+    const botao = botaoRef.current;
+    if (!botao) return;
+    const rect = botao.getBoundingClientRect();
+    setPosicaoMenu({
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
+    const fechar = () => setMenuAberto(false);
+    window.addEventListener("scroll", fechar, true);
+    window.addEventListener("resize", fechar);
+    return () => {
+      window.removeEventListener("scroll", fechar, true);
+      window.removeEventListener("resize", fechar);
+    };
   }, [menuAberto]);
 
   function excluir() {
@@ -105,6 +133,7 @@ export function EntregaRowActions({
         )}
         {temMenu && (
           <button
+            ref={botaoRef}
             type="button"
             aria-label={`Mais ações da entrega ${numero}`}
             aria-haspopup="menu"
@@ -116,67 +145,73 @@ export function EntregaRowActions({
             <MoreVertical className="size-4" />
           </button>
         )}
-        <AnimatePresence>
-          {menuAberto && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setMenuAberto(false)}
-              />
-              <motion.div
-                role="menu"
-                initial={{ opacity: 0, scale: 0.96, y: -4 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.98, y: -2 }}
-                transition={{ type: "spring", duration: 0.25, bounce: 0 }}
-                style={{ transformOrigin: "top right" }}
-                className="absolute right-0 top-full z-20 mt-1 w-48 rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
-              >
-                {compacto && (
-                  <Link
-                    role="menuitem"
-                    href={`/canhotos/${id}/editar`}
-                    prefetch={false}
-                    className={`${ITEM_MENU} text-slate-700 hover:bg-slate-50`}
-                  >
-                    <SquarePen className="size-4" />
-                    Editar
-                  </Link>
-                )}
-                {mostrarCancelar && (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setMenuAberto(false);
-                      setCancelando(true);
-                    }}
-                    className={`${ITEM_MENU} text-amber-700 hover:bg-amber-50`}
-                  >
-                    <Ban className="size-4" />
-                    Cancelar entrega
-                  </button>
-                )}
-                {mostrarExcluir && (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setMenuAberto(false);
-                      setErro(null);
-                      setConfirmandoExclusao(true);
-                    }}
-                    className={`${ITEM_MENU} text-red-600 hover:bg-red-50`}
-                  >
-                    <Trash2 className="size-4" />
-                    Excluir
-                  </button>
-                )}
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
       </div>
+      {menuAberto &&
+        posicaoMenu &&
+        createPortal(
+          <AnimatePresence>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setMenuAberto(false)}
+            />
+            <motion.div
+              role="menu"
+              initial={{ opacity: 0, scale: 0.96, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: -2 }}
+              transition={{ type: "spring", duration: 0.25, bounce: 0 }}
+              style={{
+                transformOrigin: "top right",
+                position: "fixed",
+                top: posicaoMenu.top,
+                right: posicaoMenu.right,
+              }}
+              className="z-50 w-48 rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+            >
+              {compacto && (
+                <Link
+                  role="menuitem"
+                  href={`/canhotos/${id}/editar`}
+                  prefetch={false}
+                  className={`${ITEM_MENU} text-slate-700 hover:bg-slate-50`}
+                >
+                  <SquarePen className="size-4" />
+                  Editar
+                </Link>
+              )}
+              {mostrarCancelar && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuAberto(false);
+                    setCancelando(true);
+                  }}
+                  className={`${ITEM_MENU} text-amber-700 hover:bg-amber-50`}
+                >
+                  <Ban className="size-4" />
+                  Cancelar entrega
+                </button>
+              )}
+              {mostrarExcluir && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuAberto(false);
+                    setErro(null);
+                    setConfirmandoExclusao(true);
+                  }}
+                  className={`${ITEM_MENU} text-red-600 hover:bg-red-50`}
+                >
+                  <Trash2 className="size-4" />
+                  Excluir
+                </button>
+              )}
+            </motion.div>
+          </AnimatePresence>,
+          document.body,
+        )}
 
       <AnimatePresence>
         {cancelando && (
