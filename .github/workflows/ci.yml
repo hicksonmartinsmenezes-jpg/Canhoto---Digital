@@ -63,8 +63,38 @@ jobs:
         run: |
           tabelas="$(docker exec canhoto_digital_postgres \
             psql -At -U canhoto_ci -d canhoto_ci \
-            -c "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('setores','colaboradores','usuarios_admin','motoboys','motoboy_localizacoes','veiculos','veiculo_gastos','treinamento_progresso','entregas','entrega_anexos','entrega_historico');")"
-          test "$tabelas" = "11"
+            -c "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('setores','colaboradores','usuarios_admin','motoboys','motoboy_localizacoes','veiculos','veiculo_gastos','treinamento_progresso','entregas','entrega_anexos','entrega_historico','dispositivos_push','login_rate_limits');")"
+          test "$tabelas" = "13"
+      - name: Testa o bloqueio persistente de login
+        run: |
+          hash="$(printf '%064d' 0 | tr '0' 'a')"
+
+          for tentativa in {1..8}; do
+            permitido="$(docker exec canhoto_digital_postgres \
+              psql -At -U canhoto_ci -d canhoto_ci \
+              -c "select registrar_tentativa_login('loginMotorista', '$hash');")"
+            test "$permitido" = "t"
+          done
+
+          bloqueado="$(docker exec canhoto_digital_postgres \
+            psql -At -U canhoto_ci -d canhoto_ci \
+            -c "select registrar_tentativa_login('loginMotorista', '$hash');")"
+          test "$bloqueado" = "f"
+
+          # O mesmo identificador em outro fluxo não compartilha o bloqueio.
+          admin_permitido="$(docker exec canhoto_digital_postgres \
+            psql -At -U canhoto_ci -d canhoto_ci \
+            -c "select registrar_tentativa_login('entrarAdmin', '$hash');")"
+          test "$admin_permitido" = "t"
+
+          docker exec canhoto_digital_postgres \
+            psql -v ON_ERROR_STOP=1 -U canhoto_ci -d canhoto_ci \
+            -c "select limpar_tentativas_login('loginMotorista', '$hash');"
+
+          liberado="$(docker exec canhoto_digital_postgres \
+            psql -At -U canhoto_ci -d canhoto_ci \
+            -c "select registrar_tentativa_login('loginMotorista', '$hash');")"
+          test "$liberado" = "t"
       - name: Cria comprovante descartável para validar backup
         run: |
           entrega_id="11111111-1111-4111-8111-111111111111"
