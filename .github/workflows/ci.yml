@@ -95,6 +95,23 @@ jobs:
             psql -At -U canhoto_ci -d canhoto_ci \
             -c "select registrar_tentativa_login('loginMotorista', '$hash');")"
           test "$liberado" = "t"
+
+          # Depois de 15 minutos, uma janela antiga deixa de bloquear a conta.
+          hash_expiracao="$(printf '%064d' 0 | tr '0' 'b')"
+          for tentativa in {1..9}; do
+            docker exec canhoto_digital_postgres \
+              psql -At -U canhoto_ci -d canhoto_ci \
+              -c "select registrar_tentativa_login('entrarColaborador', '$hash_expiracao');" >/dev/null
+          done
+
+          docker exec canhoto_digital_postgres \
+            psql -v ON_ERROR_STOP=1 -U canhoto_ci -d canhoto_ci \
+            -c "update login_rate_limits set janela_iniciada_em = now() - interval '16 minutes', bloqueado_ate = now() - interval '1 second' where acao = 'entrarColaborador' and identificador_hash = '$hash_expiracao';"
+
+          expiracao_liberada="$(docker exec canhoto_digital_postgres \
+            psql -At -U canhoto_ci -d canhoto_ci \
+            -c "select registrar_tentativa_login('entrarColaborador', '$hash_expiracao');")"
+          test "$expiracao_liberada" = "t"
       - name: Cria comprovante descartável para validar backup
         run: |
           entrega_id="11111111-1111-4111-8111-111111111111"
