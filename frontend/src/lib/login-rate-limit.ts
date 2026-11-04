@@ -10,9 +10,14 @@ export type AcaoLogin =
   | "loginMotorista";
 
 function gerarHashIdentificador(acao: AcaoLogin, identificador: string): string {
-  const segredo = process.env.ADMIN_SESSION_SECRET;
+  const segredoPorAcao: Record<AcaoLogin, string | undefined> = {
+    entrarAdmin: process.env.ADMIN_SESSION_SECRET,
+    entrarColaborador: process.env.COLABORADOR_SESSION_SECRET,
+    loginMotorista: process.env.MOTORISTA_SESSION_SECRET,
+  };
+  const segredo = segredoPorAcao[acao];
   if (!segredo) {
-    throw new Error("ADMIN_SESSION_SECRET não configurado.");
+    throw new Error("Segredo de sessão não configurado para este login.");
   }
 
   return createHmac("sha256", segredo)
