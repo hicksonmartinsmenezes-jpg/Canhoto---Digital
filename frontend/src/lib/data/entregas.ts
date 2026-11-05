@@ -155,15 +155,24 @@ export async function getDashboardStats(
 
   const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
+  // Total e Entregues são do dia (padronizado com o painel do motorista, que
+  // já usa esse mesmo recorte) — Pendentes continua geral: é o backlog atual
+  // que precisa de atenção, não faz sentido zerar à meia-noite.
+  const hoje = paraChaveDiaLocal(new Date());
+  const filtroHoje = eq(entregas.data, hoje);
+
   const [total, entregues, pendentes, motoristasAtivos] = await Promise.all([
-    db.select({ total: count() }).from(entregas).where(filtroSetor),
+    db
+      .select({ total: count() })
+      .from(entregas)
+      .where(filtroSetor ? and(filtroHoje, filtroSetor) : filtroHoje),
     db
       .select({ total: count() })
       .from(entregas)
       .where(
         filtroSetor
-          ? and(eq(entregas.status, "entregue"), filtroSetor)
-          : eq(entregas.status, "entregue")
+          ? and(eq(entregas.status, "entregue"), filtroHoje, filtroSetor)
+          : and(eq(entregas.status, "entregue"), filtroHoje)
       ),
     db
       .select({ total: count() })
