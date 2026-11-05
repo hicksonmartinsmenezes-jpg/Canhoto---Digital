@@ -153,17 +153,23 @@ export async function getDashboardStats(
     return { totalEntregas: 0, entregues: 0, pendentes: 0, motoristasAtivos: 0 };
   }
 
+  const hoje = paraChaveDiaLocal(new Date());
   const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
   const [total, entregues, pendentes, motoristasAtivos] = await Promise.all([
-    db.select({ total: count() }).from(entregas).where(filtroSetor),
+    db
+      .select({ total: count() })
+      .from(entregas)
+      .where(and(eq(entregas.data, hoje), filtroSetor)),
     db
       .select({ total: count() })
       .from(entregas)
       .where(
-        filtroSetor
-          ? and(eq(entregas.status, "entregue"), filtroSetor)
-          : eq(entregas.status, "entregue")
+        and(
+          eq(entregas.status, "entregue"),
+          eq(entregas.data, hoje),
+          filtroSetor
+        )
       ),
     db
       .select({ total: count() })
