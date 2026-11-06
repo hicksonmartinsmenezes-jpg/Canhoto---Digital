@@ -11,19 +11,20 @@ import androidx.core.content.ContextCompat;
 import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
 import java.lang.reflect.Method;
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
-nos cards remova Desde o início, Desde o início e Aguardando saída
 
-Executou 2 comandos, leu arquivos no seu computador
-Only my intended changes differ. Writing them to the PC.
 public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "CanhotoMotorista";
 
-    // Páginas do servidor da loja (túnel) que podem usar os recursos nativos.
-    // Deve ser o mesmo domínio de "allowNavigation" em capacitor.config.ts.
-    private static final String ORIGEM_DO_SERVIDOR = "https://*.trycloudflare.com";
+    // Páginas do servidor da loja que podem usar os recursos nativos: túnel
+    // atual e VPS. Deve cobrir os mesmos domínios de "allowNavigation" em
+    // capacitor.config.ts e de HOST_PERMITIDO em capacitor-www/index.html.
+    private static final Set<String> ORIGENS_DO_SERVIDOR = new HashSet<>(
+        Arrays.asList("https://*.trycloudflare.com", "https://entregas.2.25.149.95.sslip.io")
+    );
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -70,7 +71,7 @@ public class MainActivity extends BridgeActivity {
             Class<?> compat = Class.forName("androidx.webkit.WebViewCompat");
             compat
                 .getMethod("addDocumentStartJavaScript", WebView.class, String.class, Set.class)
-                .invoke(null, bridge.getWebView(), script, Collections.singleton(ORIGEM_DO_SERVIDOR));
+                .invoke(null, bridge.getWebView(), script, ORIGENS_DO_SERVIDOR);
         } catch (Throwable erro) {
             Log.w(TAG, "Não foi possível ligar a ponte nas páginas do servidor", erro);
         }
