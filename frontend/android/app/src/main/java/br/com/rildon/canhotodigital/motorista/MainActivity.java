@@ -23,7 +23,7 @@ public class MainActivity extends BridgeActivity {
     // atual e VPS. Deve cobrir os mesmos domínios de "allowNavigation" em
     // capacitor.config.ts e de HOST_PERMITIDO em capacitor-www/index.html.
     private static final Set<String> ORIGENS_DO_SERVIDOR = new HashSet<>(
-        Arrays.asList("https://*.trycloudflare.com", "https://entregas.2.25.149.95.sslip.io")
+        Arrays.asList("https://*.trycloudflare.com", "https://entregas.rildoneletro.tech")
     );
 
     @Override
