@@ -5,13 +5,11 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { colaboradores } from "@/lib/db/schema";
+import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 import {
-  checarRateLimit,
-  contaBloqueadaPorFalhas,
-  limparFalhasLogin,
-  RATE_LIMIT_ESTRITO,
-  registrarFalhaLogin,
-} from "@/lib/rate-limit";
+  limparTentativasLogin,
+  reservarTentativaLogin,
+} from "@/lib/login-rate-limit";
 import { normalizarTelefone } from "@/lib/motorista-auth";
 import {
   definirCookieSessaoColaborador,
@@ -58,16 +56,28 @@ export async function entrarColaborador(
     return { ok: false, error: ERRO_CREDENCIAIS };
   }
 
-  if (contaBloqueadaPorFalhas("entrarColaborador", celularNormalizado)) {
-    return { ok: false, error: ERRO_CONTA_BLOQUEADA };
-  }
-
   const db = getDb();
   if (!db) {
     return {
       ok: false,
       error: "Banco de dados indisponível neste ambiente.",
     };
+  }
+
+  let tentativaPermitida: boolean;
+  try {
+    tentativaPermitida = await reservarTentativaLogin(
+      "entrarColaborador",
+      celularNormalizado
+    );
+  } catch {
+    return {
+      ok: false,
+      error: "Serviço de autenticação temporariamente indisponível. Tente novamente.",
+    };
+  }
+  if (!tentativaPermitida) {
+    return { ok: false, error: ERRO_CONTA_BLOQUEADA };
   }
 
   const [colaborador] = await db
@@ -100,10 +110,17 @@ export async function entrarColaborador(
     (elegivel && colaborador?.senhaHash) || HASH_FICTICIO
   );
   if (!elegivel || !colaborador || !senhaValida) {
-    registrarFalhaLogin("entrarColaborador", celularNormalizado);
     return { ok: false, error: ERRO_CREDENCIAIS };
   }
-  limparFalhasLogin("entrarColaborador", celularNormalizado);
+
+  try {
+    await limparTentativasLogin("entrarColaborador", celularNormalizado);
+  } catch {
+    return {
+      ok: false,
+      error: "Serviço de autenticação temporariamente indisponível. Tente novamente.",
+    };
+  }
 
   const sessaoCriada = await definirCookieSessaoColaborador(
     colaborador.id,

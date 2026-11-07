@@ -8,6 +8,7 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   smallint,
   text,
   time,
@@ -455,6 +456,49 @@ export const entregaHistorico = pgTable(
     check(
       "ck_historico_um_ator",
       sql`num_nonnulls(${table.alteradoPor}, ${table.alteradoPorMotoboy}, ${table.alteradoPorAdmin}) <= 1`
+    ),
+  ]
+);
+
+
+// 0018: bloqueio persistente contra tentativas repetidas de login.
+// O identificador é HMAC; e-mails e telefones não são armazenados em claro.
+export const loginRateLimits = pgTable(
+  "login_rate_limits",
+  {
+    acao: text("acao").notNull(),
+    identificadorHash: text("identificador_hash").notNull(),
+    tentativas: smallint("tentativas").notNull().default(0),
+    janelaIniciadaEm: timestamp("janela_iniciada_em", {
+      withTimezone: true,
+      mode: "string",
+    }).notNull().defaultNow(),
+    bloqueadoAte: timestamp("bloqueado_ate", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    atualizadoEm: timestamp("atualizado_em", {
+      withTimezone: true,
+      mode: "string",
+    }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "login_rate_limits_pkey",
+      columns: [table.acao, table.identificadorHash],
+    }),
+    index("idx_login_rate_limits_atualizado_em").on(table.atualizadoEm),
+    check(
+      "ck_login_rate_limits_acao",
+      sql`${table.acao} in ('entrarAdmin', 'entrarColaborador', 'loginMotorista')`
+    ),
+    check(
+      "ck_login_rate_limits_hash",
+      sql`${table.identificadorHash} ~ '^[a-f0-9]{64}$'`
+    ),
+    check(
+      "ck_login_rate_limits_tentativas",
+      sql`${table.tentativas} between 0 and 9`
     ),
   ]
 );
