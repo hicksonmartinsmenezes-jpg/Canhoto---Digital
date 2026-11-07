@@ -22,7 +22,7 @@ const config: CapacitorConfig = {
   appName: "Motorista — Canhoto Digital",
   webDir: "capacitor-www",
   server: {
-    allowNavigation: ["*.trycloudflare.com"],
+    allowNavigation: ["*.trycloudflare.com", "entregas.rildoneletro.tech"],
   },
   android: {
     allowMixedContent: false,

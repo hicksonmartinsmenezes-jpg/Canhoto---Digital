@@ -30,7 +30,8 @@ const CHAVE_OFFLINE_PRONTO = "motorista_offline_pronto";
 const CONFIG_CENTRAL_URL =
   "https://raw.githubusercontent.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/main/motorista-config.json";
 
-const ENDERECO_PERMITIDO = /^https:\/\/[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$/;
+const ENDERECO_PERMITIDO =
+  /^https:\/\/(?:[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com|entregas\.rildoneletro\.tech)$/;
 
 export function estaNoAppNativo(): boolean {
   return (

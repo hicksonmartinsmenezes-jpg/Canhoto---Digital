@@ -283,11 +283,12 @@
     return Promise.resolve();
   }
 
-  // Só aceita o túnel da loja: https://<nome>.trycloudflare.com, sem porta,
+  // Só aceita o túnel da loja (https://<nome>.trycloudflare.com) ou o host exato
+  // da VPS (entregas.rildoneletro.tech), sem porta,
   // sem usuário/senha na URL. Vale para o arquivo central, o endereço digitado
   // e o que estava salvo no aparelho — se alguém alterar o arquivo do GitHub
   // para outro site, o app recusa em vez de abrir a página dentro dele.
-  var HOST_PERMITIDO = /^[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$/;
+  var HOST_PERMITIDO = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com|entregas\.rildoneletro\.tech)$/;
 
   function normalizarBase(texto) {
     var valor = (texto || "").trim();
