@@ -18,20 +18,14 @@
     background: #FFFFFF; /* splash: igual ao do PWA (fundo branco + ícone) */
     padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
     padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
-  }
-  body.config { background: #F8FAFC; } /* mesmo fundo do login do motorista */
-
-  .tela {
-    min-height: 100vh;
-    display: none;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px 16px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
-  .tela.ativa { display: flex; }
 
-  /* ---------- splash ---------- */
-  #telaSplash { flex-direction: column; }
   .splash-icone {
     width: 168px;
     height: 168px;
@@ -42,7 +36,7 @@
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.04); opacity: .88; }
   }
-  .splash-status {
+  .status {
     margin-top: 20px;
     display: flex;
     align-items: center;
@@ -62,89 +56,13 @@
     animation: gira .8s linear infinite;
     flex: none;
   }
+  .spinner.oculto { display: none; }
   @keyframes gira { to { transform: rotate(360deg); } }
-  .link {
-    margin-top: 28px;
-    background: none;
-    border: none;
-    padding: 8px 12px;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 700;
-    color: #0A1F44;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
 
-  /* ---------- cartão de configuração (mesmo visual do login) ---------- */
-  .card {
-    width: 100%;
-    max-width: 384px;
-    overflow: hidden;
-    border: 1px solid #E2E8F0;
-    background: #fff;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
-  }
-  .card-topo {
-    background: #0A1F44;
-    padding: 20px 24px;
-    display: flex;
-    justify-content: center;
-  }
-  .card-topo img { height: 40px; width: auto; max-width: 230px; display: block; }
-  .card-corpo { padding: 24px; }
-  .titulo {
-    margin: 0 0 4px;
-    font-size: 16px;
-    font-weight: 800;
-    color: #0A1F44;
-  }
-  .subtitulo {
-    margin: 0 0 20px;
-    font-size: 13px;
-    line-height: 1.45;
-    color: #64748B;
-  }
-  label {
-    display: block;
-    margin-bottom: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    color: #64748B;
-  }
-  .campo { position: relative; }
-  .campo svg {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    width: 16px;
-    height: 16px;
-    transform: translateY(-50%);
-    color: #94A3B8;
-    pointer-events: none;
-  }
-  input {
-    width: 100%;
-    padding: 12px 14px 12px 40px;
-    border: 1px solid #CBD5E1;
-    background: #fff;
-    border-radius: 0;
-    font: inherit;
-    font-size: 16px;
-    color: #334155;
-    outline: none;
-    transition: border-color .15s, box-shadow .15s;
-  }
-  input:focus {
-    border-color: #0A1F44;
-    box-shadow: 0 0 0 2px rgba(10, 31, 68, .1);
-  }
-  input::placeholder { color: #94A3B8; }
   .aviso {
     display: none;
-    margin-top: 16px;
+    margin-top: 20px;
+    max-width: 320px;
     padding: 12px 16px;
     border: 1px solid #FECACA;
     background: #FEF2F2;
@@ -152,28 +70,29 @@
     font-size: 14px;
     font-weight: 600;
     line-height: 1.4;
+    text-align: center;
   }
   .aviso.visivel { display: block; }
+
   .botao {
-    width: 100%;
-    margin-top: 24px;
-    padding: 12px 20px;
+    margin-top: 16px;
+    padding: 12px 24px;
     border: none;
     border-radius: 0;
     font: inherit;
     font-size: 14px;
     font-weight: 700;
-    display: inline-flex;
+    display: none;
     align-items: center;
     justify-content: center;
     gap: 8px;
     transition: transform .15s, background-color .15s;
   }
+  .botao.visivel { display: inline-flex; }
   .botao:active { transform: scale(.99); }
   .botao svg { width: 16px; height: 16px; }
   .botao-principal { background: #0A1F44; color: #fff; }
   .botao-secundario {
-    margin-top: 8px;
     background: #fff;
     color: #334155;
     border: 1px solid #CBD5E1;
@@ -182,88 +101,46 @@
 </head>
 <body>
 
-  <!-- Tela 1: splash (igual ao do PWA: fundo branco + ícone do entregador) -->
-  <div class="tela ativa" id="telaSplash">
-    <img class="splash-icone" src="icone-splash.png" alt="Rildon Express" />
-    <div class="splash-status">
-      <span class="spinner" aria-hidden="true"></span>
-      <span id="status">Conectando…</span>
-    </div>
-    <button class="link" id="btnAlterar" type="button">Alterar servidor</button>
+  <img class="splash-icone" src="icone-splash.png" alt="Rildon Express" />
+  <div class="status">
+    <span class="spinner" id="spinner" aria-hidden="true"></span>
+    <span id="status">Conectando…</span>
   </div>
-
-  <!-- Tela 2: endereço do servidor (mesmo visual do login do motorista) -->
-  <div class="tela" id="telaConfig">
-    <div class="card">
-      <div class="card-topo">
-        <img src="logo-branca.svg" alt="Rildon Express" />
-      </div>
-      <div class="card-corpo">
-        <h1 class="titulo">Conexão com o servidor</h1>
-        <p class="subtitulo" id="subtitulo">Informe o endereço do servidor da loja.</p>
-
-        <label for="campoUrl">Endereço do servidor</label>
-        <div class="campo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          <input id="campoUrl" type="url" inputmode="url" placeholder="https://exemplo.trycloudflare.com" autocapitalize="off" autocorrect="off" spellcheck="false" />
-        </div>
-
-        <div class="aviso" id="aviso" role="alert"></div>
-
-        <button class="botao botao-principal" id="btnSalvar" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          Salvar e conectar
-        </button>
-        <button class="botao botao-secundario" id="btnAuto" type="button">Usar automático (config da loja)</button>
-        <button class="botao botao-secundario" id="btnAbrirSalvo" type="button" style="display:none">Abrir o app salvo (sem conexão)</button>
-      </div>
-    </div>
-  </div>
+  <div class="aviso" id="aviso" role="alert"></div>
+  <button class="botao botao-principal" id="btnTentar" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+    Tentar novamente
+  </button>
+  <button class="botao botao-secundario" id="btnAbrirSalvo" type="button">Abrir o app salvo (sem conexão)</button>
 
 <script>
 (function () {
-  // Arquivo JSON público {"url": "https://xxxxx.trycloudflare.com"} (repositório
-  // público só com a config). Toda vez que o túnel mudar, edite esse arquivo e
-  // os celulares pegam o endereço novo sozinhos na próxima abertura do app.
-  var CENTRAL_CONFIG_URL =
-    "https://raw.githubusercontent.com/hicksonmartinsmenezes-jpg/Canhoto---Digital/main/motorista-config.json";
+  // Domínio fixo da loja (VPS Hostinger + Caddy). Antes disso o app descobria
+  // o endereço sozinho (túnel Cloudflare trocava a cada reinício + tela de
+  // "informar endereço do servidor" como fallback) — com domínio próprio fixo
+  // isso não existe mais: o endereço é sempre o mesmo, sem tela pra digitar.
+  var BASE_URL = "https://entregas.rildoneletro.tech";
   var CAMINHO_DESTINO = "/motorista";
   // Arquivo estático (fora do /motorista) que o servidor entrega sem login: se
-  // ele carregar como imagem, o servidor está no ar; se vier a página de erro
-  // do Cloudflare (túnel caiu / endereço mudou), a imagem falha.
+  // ele carregar como imagem, o servidor está no ar; se a conexão falhar
+  // (servidor fora do ar / sem internet), a imagem falha.
   var CAMINHO_SONDA = "/icons/motorista-icon-192.png";
   var TEMPO_SONDA_MS = 8000;
-  var CHAVE_OVERRIDE = "motorista_server_url_override";
-  var CHAVE_CACHE = "motorista_server_url_cache";
   // Gravada pelo próprio app do motorista (dentro do servidor) quando a lista do
   // dia e a tela "sem conexão" já ficaram guardadas no aparelho. Só com ela o
   // app salvo pode ser aberto sem o servidor responder.
   var CHAVE_OFFLINE_PRONTO = "motorista_offline_pronto";
-  // O app volta para cá com ?reconectar=1 quando percebe que o endereço do
-  // servidor mudou: aí não abre o app salvo, procura o endereço novo.
-  var FORCAR_RECONEXAO = /[?&]reconectar=1/.test(window.location.search);
 
-  var elBody = document.body;
-  var elTelaSplash = document.getElementById("telaSplash");
-  var elTelaConfig = document.getElementById("telaConfig");
+  var elSpinner = document.getElementById("spinner");
   var elStatus = document.getElementById("status");
-  var elSubtitulo = document.getElementById("subtitulo");
-  var elCampoUrl = document.getElementById("campoUrl");
   var elAviso = document.getElementById("aviso");
-  var elBtnAlterar = document.getElementById("btnAlterar");
-  var elBtnSalvar = document.getElementById("btnSalvar");
-  var elBtnAuto = document.getElementById("btnAuto");
+  var elBtnTentar = document.getElementById("btnTentar");
   var elBtnAbrirSalvo = document.getElementById("btnAbrirSalvo");
 
   var preferences =
     window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences
       ? window.Capacitor.Plugins.Preferences
       : null;
-
-  // Cada tentativa de conexão recebe um número; se o usuário abrir a tela de
-  // configuração no meio, a tentativa antiga é ignorada.
-  var tentativaAtual = 0;
-  var ultimaUrlTentada = "";
 
   function prefGet(chave) {
     if (preferences) {
@@ -272,92 +149,41 @@
     try { return Promise.resolve(window.localStorage.getItem(chave)); }
     catch (e) { return Promise.resolve(null); }
   }
-  function prefSet(chave, valor) {
-    if (preferences) return preferences.set({ key: chave, value: valor });
-    try { window.localStorage.setItem(chave, valor); } catch (e) {}
-    return Promise.resolve();
-  }
-  function prefRemove(chave) {
-    if (preferences) return preferences.remove({ key: chave });
-    try { window.localStorage.removeItem(chave); } catch (e) {}
-    return Promise.resolve();
+
+  function offlineProntoSalvo() {
+    return prefGet(CHAVE_OFFLINE_PRONTO).then(function (valor) { return !!valor; });
   }
 
-  // Só aceita o túnel da loja (https://<nome>.trycloudflare.com) ou o host exato
-  // da VPS (entregas.rildoneletro.tech), sem porta,
-  // sem usuário/senha na URL. Vale para o arquivo central, o endereço digitado
-  // e o que estava salvo no aparelho — se alguém alterar o arquivo do GitHub
-  // para outro site, o app recusa em vez de abrir a página dentro dele.
-  var HOST_PERMITIDO = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com|entregas\.rildoneletro\.tech)$/;
-
-  function normalizarBase(texto) {
-    var valor = (texto || "").trim();
-    if (!valor) return null;
-    if (/^http:\/\//i.test(valor)) return null; // nunca sem criptografia
-    if (!/^https:\/\//i.test(valor)) valor = "https://" + valor;
-    try {
-      var u = new URL(valor);
-      if (u.protocol !== "https:") return null;
-      if (u.port || u.username || u.password) return null;
-      var host = u.hostname.toLowerCase();
-      if (!HOST_PERMITIDO.test(host)) return null;
-      return "https://" + host; // descarta caminho (ex.: /motorista/login) e parâmetros
-    } catch (e) {
-      return null;
-    }
-  }
-  function semProtocolo(url) { return url.replace(/^https?:\/\//, ""); }
-
-  function mostrarSplash(mensagem) {
-    elBody.classList.remove("config");
-    elTelaConfig.classList.remove("ativa");
-    elTelaSplash.classList.add("ativa");
+  function mostrarCarregando(mensagem) {
+    elSpinner.classList.remove("oculto");
     elStatus.textContent = mensagem || "Conectando…";
+    elAviso.classList.remove("visivel");
+    elBtnTentar.classList.remove("visivel");
+    elBtnAbrirSalvo.classList.remove("visivel");
   }
 
-  function mostrarConfig(mensagemErro, valorCampo, subtitulo) {
-    tentativaAtual++; // cancela qualquer tentativa em andamento
-    elBody.classList.add("config");
-    elTelaSplash.classList.remove("ativa");
-    elTelaConfig.classList.add("ativa");
-    elSubtitulo.textContent = subtitulo || "Informe o endereço do servidor da loja.";
-    // Já abriu o app neste aparelho: dá para abrir a cópia guardada, mesmo sem
-    // conexão (o app guarda a lista do dia e deixa finalizar entregas offline).
-    elBtnAbrirSalvo.style.display = "none";
-    urlOfflinePronto().then(function (url) {
-      if (url && elTelaConfig.classList.contains("ativa")) {
-        elBtnAbrirSalvo.style.display = "";
-      }
-    });
-    elCampoUrl.value = valorCampo || "";
-    if (mensagemErro) {
-      elAviso.textContent = mensagemErro;
-      elAviso.classList.add("visivel");
-    } else {
-      elAviso.textContent = "";
-      elAviso.classList.remove("visivel");
-    }
-  }
-
-  // Endereço cujo app já está guardado no aparelho (ou null se nunca ficou pronto).
-  function urlOfflinePronto() {
-    return prefGet(CHAVE_OFFLINE_PRONTO).then(function (valor) {
-      return normalizarBase(valor);
+  function mostrarErro(mensagem) {
+    elSpinner.classList.add("oculto");
+    elStatus.textContent = "Não foi possível conectar";
+    elAviso.textContent = mensagem;
+    elAviso.classList.add("visivel");
+    elBtnTentar.classList.add("visivel");
+    offlineProntoSalvo().then(function (pronto) {
+      if (pronto) elBtnAbrirSalvo.classList.add("visivel");
     });
   }
 
   // Abre direto, sem testar o servidor: o app do motorista guarda as telas no
   // aparelho e funciona sem internet.
-  function abrirDireto(base) {
-    tentativaAtual++;
-    mostrarSplash("Abrindo o app salvo…");
+  function abrirDireto() {
+    mostrarCarregando("Abrindo o app salvo…");
     setTimeout(function () {
-      window.location.replace(base + CAMINHO_DESTINO);
+      window.location.replace(BASE_URL + CAMINHO_DESTINO);
     }, 300);
   }
 
-  // Testa se o servidor responde de verdade (e não a página de erro do Cloudflare).
-  function sondar(base) {
+  // Testa se o servidor responde de verdade (e não só que há internet).
+  function sondar() {
     return new Promise(function (resolve, reject) {
       var img = new Image();
       var terminou = false;
@@ -379,144 +205,44 @@
         clearTimeout(timer);
         reject(new Error("sem resposta"));
       };
-      img.src = base + CAMINHO_SONDA + "?t=" + Date.now();
+      img.src = BASE_URL + CAMINHO_SONDA + "?t=" + Date.now();
     });
   }
 
-  function conectar(base, opcoes) {
-    opcoes = opcoes || {};
-    var minhaTentativa = ++tentativaAtual;
-    ultimaUrlTentada = base;
-    mostrarSplash("Conectando a " + semProtocolo(base) + "…");
-
-    sondar(base).then(function () {
-      if (minhaTentativa !== tentativaAtual) return;
-      if (opcoes.salvarCache) prefSet(CHAVE_CACHE, base);
+  function conectar() {
+    mostrarCarregando("Conectando…");
+    sondar().then(function () {
       elStatus.textContent = "Abrindo…";
       setTimeout(function () {
-        if (minhaTentativa !== tentativaAtual) return;
-        window.location.replace(base + CAMINHO_DESTINO);
+        window.location.replace(BASE_URL + CAMINHO_DESTINO);
       }, 150);
     }).catch(function () {
-      if (minhaTentativa !== tentativaAtual) return;
-      function pedirEndereco() {
-        mostrarConfig("", base, "Informe o endereço atual do servidor da loja.");
-      }
-      // Mesmo endereço de sempre e o app já guardado no aparelho: abre sozinho
-      // (funciona sem internet e volta a conectar quando o servidor voltar).
-      // Endereço diferente (túnel trocado) ou app nunca guardado: pede o endereço.
-      if (FORCAR_RECONEXAO) {
-        pedirEndereco();
-        return;
-      }
-      urlOfflinePronto().then(function (pronto) {
-        if (minhaTentativa !== tentativaAtual) return;
-        if (pronto && pronto === base) abrirDireto(base);
-        else pedirEndereco();
+      offlineProntoSalvo().then(function (pronto) {
+        if (pronto) {
+          abrirDireto();
+        } else {
+          mostrarErro("Não foi possível falar com o servidor da loja. Verifique sua internet e tente novamente.");
+        }
       });
     });
-  }
-
-  function buscarConfigCentral() {
-    var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    var timeoutId = controller ? setTimeout(function () { controller.abort(); }, 6000) : null;
-
-    return fetch(CENTRAL_CONFIG_URL + "?t=" + Date.now(), {
-      cache: "no-store",
-      signal: controller ? controller.signal : undefined,
-    })
-      .then(function (resp) {
-        if (timeoutId) clearTimeout(timeoutId);
-        if (!resp.ok) throw new Error("falha ao buscar config (" + resp.status + ")");
-        return resp.json();
-      })
-      .then(function (dados) {
-        var base = dados && typeof dados.url === "string" ? normalizarBase(dados.url) : null;
-        if (!base) throw new Error("config central sem 'url' válida");
-        return base;
-      });
   }
 
   function iniciar() {
-    mostrarSplash("Procurando o servidor da loja…");
-    var minhaTentativa = tentativaAtual;
-
-    // Aparelho sem internet: nem tenta achar o servidor, abre o app salvo.
-    if (navigator.onLine === false && !FORCAR_RECONEXAO) {
-      urlOfflinePronto().then(function (url) {
-        if (minhaTentativa !== tentativaAtual) return;
-        if (url) {
-          abrirDireto(url);
+    if (navigator.onLine === false) {
+      offlineProntoSalvo().then(function (pronto) {
+        if (pronto) {
+          abrirDireto();
         } else {
-          mostrarConfig("Sem internet. Abra o app uma vez com internet para ele poder funcionar sem conexão.");
+          mostrarErro("Sem internet. Abra o app uma vez com internet para ele poder funcionar sem conexão.");
         }
       });
       return;
     }
-
-    prefGet(CHAVE_OVERRIDE).then(function (override) {
-      if (minhaTentativa !== tentativaAtual) return;
-      var overrideValido = normalizarBase(override);
-      if (overrideValido) {
-        conectar(overrideValido);
-        return;
-      }
-      if (override) prefRemove(CHAVE_OVERRIDE); // salvo antes da regra nova
-      buscarConfigCentral()
-        .then(function (url) {
-          if (minhaTentativa !== tentativaAtual) return;
-          conectar(url, { salvarCache: true });
-        })
-        .catch(function () {
-          if (minhaTentativa !== tentativaAtual) return;
-          prefGet(CHAVE_CACHE).then(function (cache) {
-            if (minhaTentativa !== tentativaAtual) return;
-            var cacheValido = normalizarBase(cache);
-            if (cacheValido) {
-              conectar(cacheValido);
-            } else {
-              mostrarConfig("");
-            }
-          });
-        });
-    });
+    conectar();
   }
 
-  elBtnAlterar.addEventListener("click", function () {
-    prefGet(CHAVE_OVERRIDE).then(function (override) {
-      return override || ultimaUrlTentada || prefGet(CHAVE_CACHE);
-    }).then(function (valorAtual) {
-      mostrarConfig("", valorAtual || "");
-    });
-  });
-
-  elBtnSalvar.addEventListener("click", function () {
-    var base = normalizarBase(elCampoUrl.value);
-    if (!base) {
-      elAviso.textContent = "Endereço não aceito. Use o endereço do servidor da loja, por exemplo https://exemplo.trycloudflare.com";
-      elAviso.classList.add("visivel");
-      return;
-    }
-    prefSet(CHAVE_OVERRIDE, base).then(function () {
-      conectar(base);
-    });
-  });
-
-  elCampoUrl.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") elBtnSalvar.click();
-  });
-
-  elBtnAbrirSalvo.addEventListener("click", function () {
-    urlOfflinePronto().then(function (url) {
-      if (url) abrirDireto(url);
-    });
-  });
-
-  elBtnAuto.addEventListener("click", function () {
-    prefRemove(CHAVE_OVERRIDE).then(function () {
-      iniciar();
-    });
-  });
+  elBtnTentar.addEventListener("click", conectar);
+  elBtnAbrirSalvo.addEventListener("click", abrirDireto);
 
   iniciar();
 })();

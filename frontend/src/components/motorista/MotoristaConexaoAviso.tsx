@@ -4,16 +4,9 @@ import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CloudOff, RefreshCw, ServerOff } from "lucide-react";
 import {
-  buscarEnderecoAtualDoServidor,
-  estaNoAppNativo,
-  voltarParaTelaInicialDoApp,
-} from "@/lib/app-nativo";
-import {
   useEstadoConexao,
   verificarConexaoAgora,
 } from "@/lib/conexao-servidor";
-
-const INTERVALO_BUSCA_ENDERECO_MS = 30_000;
 
 /**
  * Faixa no topo quando o aparelho está sem internet ou o servidor da loja não
@@ -35,36 +28,10 @@ export function MotoristaConexaoAviso() {
     estadoAnteriorRef.current = estado;
   }, [estado, router]);
 
-  // Servidor não responde mas o aparelho tem internet: o Quick Tunnel pode ter
-  // sido trocado. Se o arquivo da loja já aponta para outro endereço, volta
-  // para a tela inicial do app, que conecta no endereço novo.
-  useEffect(() => {
-    if (estado !== "sem-servidor" || !estaNoAppNativo()) return;
-
-    let ativo = true;
-    async function conferir() {
-      const atual = await buscarEnderecoAtualDoServidor();
-      if (ativo && atual && atual !== window.location.origin) {
-        voltarParaTelaInicialDoApp();
-      }
-    }
-
-    void conferir();
-    const intervalo = window.setInterval(
-      () => void conferir(),
-      INTERVALO_BUSCA_ENDERECO_MS
-    );
-    return () => {
-      ativo = false;
-      window.clearInterval(intervalo);
-    };
-  }, [estado]);
-
   // A tela "sem conexão" já explica tudo sozinha.
   if (estado === "ok" || caminho === "/motorista/offline") return null;
 
   const semInternet = estado === "sem-internet";
-  const noApp = estaNoAppNativo();
 
   return (
     <div
@@ -101,15 +68,6 @@ export function MotoristaConexaoAviso() {
             <RefreshCw className="size-3" />
             Tentar
           </button>
-          {!semInternet && noApp && (
-            <button
-              type="button"
-              onClick={voltarParaTelaInicialDoApp}
-              className="rounded-lg bg-amber-900 px-2 py-1 text-[11px] font-black text-white"
-            >
-              Reconectar
-            </button>
-          )}
         </div>
       </div>
     </div>
