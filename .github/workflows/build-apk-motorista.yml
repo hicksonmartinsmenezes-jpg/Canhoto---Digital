@@ -1,0 +1,74 @@
+name: Build APK do motorista
+
+# Build sob demanda do app nativo Android (motorista), disparado manualmente
+# (Issue #142): nenhum sandbox de agente consegue baixar o Android SDK
+# (dl.google.com/maven.google.com bloqueados pela política de rede), então o
+# build sai daqui, num runner do próprio GitHub com rede livre.
+#
+# Builda assembleDebug de propósito: o projeto ainda não tem nenhum
+# signingConfig de release configurado (ver android/app/build.gradle), então
+# um assembleRelease sairia sem assinatura e não instalaria em nenhum
+# aparelho. O APK debug é assinado automaticamente pela chave debug padrão do
+# Android e instala normalmente com "Instalar de fontes desconhecidas"
+# habilitado — mesmo caminho que já era usado localmente pelo Android Studio.
+#
+# Não builda o Next.js: capacitor.config.ts aponta pro launcher estático
+# (capacitor-www/index.html, que descobre a URL do túnel sozinho em tempo de
+# execução), não pro output do Next — só precisa de `npx cap sync android`.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch ou tag pra buildar"
+        required: false
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.ref || 'main' }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instala dependências
+        run: npm ci
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Aceita licenças do SDK e instala plataforma/build-tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Sincroniza o launcher estático (capacitor-www) pro projeto Android
+        run: npx cap sync android
+
+      - name: Builda o APK debug
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motorista-canhoto-digital-apk
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 90
