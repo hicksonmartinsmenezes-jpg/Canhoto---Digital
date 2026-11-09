@@ -39,10 +39,18 @@ import { CancelarEntregaBotao } from "@/components/canhotos/CancelarEntregaBotao
 
 export const dynamic = "force-dynamic";
 
+// CORREÇÃO (hora errada no canhoto): esta página é um Server Component —
+// `toLocaleString` roda no processo Node do servidor, não no navegador do
+// usuário. Sem `timeZone` explícito, o Intl usa o fuso do SERVIDOR (TZ não
+// configurado em docker-compose.yml/.env.example — default UTC em
+// container), não o fuso de Brasília, então hora/alteradoEm e
+// capturadoEm apareciam ~3h adiantados. Mesmo fuso já usado em
+// frontend/src/lib/data/entregas.ts (FUSO_LOJA = "America/Sao_Paulo").
 function formatarDataHora(valor: string): string {
   return new Date(valor).toLocaleString("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
   });
 }
 

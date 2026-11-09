@@ -89,11 +89,14 @@ function criarIcone(nome: string, selecionado: boolean, desatualizada: boolean) 
 function formatarAtualizacao(valor: string | null): string {
   if (!valor) return "Sem localização";
 
+  // Mesmo fuso fixo do resto do projeto (ver FUSO_LOJA em
+  // frontend/src/lib/data/entregas.ts).
   return new Date(valor).toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
   });
 }
 
