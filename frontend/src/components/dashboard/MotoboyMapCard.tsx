@@ -27,9 +27,13 @@ const MotoboyMap = dynamic(
 function formatarAtualizacao(valor: string | null): string {
   if (!valor) return "Sem localização";
 
+  // Mesmo fuso fixo do resto do projeto (ver FUSO_LOJA em
+  // frontend/src/lib/data/entregas.ts) — sem isso, a hora exibida segue o
+  // fuso do dispositivo de quem está olhando, não o da loja.
   return new Date(valor).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
   });
 }
 

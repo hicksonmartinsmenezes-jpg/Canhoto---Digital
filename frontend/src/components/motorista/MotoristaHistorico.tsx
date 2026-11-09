@@ -68,9 +68,12 @@ function dentroDoPeriodo(
 function hora(valor: string | null): string | null {
   if (!valor) return null;
 
+  // Mesmo fuso fixo do resto do projeto (ver FUSO_LOJA em
+  // frontend/src/lib/data/entregas.ts).
   return new Date(valor).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
   });
 }
 
