@@ -52,6 +52,11 @@ jobs:
           java-version: "21"
 
       - uses: android-actions/setup-android@v3
+        with:
+          # O default da action tenta instalar o pacote legado "tools", que
+          # não existe mais no repositório do SDK e falha o passo. Instalamos
+          # só o que realmente precisamos no passo seguinte.
+          packages: ""
 
       - name: Aceita licenças do SDK e instala plataforma/build-tools
         run: |
