@@ -175,7 +175,8 @@ export default async function EntregaDetalhePage({
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
               <dt className="font-semibold text-slate-500">NF-e</dt>
               <dd className="font-medium text-slate-800">
-                {entrega.numeroNfe || "—"}
+                {entrega.numeroNfe ||
+                  (entrega.clienteFinal ? "Cliente final (sem NF-e)" : "—")}
               </dd>
             </div>
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">

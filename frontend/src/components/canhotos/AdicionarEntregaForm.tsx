@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, FileText, Loader2, Paperclip, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { Field, inputClass } from "@/components/canhotos/form-fields";
+import {
+  ClienteFinalCheckbox,
+  Field,
+  inputClass,
+} from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 import {
   formatCep,
@@ -42,6 +46,7 @@ interface FormState {
   clienteNome: string;
   numeroPedido: string;
   numeroNfe: string;
+  clienteFinal: boolean;
   valorPagamento: string;
   formaPagamento: FormaPagamento | "";
   motoboyId: string;
@@ -93,6 +98,7 @@ export function AdicionarEntregaForm({
     clienteNome: "",
     numeroPedido: "",
     numeroNfe: "",
+    clienteFinal: false,
     valorPagamento: "",
     formaPagamento: "",
     motoboyId: "",
@@ -212,6 +218,8 @@ export function AdicionarEntregaForm({
         ? maskPhoneInput(dados.clienteTelefone)
         : f.clienteTelefone,
       numeroNfe: dados.numeroNfe ?? f.numeroNfe,
+      // Documento com número de NF-e: a venda tem nota, então desmarca.
+      clienteFinal: dados.numeroNfe ? false : f.clienteFinal,
       numeroPedido: dados.numeroPedido ?? f.numeroPedido,
       valorPagamento: dados.valor
         ? maskCurrencyInput(String(Math.round(dados.valor * 100)))
@@ -342,6 +350,7 @@ export function AdicionarEntregaForm({
             clienteNome: form.clienteNome,
             numeroPedido: form.numeroPedido,
             numeroNfe: form.numeroNfe,
+            clienteFinal: form.clienteFinal,
             valorPagamento: parseCurrencyInput(form.valorPagamento),
             formaPagamento: form.formaPagamento,
             motoboyId: form.motoboyId,
@@ -597,6 +606,8 @@ export function AdicionarEntregaForm({
               value={form.numeroNfe}
               onChange={(e) => set("numeroNfe", e.target.value)}
               maxLength={60}
+              disabled={form.clienteFinal}
+              placeholder={form.clienteFinal ? "Cliente final: sem NF-e" : undefined}
             />
           </Field>
           <Field label="Nº do pedido" optional>
@@ -608,6 +619,18 @@ export function AdicionarEntregaForm({
               maxLength={60}
             />
           </Field>
+          <div className="sm:col-span-2">
+            <ClienteFinalCheckbox
+              checked={form.clienteFinal}
+              onChange={(marcado) =>
+                setForm((f) => ({
+                  ...f,
+                  clienteFinal: marcado,
+                  numeroNfe: marcado ? "" : f.numeroNfe,
+                }))
+              }
+            />
+          </div>
           <div className="sm:col-span-2">
             <Field label="Observações" optional>
               <textarea

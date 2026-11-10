@@ -27,6 +27,8 @@ export interface AtualizarEntregaInput {
   cep: string;
   numeroPedido: string;
   numeroNfe: string;
+  /** Venda a consumidor final: sem NF-e (o número da nota é ignorado). */
+  clienteFinal: boolean;
   valorPagamento: number;
   formaPagamento: FormaPagamento | "";
   motoboyId: string;
@@ -200,7 +202,8 @@ export async function atualizarEntrega(
           longitude:
             coordenadas === null ? null : coordenadas.longitude.toFixed(6),
           numeroPedido: input.numeroPedido.trim() || null,
-          numeroNfe: input.numeroNfe.trim() || null,
+          numeroNfe: input.clienteFinal ? null : input.numeroNfe.trim() || null,
+          clienteFinal: input.clienteFinal,
           valorPagamento: input.valorPagamento.toFixed(2),
           formaPagamento,
           motoboyId: input.motoboyId || null,

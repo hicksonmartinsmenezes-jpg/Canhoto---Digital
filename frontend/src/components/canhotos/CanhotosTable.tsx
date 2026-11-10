@@ -76,7 +76,11 @@ export function CanhotosTable({
               </p>
               <p className="mt-0.5 truncate text-xs text-slate-500">
                 {c.motoboy ?? "Sem motorista"}
-                {c.numeroNfe ? ` · NF-e ${c.numeroNfe}` : ""}
+                {c.numeroNfe
+                  ? ` · NF-e ${c.numeroNfe}`
+                  : c.clienteFinal
+                    ? " · Cliente final"
+                    : ""}
               </p>
             </Link>
             <EntregaRowActions
@@ -137,7 +141,9 @@ export function CanhotosTable({
                   {c.cliente}
                 </td>
                 <td className="truncate px-3 py-3.5 align-middle tabular-nums">
-                  <Cell value={c.numeroNfe} />
+                  <Cell
+                    value={c.numeroNfe ?? (c.clienteFinal ? "Cliente final" : null)}
+                  />
                 </td>
                 <td className="whitespace-nowrap py-3.5 pl-3 pr-8 text-right align-middle tabular-nums">
                   {c.valor}

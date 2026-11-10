@@ -72,6 +72,7 @@ interface Entrega {
   endereco: string | null;
   numero_pedido: string | null;
   numero_nfe: string | null;
+  cliente_final: boolean;
   valor_pagamento: number;
   forma_pagamento: FormaPagamento;
   hora_saida: string | null;

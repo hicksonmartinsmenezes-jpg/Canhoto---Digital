@@ -298,6 +298,7 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
       .where(
         and(
           isNull(entregas.numeroNfe),
+          eq(entregas.clienteFinal, false),
           ne(entregas.status, "cancelado"),
           filtroSetor
         )
@@ -496,6 +497,8 @@ export interface EntregaListItem {
   cliente: string;
   numeroPedido: string | null;
   numeroNfe: string | null;
+  /** Venda a consumidor final (sem NF-e). */
+  clienteFinal: boolean;
   valor: string;
   formaPagamento: FormaPagamento;
   motoboy: string | null;
@@ -516,7 +519,8 @@ export interface FiltrosListaEntregas {
   motoboyId?: string;
   /**
    * Só entregas sem número de NF-e e não canceladas — mesmo critério do alerta
-   * "sem número de NF-e" do Dashboard (canceladas não precisam de nota).
+   * "sem número de NF-e" do Dashboard (canceladas e vendas a consumidor final
+   * não precisam de nota).
    */
   semNfe?: boolean;
 }
@@ -556,7 +560,11 @@ export async function getEntregas(
   if (filtros.dataFim) condicoes.push(lte(entregas.data, filtros.dataFim));
   if (filtros.motoboyId) condicoes.push(eq(entregas.motoboyId, filtros.motoboyId));
   if (filtros.semNfe) {
-    condicoes.push(isNull(entregas.numeroNfe), ne(entregas.status, "cancelado"));
+    condicoes.push(
+      isNull(entregas.numeroNfe),
+      eq(entregas.clienteFinal, false),
+      ne(entregas.status, "cancelado")
+    );
   }
 
   const busca = filtros.busca?.trim();
@@ -584,6 +592,7 @@ export async function getEntregas(
       clienteNome: entregas.clienteNome,
       numeroPedido: entregas.numeroPedido,
       numeroNfe: entregas.numeroNfe,
+      clienteFinal: entregas.clienteFinal,
       valorPagamento: entregas.valorPagamento,
       formaPagamento: entregas.formaPagamento,
       status: entregas.status,
@@ -603,6 +612,7 @@ export async function getEntregas(
     cliente: entrega.clienteNome,
     numeroPedido: entrega.numeroPedido,
     numeroNfe: entrega.numeroNfe,
+    clienteFinal: entrega.clienteFinal,
     valor: formatBRL(Number(entrega.valorPagamento)),
     formaPagamento: entrega.formaPagamento,
     motoboy: entrega.motoboyNome,
@@ -809,6 +819,8 @@ export interface EntregaDetalhe {
   longitude: number | null;
   numeroPedido: string;
   numeroNfe: string;
+  /** Venda a consumidor final (sem NF-e). */
+  clienteFinal: boolean;
   valorPagamento: string;
   formaPagamento: FormaPagamento;
   motoboyId: string;
@@ -840,6 +852,7 @@ export async function getEntregaById(
       longitude: entregas.longitude,
       numeroPedido: entregas.numeroPedido,
       numeroNfe: entregas.numeroNfe,
+      clienteFinal: entregas.clienteFinal,
       valorPagamento: entregas.valorPagamento,
       formaPagamento: entregas.formaPagamento,
       horaSaida: entregas.horaSaida,
@@ -870,6 +883,7 @@ export async function getEntregaById(
       entrega.longitude === null ? null : Number(entrega.longitude),
     numeroPedido: entrega.numeroPedido ?? "",
     numeroNfe: entrega.numeroNfe ?? "",
+    clienteFinal: entrega.clienteFinal,
     valorPagamento: String(entrega.valorPagamento),
     formaPagamento: entrega.formaPagamento,
     motoboyId: entrega.motoboyId ?? "",

@@ -326,6 +326,9 @@ export const entregas = pgTable(
     longitude: numeric("longitude", { precision: 9, scale: 6 }),
     numeroPedido: text("numero_pedido"),
     numeroNfe: text("numero_nfe"),
+    // Venda a consumidor final (migration 0019): não tem NF-e, então não entra
+    // no alerta "sem número de NF-e".
+    clienteFinal: boolean("cliente_final").notNull().default(false),
     valorPagamento: numeric("valor_pagamento", {
       precision: 12,
       scale: 2,

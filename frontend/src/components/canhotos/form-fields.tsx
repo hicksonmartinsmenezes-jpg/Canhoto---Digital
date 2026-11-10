@@ -32,3 +32,33 @@ export function Field({
     </label>
   );
 }
+
+/**
+ * Caixinha "Cliente final": venda para consumidor final não tem NF-e, então o
+ * número da nota fica desativado e a entrega não entra no alerta de "sem NF-e".
+ */
+export function ClienteFinalCheckbox({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-start gap-2 text-sm font-medium text-slate-600">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 size-4 rounded border-slate-300 text-amber-500 focus:ring-slate-400/30"
+      />
+      <span>
+        Cliente final (sem NF-e)
+        <span className="block text-xs font-normal text-slate-400">
+          Venda para consumidor final, sem nota fiscal. Não entra no alerta de
+          entregas sem NF-e.
+        </span>
+      </span>
+    </label>
+  );
+}

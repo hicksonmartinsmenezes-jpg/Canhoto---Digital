@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { Field, inputClass } from "@/components/canhotos/form-fields";
+import {
+  ClienteFinalCheckbox,
+  Field,
+  inputClass,
+} from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL, STATUS_LABEL } from "@/lib/status";
 import { maskCepInput, maskCurrencyInput, maskPhoneInput, parseCurrencyInput } from "@/lib/format";
 import { atualizarEntrega } from "@/app/canhotos/[id]/editar/actions";
@@ -27,6 +31,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
     clienteNome: entrega.clienteNome,
     numeroPedido: entrega.numeroPedido,
     numeroNfe: entrega.numeroNfe,
+    clienteFinal: entrega.clienteFinal,
     valorPagamento: maskCurrencyInput(
       String(Math.round(Number(entrega.valorPagamento) * 100))
     ),
@@ -65,6 +70,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
         clienteNome: form.clienteNome,
         numeroPedido: form.numeroPedido,
         numeroNfe: form.numeroNfe,
+        clienteFinal: form.clienteFinal,
         valorPagamento: valor,
         formaPagamento: form.formaPagamento,
         motoboyId: form.motoboyId,
@@ -122,8 +128,22 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   className={inputClass}
                   value={form.numeroNfe}
                   onChange={(e) => set("numeroNfe", e.target.value)}
+                  disabled={form.clienteFinal}
+                  placeholder={form.clienteFinal ? "Cliente final: sem NF-e" : undefined}
                 />
               </Field>
+              <div className="sm:col-span-2">
+                <ClienteFinalCheckbox
+                  checked={form.clienteFinal}
+                  onChange={(marcado) =>
+                    setForm((f) => ({
+                      ...f,
+                      clienteFinal: marcado,
+                      numeroNfe: marcado ? "" : f.numeroNfe,
+                    }))
+                  }
+                />
+              </div>
             </div>
           </div>
 
