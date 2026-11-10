@@ -171,6 +171,17 @@ async function paginaGuardadaValida(req) {
   return guardada;
 }
 
+// Com o servidor da loja fora do ar (atualização, queda), quem responde é o
+// proxy da frente (Caddy) com 502/503/504 — o fetch NÃO falha, só devolve esse
+// erro. Sem tratar isso, o app mostraria a página de erro em vez da cópia
+// guardada no aparelho. Por isso erro de servidor conta como "sem conexão".
+function falhaDeServidor(resposta) {
+  if (resposta.status >= 500) {
+    throw new Error("servidor indisponível (" + resposta.status + ")");
+  }
+  return resposta;
+}
+
 function esperar(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -208,7 +219,7 @@ async function navegacao(event) {
   // A própria tela "sem conexão": rede primeiro, senão a cópia da instalação.
   if (url.pathname === PAGINA_OFFLINE) {
     try {
-      return await fetch(req);
+      return falhaDeServidor(await fetch(req));
     } catch {
       const cache = await caches.open(CACHE_ESTATICO);
       const offline = await cache.match(PAGINA_OFFLINE);
@@ -218,7 +229,7 @@ async function navegacao(event) {
 
   const guardada = await paginaGuardadaValida(req);
 
-  const rede = fetch(req).then((resposta) => {
+  const rede = fetch(req).then(falhaDeServidor).then((resposta) => {
     if (podeGuardarPagina(resposta, url)) {
       event.waitUntil(guardarPagina(req.url, resposta.clone()).catch(() => {}));
     }
