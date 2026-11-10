@@ -16,10 +16,12 @@ import {
 } from "@/app/colaboradores/actions";
 import { PAPEL_LABEL } from "@/lib/colaboradores-labels";
 import type { ColaboradorListItem } from "@/lib/data/colaboradores";
+import type { UnidadeOption } from "@/lib/data/setores";
 import type { PapelColaborador } from "@/types/database";
 
 interface ColaboradoresManagerProps {
   colaboradores: ColaboradorListItem[];
+  unidades: UnidadeOption[];
 }
 
 type ModalState =
@@ -28,7 +30,10 @@ type ModalState =
   | { tipo: "excluir"; colaborador: ColaboradorListItem }
   | null;
 
-export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProps) {
+export function ColaboradoresManager({
+  colaboradores,
+  unidades,
+}: ColaboradoresManagerProps) {
   const router = useRouter();
   const [modal, setModal] = useState<ModalState>(null);
 
@@ -64,6 +69,7 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-400">
                   <th className="px-6 py-3.5 font-bold">Usuário</th>
+                  <th className="px-6 py-3.5 font-bold">Unidade</th>
                   <th className="px-6 py-3.5 font-bold">Papel</th>
                   <th className="px-6 py-3.5 font-bold">Status</th>
                   <th className="px-6 py-3.5 font-bold">Ações</th>
@@ -82,6 +88,9 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
                           Sem usuário definido
                         </p>
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-slate-500">
+                      {c.unidade ?? "—"}
                     </td>
                     <td className="px-6 py-4 text-slate-500">
                       {PAPEL_LABEL[c.papel]}
@@ -135,8 +144,10 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
           <FormModal
             key="novo"
             titulo="Novo colaborador"
+            unidades={unidades}
             dadosIniciais={{
               usuario: "",
+              unidadeId: "",
               // "Colaborador" (sem login) foi removido: todo cadastro feito
               // por aqui agora é Gestor de setor.
               papel: "gestor_setor",
@@ -153,8 +164,10 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
           <FormModal
             key="editar"
             titulo="Editar colaborador"
+            unidades={unidades}
             dadosIniciais={{
               usuario: modal.colaborador.usuario ?? "",
+              unidadeId: modal.colaborador.unidadeId ?? "",
               papel: modal.colaborador.papel,
               ativo: modal.colaborador.ativo,
             }}
@@ -180,6 +193,7 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
 
 function FormModal({
   titulo,
+  unidades,
   dadosIniciais,
   mostrarAtivo,
   onFechar,
@@ -187,6 +201,7 @@ function FormModal({
   onSucesso,
 }: {
   titulo: string;
+  unidades: UnidadeOption[];
   dadosIniciais: ColaboradorDados;
   mostrarAtivo: boolean;
   onFechar: () => void;
@@ -195,6 +210,7 @@ function FormModal({
 }) {
   const [usuario, setUsuario] = useState(dadosIniciais.usuario);
   const [ativo, setAtivo] = useState(dadosIniciais.ativo);
+  const [unidadeId, setUnidadeId] = useState(dadosIniciais.unidadeId);
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -216,6 +232,10 @@ function FormModal({
       setErro("Informe o usuário.");
       return;
     }
+    if (!unidadeId) {
+      setErro("Escolha a unidade.");
+      return;
+    }
     if (senhaObrigatoria && !senha.trim()) {
       setErro("Defina uma senha.");
       return;
@@ -228,6 +248,7 @@ function FormModal({
     startTransition(async () => {
       const resultado = await onSalvar({
         usuario,
+        unidadeId,
         papel,
         ativo,
         senha: ehGestorDeSetor ? senha : undefined,
@@ -267,6 +288,22 @@ function FormModal({
         onChange={(e) => setUsuario(e.target.value)}
         className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
       />
+
+      <label className="mb-1.5 mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">
+        Unidade
+      </label>
+      <select
+        value={unidadeId}
+        onChange={(e) => setUnidadeId(e.target.value)}
+        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
+      >
+        <option value="">Selecione</option>
+        {unidades.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.nome}
+          </option>
+        ))}
+      </select>
 
       {ehGestorDeSetor && (
         <>

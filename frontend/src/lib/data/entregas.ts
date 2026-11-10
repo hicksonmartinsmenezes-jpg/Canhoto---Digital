@@ -28,6 +28,7 @@ import {
   entregas,
   motoboyLocalizacoes,
   motoboys,
+  setores,
   usuariosAdmin,
 } from "@/lib/db/schema";
 import { formatBRL, formatCep, formatDateBR } from "@/lib/format";
@@ -636,6 +637,8 @@ export interface RelatorioFiltros {
   motoboyId?: string;
   /** Cliente, NF-e, pedido, telefone ou número da entrega (#123). */
   busca?: string;
+  /** Só entregas desta unidade (Matriz ou Distribuidora). */
+  unidadeId?: string;
   // undefined = Admin (tudo); null = sem acesso (vazio); uuid = só o setor.
   setorId?: string | null;
 }
@@ -653,6 +656,8 @@ interface RelatorioEntregaItem {
   valorNumerico: number;
   formaPagamento: FormaPagamento;
   motoboy: string | null;
+  /** Unidade de origem (Matriz, Distribuidora…) ou null. */
+  unidade: string | null;
   status: StatusEntrega;
   situacao: SituacaoEntrega;
   /** "HH:MM" ou null. */
@@ -767,9 +772,11 @@ export async function getRelatorioEntregas(
       horaSaida: entregas.horaSaida,
       clienteAssinouEm: entregas.clienteAssinouEm,
       motoboyNome: motoboys.nome,
+      unidadeNome: setores.nome,
     })
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
+    .leftJoin(setores, eq(entregas.setorId, setores.id))
     .where(
       and(
         filtros.dataInicio
@@ -786,6 +793,7 @@ export async function getRelatorioEntregas(
           : undefined,
         filtros.motoboyId ? eq(entregas.motoboyId, filtros.motoboyId) : undefined,
         filtros.setorId ? eq(entregas.setorId, filtros.setorId) : undefined,
+        filtros.unidadeId ? eq(entregas.setorId, filtros.unidadeId) : undefined,
         condicaoBusca(filtros.busca)
       )
     )
@@ -804,6 +812,7 @@ export async function getRelatorioEntregas(
     valorNumerico: Number(entrega.valorPagamento),
     formaPagamento: entrega.formaPagamento,
     motoboy: entrega.motoboyNome,
+    unidade: entrega.unidadeNome,
     status: entrega.status,
     situacao: situacaoEntrega(entrega.status, entrega.horaSaida),
     horaSaida: entrega.horaSaida ? entrega.horaSaida.slice(0, 5) : null,

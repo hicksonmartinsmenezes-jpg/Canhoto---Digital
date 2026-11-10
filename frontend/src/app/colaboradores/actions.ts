@@ -1,12 +1,13 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { eq, ilike } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
 import { getDb } from "@/lib/db";
 import { codigoErroPostgres, mensagemErroBanco } from "@/lib/db/errors";
-import { colaboradores, setores } from "@/lib/db/schema";
+import { colaboradores } from "@/lib/db/schema";
+import { obterUnidadeValidaId } from "@/lib/data/setores";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
 import type { PapelColaborador } from "@/types/database";
 
@@ -18,6 +19,9 @@ export interface ColaboradorActionResult {
 export interface ColaboradorDados {
   // Nome de usuário do login (o mesmo campo "Usuário" da tela de entrada).
   usuario: string;
+  // Unidade de origem das entregas que o colaborador cadastra (Matriz ou
+  // Distribuidora) — id do setor.
+  unidadeId: string;
   papel: PapelColaborador;
   ativo: boolean;
   // Só usado quando papel === "gestor_setor". Vazio/undefined ao editar =
@@ -26,7 +30,6 @@ export interface ColaboradorDados {
 }
 
 const REGEX_USUARIO = /^[a-z0-9._-]{3,30}$/;
-const NOME_SETOR_PADRAO = "Expedição";
 const ERRO_BANCO =
   "Banco de dados indisponível neste ambiente — confirme a DATABASE_URL.";
 const ERRO_USUARIO_DUPLICADO = "Esse usuário já está em uso.";
@@ -81,24 +84,11 @@ async function resolverSenhaHash(
   return { ok: true, hash: await bcrypt.hash(senhaLimpa, 12) };
 }
 
-async function obterSetorPadrao(): Promise<string | null> {
-  const db = getDb();
-  if (!db) return null;
-
-  const [existente] = await db
-    .select({ id: setores.id })
-    .from(setores)
-    .where(ilike(setores.nome, NOME_SETOR_PADRAO))
-    .limit(1);
-
-  if (existente) return existente.id;
-
-  const [criado] = await db
-    .insert(setores)
-    .values({ nome: NOME_SETOR_PADRAO })
-    .returning({ id: setores.id });
-
-  return criado?.id ?? null;
+async function validarUnidade(
+  unidadeId: string
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const id = await obterUnidadeValidaId(unidadeId);
+  return id ? { ok: true, id } : { ok: false, error: "Escolha a unidade." };
 }
 
 export async function criarColaborador(
@@ -130,18 +120,16 @@ export async function criarColaborador(
     return { ok: false, error: senhaResolvida.error };
   }
 
-  try {
-    const setorId = await obterSetorPadrao();
-    if (!setorId) {
-      return { ok: false, error: "Não foi possível localizar o setor padrão." };
-    }
+  const unidade = await validarUnidade(dados.unidadeId);
+  if (!unidade.ok) return { ok: false, error: unidade.error };
 
+  try {
     // "nome" é obrigatório no banco e aparece no histórico das entregas:
     // enquanto o formulário só pede o usuário, ele serve de nome também.
     await db.insert(colaboradores).values({
       nome: validado.usuario,
       usuario: validado.usuario,
-      setorId,
+      setorId: unidade.id,
       papel: dados.papel,
       senhaHash: senhaResolvida.hash,
     });
@@ -193,12 +181,10 @@ export async function atualizarColaborador(
     return { ok: false, error: senhaResolvida.error };
   }
 
-  try {
-    const setorId = await obterSetorPadrao();
-    if (!setorId) {
-      return { ok: false, error: "Não foi possível localizar o setor padrão." };
-    }
+  const unidade = await validarUnidade(dados.unidadeId);
+  if (!unidade.ok) return { ok: false, error: unidade.error };
 
+  try {
     const [atual] = await db
       .select({ nome: colaboradores.nome, usuario: colaboradores.usuario })
       .from(colaboradores)
@@ -219,7 +205,7 @@ export async function atualizarColaborador(
       .set({
         usuario: validado.usuario,
         ...(nomeAcompanhaUsuario ? { nome: validado.usuario } : {}),
-        setorId,
+        setorId: unidade.id,
         papel: dados.papel,
         ativo: dados.ativo,
         ...(senhaResolvida.hash !== null

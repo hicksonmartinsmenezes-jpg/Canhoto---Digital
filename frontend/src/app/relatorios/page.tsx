@@ -15,6 +15,7 @@ import { CampoPeriodo } from "@/components/ui/CampoPeriodo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getRelatorioEntregas } from "@/lib/data/entregas";
 import { getMotoboys } from "@/lib/data/motoboys";
+import { getUnidades } from "@/lib/data/setores";
 import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
 import {
   FORMA_PAGAMENTO_LABEL,
@@ -36,6 +37,7 @@ interface RelatoriosPageProps {
     status?: string;
     forma?: string;
     motorista?: string;
+    unidade?: string;
     q?: string;
   }>;
 }
@@ -71,10 +73,14 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
       ? params.motorista
       : undefined;
 
+  const unidadeId =
+    params.unidade && /^[0-9a-f-]{36}$/i.test(params.unidade)
+      ? params.unidade
+      : undefined;
   const busca = (params.q ?? "").trim().slice(0, 80);
 
   const sessao = await obterSessaoOperador();
-  const [{ itens, totais }, motoboys] = await Promise.all([
+  const [{ itens, totais }, motoboys, unidades] = await Promise.all([
     getRelatorioEntregas({
       dataInicio,
       dataFim,
@@ -82,16 +88,19 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
       formaPagamento,
       motoboyId,
       busca,
+      unidadeId,
       setorId: setorIdParaFiltro(sessao),
     }),
     getMotoboys(),
+    getUnidades(),
   ]);
 
-  const temFiltroExtra = Boolean(status || formaPagamento || motoboyId || busca);
+  const temFiltroExtra = Boolean(status || formaPagamento || motoboyId || unidadeId || busca);
   const queryExport = new URLSearchParams({ inicio: dataInicio, fim: dataFim });
   if (status) queryExport.set("status", status);
   if (formaPagamento) queryExport.set("forma", formaPagamento);
   if (motoboyId) queryExport.set("motorista", motoboyId);
+  if (unidadeId) queryExport.set("unidade", unidadeId);
   if (busca) queryExport.set("q", busca);
 
   // Link de cada entrega: abre os dados completos e volta para estes filtros.
@@ -161,6 +170,23 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Unidade
+            </span>
+            <select
+              name="unidade"
+              defaultValue={unidadeId ?? ""}
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 outline-none transition-colors focus:border-slate-400"
+            >
+              <option value="">Todas</option>
+              {unidades.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
               Situação
             </span>
             <select
@@ -221,7 +247,7 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
             <Link
               href={`/relatorios?inicio=${dataInicio}&fim=${dataFim}`}
               prefetch={false}
-              aria-label="Limpar busca e filtros de situação, pagamento e motorista"
+              aria-label="Limpar busca e filtros de unidade, situação, pagamento e motorista"
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 transition-[transform,color,border-color] duration-150 hover:border-red-500/40 hover:text-red-600 active:scale-95"
             >
               <X className="size-4" />
@@ -257,11 +283,12 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] table-fixed border-collapse text-left">
+            <table className="w-full min-w-[1130px] table-fixed border-collapse text-left">
               <colgroup>
                 <col className="w-[88px]" />
                 <col className="w-[116px]" />
                 <col />
+                <col className="w-[132px]" />
                 <col className="w-[132px]" />
                 <col className="w-[132px]" />
                 <col className="w-[156px]" />
@@ -274,6 +301,7 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
                   <th className="px-3 py-3.5 font-bold">Data</th>
                   <th className="px-3 py-3.5 font-bold">Cliente</th>
                   <th className="py-3.5 pl-3 pr-8 text-right font-bold">Valor</th>
+                  <th className="px-3 py-3.5 font-bold">Unidade</th>
                   <th className="px-3 py-3.5 font-bold">Pagamento</th>
                   <th className="px-3 py-3.5 font-bold">Motorista</th>
                   <th className="px-3 py-3.5 font-bold">Situação</th>
@@ -303,6 +331,11 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
                     </td>
                     <td className="whitespace-nowrap py-3.5 pl-3 pr-8 text-right align-middle tabular-nums">
                       {item.valor}
+                    </td>
+                    <td className="truncate px-3 py-3.5 align-middle">
+                      <span className={item.unidade ? "" : "text-slate-300"}>
+                        {item.unidade ?? "—"}
+                      </span>
                     </td>
                     <td className="truncate px-3 py-3.5 align-middle">
                       {FORMA_PAGAMENTO_LABEL[item.formaPagamento]}

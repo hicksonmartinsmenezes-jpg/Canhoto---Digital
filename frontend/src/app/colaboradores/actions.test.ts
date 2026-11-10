@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/admin-auth", () => ({ exigirAdminAutenticado: vi.fn() }));
 vi.mock("@/lib/db", () => ({ getDb: vi.fn() }));
+vi.mock("@/lib/data/setores", () => ({
+  obterUnidadeValidaId: vi.fn(),
+}));
 vi.mock("@/lib/db/errors", () => ({
   codigoErroPostgres: vi.fn((erro: { code?: string }) => erro.code),
   mensagemErroBanco: vi.fn(() => "Erro de banco."),
@@ -14,7 +17,8 @@ vi.mock("@/lib/rate-limit", () => ({
 
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
 import { getDb } from "@/lib/db";
-import { colaboradores, setores } from "@/lib/db/schema";
+import { colaboradores } from "@/lib/db/schema";
+import { obterUnidadeValidaId } from "@/lib/data/setores";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { atualizarColaborador, criarColaborador } from "./actions";
 
@@ -39,8 +43,8 @@ function configurarDb({
   const db = {
     select: vi.fn(() => ({
       from: (tabela: unknown) => {
-        const resultado =
-          tabela === setores ? [{ id: "setor-1" }] : [atual];
+        const resultado = [atual];
+        void tabela;
         const consulta = {
           where: () => consulta,
           limit: async () => resultado,
@@ -60,6 +64,7 @@ function configurarDb({
 
 const dadosBase = {
   usuario: "ana.silva",
+  unidadeId: "setor-1",
   papel: "gestor_setor" as const,
   ativo: true,
   senha: "1234",
@@ -69,6 +74,9 @@ describe("cadastro de colaborador por usuário e senha", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(exigirAdminAutenticado).mockResolvedValue(true as never);
+    vi.mocked(obterUnidadeValidaId).mockImplementation(async (id) =>
+      id === "setor-1" ? "setor-1" : null
+    );
     vi.mocked(checarRateLimit).mockResolvedValue({ permitido: true, restante: 9 });
   });
 
@@ -117,6 +125,19 @@ describe("cadastro de colaborador por usuário e senha", () => {
       ok: false,
       error: "Esse usuário já está em uso.",
     });
+  });
+
+  it("exige escolher uma unidade válida (Matriz ou Distribuidora)", async () => {
+    const { insertValues } = configurarDb();
+
+    expect(await criarColaborador({ ...dadosBase, unidadeId: "" })).toEqual({
+      ok: false,
+      error: "Escolha a unidade.",
+    });
+    expect(
+      await criarColaborador({ ...dadosBase, unidadeId: "setor-qualquer" })
+    ).toEqual({ ok: false, error: "Escolha a unidade." });
+    expect(insertValues).not.toHaveBeenCalled();
   });
 
   it("exige sessão de administrador", async () => {

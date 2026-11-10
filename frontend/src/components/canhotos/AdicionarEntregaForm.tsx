@@ -38,6 +38,7 @@ import {
   formatoCompactado,
 } from "@/lib/arquivo-compactado";
 import type { MotoboyOption } from "@/lib/data/motoboys";
+import type { UnidadeOption } from "@/lib/data/setores";
 import type { ClienteRecente } from "@/lib/data/entregas";
 import type { FormaPagamento } from "@/types/database";
 
@@ -50,6 +51,7 @@ interface FormState {
   valorPagamento: string;
   formaPagamento: FormaPagamento | "";
   motoboyId: string;
+  unidadeId: string;
   clienteTelefone: string;
   endereco: string;
   cep: string;
@@ -73,10 +75,13 @@ export function AdicionarEntregaForm({
   motoboys,
   clientes,
   hoje,
+  unidades,
 }: {
   motoboys: MotoboyOption[];
   clientes: ClienteRecente[];
   hoje: string;
+  /** Só preenchido para o Admin escolher a unidade; vazio para colaborador. */
+  unidades: UnidadeOption[];
 }) {
   const router = useRouter();
   const listaClientesId = useId();
@@ -102,6 +107,7 @@ export function AdicionarEntregaForm({
     valorPagamento: "",
     formaPagamento: "",
     motoboyId: "",
+    unidadeId: "",
     clienteTelefone: "",
     endereco: "",
     cep: "",
@@ -325,6 +331,7 @@ export function AdicionarEntregaForm({
     const valor = parseCurrencyInput(form.valorPagamento);
     if (!valor || valor <= 0) return "Informe um valor de pagamento válido.";
     if (!form.formaPagamento) return "Selecione a forma de pagamento.";
+    if (unidades.length > 0 && !form.unidadeId) return "Escolha a unidade.";
     const cep = form.cep.replace(/\D/g, "");
     if (cep && cep.length !== 8) return "Informe um CEP válido com 8 dígitos.";
     return null;
@@ -354,6 +361,7 @@ export function AdicionarEntregaForm({
             valorPagamento: parseCurrencyInput(form.valorPagamento),
             formaPagamento: form.formaPagamento,
             motoboyId: form.motoboyId,
+            unidadeId: form.unidadeId,
             clienteTelefone: form.clienteTelefone,
             endereco: form.endereco,
             cep: form.cep,
@@ -505,6 +513,22 @@ export function AdicionarEntregaForm({
               ))}
             </select>
           </Field>
+          {unidades.length > 0 && (
+            <Field label="Unidade">
+              <select
+                className={inputClass}
+                value={form.unidadeId}
+                onChange={(e) => set("unidadeId", e.target.value)}
+              >
+                <option value="">Selecione</option>
+                {unidades.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Motorista" optional>
             <select
               className={inputClass}
