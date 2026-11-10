@@ -43,7 +43,7 @@ export default async function DashboardPage() {
         title="Dashboard"
         beta
         alertas={alertas}
-        mostrarTreinamento={sessao?.tipo === "admin"}
+       
       />
 
       <div className="grid grid-cols-12 gap-3 sm:gap-5 [&>*]:min-w-0">

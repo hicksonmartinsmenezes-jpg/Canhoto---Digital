@@ -14,7 +14,7 @@ import {
   concluirTreinamento,
   iniciarTreinamento,
 } from "@/app/treinamentos/actions";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
+import { obterDonoTreinamento } from "@/lib/treinamento-dono";
 import { getTreinamentoProgresso } from "@/lib/data/treinamentos";
 import {
   PERFIL_TREINAMENTO_LABEL,
@@ -42,15 +42,15 @@ function statusClasses(status: StatusTreinamento): string {
 export default async function TreinamentoDetalhePage({
   params,
 }: TreinamentoDetalhePageProps) {
-  const admin = await obterAdminAutenticado();
-  if (!admin) redirect("/login");
+  const dono = await obterDonoTreinamento();
+  if (!dono) redirect("/login");
 
   const { slug } = await params;
   const treinamento = obterTreinamentoPorSlug(slug);
   if (!treinamento) notFound();
 
   const progresso = await getTreinamentoProgresso(
-    admin.usuarioAdminId,
+    dono,
     treinamento.slug
   );
   const status: StatusTreinamento = progresso?.status ?? "nao_iniciado";

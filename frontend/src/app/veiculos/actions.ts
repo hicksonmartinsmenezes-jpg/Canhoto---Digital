@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
+import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { getDb } from "@/lib/db";
 import { codigoErroPostgres, mensagemErroBanco } from "@/lib/db/errors";
 import { veiculoGastos, veiculos } from "@/lib/db/schema";
@@ -75,9 +75,9 @@ function validarVeiculo(input: VeiculoInput): string | null {
 export async function criarVeiculo(
   input: VeiculoInput
 ): Promise<VeiculoActionResult> {
-  const admin = await obterAdminAutenticado();
-  if (!admin) {
-    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  const operador = await obterOperadorAutenticado();
+  if (!operador) {
+    return { ok: false, error: "Sessão inválida ou expirada." };
   }
 
   const limite = await checarRateLimit("criarVeiculo");
@@ -125,9 +125,9 @@ export async function atualizarVeiculo(
   id: string,
   input: VeiculoInput
 ): Promise<VeiculoActionResult> {
-  const admin = await obterAdminAutenticado();
-  if (!admin) {
-    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  const operador = await obterOperadorAutenticado();
+  if (!operador) {
+    return { ok: false, error: "Sessão inválida ou expirada." };
   }
 
   const limite = await checarRateLimit("atualizarVeiculo");
@@ -183,9 +183,9 @@ export async function atualizarVeiculo(
 export async function registrarGastoVeiculo(
   input: GastoVeiculoInput
 ): Promise<VeiculoActionResult> {
-  const admin = await obterAdminAutenticado();
-  if (!admin) {
-    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  const operador = await obterOperadorAutenticado();
+  if (!operador) {
+    return { ok: false, error: "Sessão inválida ou expirada." };
   }
 
   const limite = await checarRateLimit("registrarGastoVeiculo");
@@ -237,7 +237,8 @@ export async function registrarGastoVeiculo(
       valor: input.valor.toFixed(2),
       quilometragem: input.quilometragem,
       observacao: input.observacao.trim() || null,
-      cadastradoPorAdmin: admin.usuarioAdminId,
+      cadastradoPorAdmin:
+        operador.tipo === "admin" ? operador.usuarioAdminId : null,
     });
   } catch (error) {
     return {
@@ -253,9 +254,9 @@ export async function registrarGastoVeiculo(
 export async function excluirGastoVeiculo(
   id: string
 ): Promise<VeiculoActionResult> {
-  const admin = await obterAdminAutenticado();
-  if (!admin) {
-    return { ok: false, error: "Sessão administrativa inválida ou expirada." };
+  const operador = await obterOperadorAutenticado();
+  if (!operador) {
+    return { ok: false, error: "Sessão inválida ou expirada." };
   }
 
   const limite = await checarRateLimit(

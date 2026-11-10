@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { iniciarTreinamento } from "@/app/treinamentos/actions";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
+import { obterDonoTreinamento } from "@/lib/treinamento-dono";
 import { getTreinamentosProgresso } from "@/lib/data/treinamentos";
 import {
   PERFIL_TREINAMENTO_LABEL,
@@ -37,15 +37,15 @@ function statusClasses(status: StatusTreinamento): string {
 export default async function TreinamentosPage({
   searchParams,
 }: TreinamentosPageProps) {
-  const admin = await obterAdminAutenticado();
-  if (!admin) redirect("/login");
+  const dono = await obterDonoTreinamento();
+  if (!dono) redirect("/login");
 
   const params = await searchParams;
   const perfilAtivo = isPerfilTreinamento(params.perfil)
     ? params.perfil
     : undefined;
 
-  const progressos = await getTreinamentosProgresso(admin.usuarioAdminId);
+  const progressos = await getTreinamentosProgresso(dono);
   const progressoPorSlug = new Map(
     progressos.map((progresso) => [progresso.slug, progresso.status])
   );

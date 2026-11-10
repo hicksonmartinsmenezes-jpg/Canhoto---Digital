@@ -72,17 +72,12 @@ const NAV_ITEMS = [
 // via `group-hover:`, já que `peer-hover:` só funciona entre irmãos.
 export function Sidebar({ papel }: { papel: PapelPortal }) {
   const pathname = usePathname();
-  // gestor_setor não abre Cadastros, Veículos nem Treinamentos (telas só do Admin — o
+  // gestor_setor só não abre Cadastros (Colaboradores, Motoristas) — o
   // bloqueio de verdade está nas páginas; aqui é só para não mostrar link
-  // que levaria a um redirecionamento).
+  // que levaria a um redirecionamento.
   const itensMenu =
     papel === "gestor_setor"
-      ? NAV_ITEMS.filter(
-          (item) =>
-            item.type !== "group" &&
-            item.href !== "/veiculos" &&
-            item.href !== "/treinamentos"
-        )
+      ? NAV_ITEMS.filter((item) => item.type !== "group")
       : NAV_ITEMS;
   const cadastrosItem = NAV_ITEMS.find((item) => item.type === "group")!;
   const cadastrosAtivo = cadastrosItem.children.some((child) =>

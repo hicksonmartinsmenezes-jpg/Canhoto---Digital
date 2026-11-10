@@ -104,14 +104,6 @@ export async function atualizarEntrega(
     return { ok: false, error: "Entrega não encontrada." };
   }
 
-  // gestor_setor só edita entregas do próprio setor (o id vem do cliente).
-  if (
-    operador.tipo === "gestor_setor" &&
-    (!operador.setorId || dadosAtuais.setorId !== operador.setorId)
-  ) {
-    return { ok: false, error: "Entrega não encontrada." };
-  }
-
   // Entrega concluída mexe com o caixa: só o Admin corrige, e tudo que ele
   // muda fica no histórico (ver descreverAlteracoes abaixo).
   if (operador.tipo === "gestor_setor" && dadosAtuais.status === "entregue") {

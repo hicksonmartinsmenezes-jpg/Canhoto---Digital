@@ -275,9 +275,13 @@ export const treinamentoProgresso = pgTable(
   "treinamento_progresso",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    usuarioAdminId: uuid("usuario_admin_id")
-      .notNull()
-      .references(() => usuariosAdmin.id, { onDelete: "cascade" }),
+    usuarioAdminId: uuid("usuario_admin_id").references(
+      () => usuariosAdmin.id,
+      { onDelete: "cascade" }
+    ),
+    colaboradorId: uuid("colaborador_id").references(() => colaboradores.id, {
+      onDelete: "cascade",
+    }),
     treinamentoSlug: text("treinamento_slug").notNull(),
     status: statusTreinamentoEnum("status")
       .notNull()
@@ -304,7 +308,15 @@ export const treinamentoProgresso = pgTable(
       table.usuarioAdminId,
       table.treinamentoSlug
     ),
+    uniqueIndex("treinamento_progresso_colaborador_slug_key")
+      .on(table.colaboradorId, table.treinamentoSlug)
+      .where(sql`${table.colaboradorId} is not null`),
     index("idx_treinamento_progresso_usuario").on(table.usuarioAdminId),
+    index("idx_treinamento_progresso_colaborador").on(table.colaboradorId),
+    check(
+      "ck_treinamento_progresso_dono",
+      sql`(${table.usuarioAdminId} is null) <> (${table.colaboradorId} is null)`
+    ),
     index("idx_treinamento_progresso_status").on(table.status),
     check(
       "ck_treinamento_progresso_slug",

@@ -257,7 +257,7 @@ describe("cancelamento de entrega com motivo", () => {
     expect(tx.update).not.toHaveBeenCalled();
   });
 
-  it("gestor de setor não cancela entrega de outro setor", async () => {
+  it("gestor de setor cancela entrega de outro setor, como o admin", async () => {
     operadorMock.mockResolvedValue({
       tipo: "gestor_setor",
       colaboradorId: "colab-1",
@@ -269,9 +269,8 @@ describe("cancelamento de entrega com motivo", () => {
       motoboyId: null,
     });
     await expect(cancelarEntrega("entrega-1", "motivo qualquer")).resolves.toEqual({
-      ok: false,
-      error: "Entrega não encontrada.",
+      ok: true,
     });
-    expect(tx.update).not.toHaveBeenCalled();
+    expect(tx.update).toHaveBeenCalled();
   });
 });
