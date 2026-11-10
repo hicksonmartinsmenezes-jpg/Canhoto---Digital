@@ -34,6 +34,7 @@ export const formaPagamentoEnum = pgEnum("forma_pagamento", [
   "debito",
   "cartao_1x",
   "prazo",
+  "boleto",
 ]);
 
 export const tipoAnexoEntregaEnum = pgEnum("tipo_anexo_entrega", [

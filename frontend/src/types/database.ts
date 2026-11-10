@@ -9,7 +9,8 @@ export type FormaPagamento =
   | "pix"
   | "debito"
   | "cartao_1x"
-  | "prazo";
+  | "prazo"
+  | "boleto";
 type TipoAnexoEntrega =
   | "xml_nfe"
   | "xml_cte"

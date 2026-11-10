@@ -64,6 +64,13 @@ describe("documento fiscal", () => {
     });
   });
 
+  it("identifica pagamento por boleto (código fiscal 15) separado de prazo", () => {
+    const dados = lerDadosNfe(
+      "<infNFe><dest><xNome>Ana</xNome></dest><pag><detPag><tPag>15</tPag></detPag></pag></infNFe>"
+    );
+    expect(dados).toMatchObject({ formaPagamento: "boleto" });
+  });
+
   it("não expande entidades externas", () => {
     const dados = lerDadosNfe(
       '<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]><infNFe><dest><xNome>&e;</xNome></dest></infNFe>'

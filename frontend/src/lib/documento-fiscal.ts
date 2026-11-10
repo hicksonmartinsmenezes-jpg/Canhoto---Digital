@@ -84,7 +84,7 @@ const FORMA_POR_CODIGO: Record<string, FormaPagamento> = {
   "03": "cartao_1x",
   "04": "debito",
   "14": "prazo", // duplicata mercantil
-  "15": "prazo", // boleto
+  "15": "boleto",
   "17": "pix",
 };
 

@@ -11,7 +11,7 @@ import {
   STATUS_LABEL,
 } from "./status";
 
-// Testes de "contrato": o schema v2 tem exatamente 3 status e 5 formas de
+// Testes de "contrato": o schema v2 tem exatamente 3 status e 6 formas de
 // pagamento (ver claude/modelo-de-dados-site.md). Cada um dos 3 mapas de
 // status (label, hex, classe de badge) precisa cobrir o mesmo conjunto de
 // chaves — o histórico do projeto já teve mais de um caso de campo
@@ -20,7 +20,14 @@ import {
 // especificamente pra pegar esse tipo de regressão cedo, no CI.
 describe("status", () => {
   const statusEsperados = ["pendente", "entregue", "cancelado"].sort();
-  const formasEsperadas = ["dinheiro", "pix", "debito", "cartao_1x", "prazo"].sort();
+  const formasEsperadas = [
+    "dinheiro",
+    "pix",
+    "debito",
+    "cartao_1x",
+    "prazo",
+    "boleto",
+  ].sort();
 
   it("STATUS_LABEL cobre os 3 status do schema v2", () => {
     expect(Object.keys(STATUS_LABEL).sort()).toEqual(statusEsperados);
@@ -34,7 +41,7 @@ describe("status", () => {
     expect(Object.keys(STATUS_BADGE_CLASSES).sort()).toEqual(statusEsperados);
   });
 
-  it("FORMA_PAGAMENTO_LABEL cobre as 5 formas de pagamento do schema v2", () => {
+  it("FORMA_PAGAMENTO_LABEL cobre as 6 formas de pagamento do schema v2", () => {
     expect(Object.keys(FORMA_PAGAMENTO_LABEL).sort()).toEqual(formasEsperadas);
   });
 

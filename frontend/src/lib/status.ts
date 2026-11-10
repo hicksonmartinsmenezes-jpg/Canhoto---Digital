@@ -28,6 +28,7 @@ export const FORMA_PAGAMENTO_LABEL: Record<FormaPagamento, string> = {
   debito: "Débito",
   cartao_1x: "Cartão 1x",
   prazo: "Prazo",
+  boleto: "Boleto",
 };
 
 // Type guard pro filtro "Filtrar situação" da tela de Entregas (Issue #7):
