@@ -69,13 +69,6 @@ export async function proxy(request: NextRequest) {
         )
       : null;
 
-  if (pathname === "/login") {
-    if (usuarioAdminId) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    return NextResponse.next();
-  }
-
   // Colaborador com papel "gestor_setor" — acesso quase igual ao Admin nas
   // mesmas rotas, só que os dados que ele vê ficam escopados ao setor dele
   // (isso é feito em cada página/consulta via @/lib/sessao-operador, não
@@ -91,8 +84,11 @@ export async function proxy(request: NextRequest) {
         )
       : null;
 
-  if (pathname === "/colaborador/login") {
-    if (sessaoColaborador) {
+  // Login único (Usuário e Senha): quem já tem sessão, de admin ou de
+  // colaborador, não precisa ver a tela de novo. A rota antiga de colaborador
+  // só redireciona para /login.
+  if (pathname === "/login" || pathname === "/colaborador/login") {
+    if (usuarioAdminId || sessaoColaborador) {
       return NextResponse.redirect(new URL("/", request.url));
     }
     return NextResponse.next();

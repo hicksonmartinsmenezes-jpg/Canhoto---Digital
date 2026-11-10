@@ -76,9 +76,12 @@ export const colaboradores = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     nome: text("nome").notNull(),
     email: text("email").unique(),
-    // Identificador de login em /colaborador/login (papel gestor_setor) —
-    // ver migration 0012_login_colaborador_por_celular.sql.
+    // Legado: antes era o identificador de login do colaborador (migration
+    // 0012). Hoje o login é por "usuario"; o celular não é mais coletado.
     celular: text("celular").unique(),
+    // Nome de usuário usado no login (migration 0020): minúsculas, sem
+    // espaços, único. Null em colaboradores antigos, que ainda não têm acesso.
+    usuario: text("usuario"),
     setorId: uuid("setor_id").references(() => setores.id, {
       onDelete: "set null",
     }),
@@ -92,7 +95,12 @@ export const colaboradores = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("idx_colaboradores_setor").on(table.setorId)]
+  (table) => [
+    index("idx_colaboradores_setor").on(table.setorId),
+    uniqueIndex("colaboradores_usuario_key")
+      .on(table.usuario)
+      .where(sql`${table.usuario} is not null`),
+  ]
 );
 
 export const usuariosAdmin = pgTable(

@@ -15,7 +15,6 @@ import {
   type ColaboradorDados,
 } from "@/app/colaboradores/actions";
 import { PAPEL_LABEL } from "@/lib/colaboradores-labels";
-import { maskPhoneInput } from "@/lib/format";
 import type { ColaboradorListItem } from "@/lib/data/colaboradores";
 import type { PapelColaborador } from "@/types/database";
 
@@ -61,13 +60,10 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left">
+            <table className="w-full min-w-[560px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-400">
-                  <th className="px-6 py-3.5 font-bold">Nome</th>
-                  <th className="px-6 py-3.5 font-bold">E-mail</th>
-                  <th className="px-6 py-3.5 font-bold">Celular</th>
-                  <th className="px-6 py-3.5 font-bold">Cargo</th>
+                  <th className="px-6 py-3.5 font-bold">Usuário</th>
                   <th className="px-6 py-3.5 font-bold">Papel</th>
                   <th className="px-6 py-3.5 font-bold">Status</th>
                   <th className="px-6 py-3.5 font-bold">Ações</th>
@@ -79,25 +75,21 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
                     key={c.id}
                     className="border-b border-slate-100 text-sm transition-colors last:border-b-0 hover:bg-slate-50/70"
                   >
-                    <td className="px-6 py-4 font-semibold">{c.nome}</td>
-                    <td className="px-6 py-4 text-slate-500">
-                      {c.email ?? <span className="text-slate-300">—</span>}
-                    </td>
-                    <td className="px-6 py-4 text-slate-500">
-                      {c.celular ? (
-                        maskPhoneInput(c.celular)
-                      ) : (
-                        <span className="text-slate-300">—</span>
+                    <td className="px-6 py-4 font-semibold">
+                      {c.usuario ?? c.nome}
+                      {c.usuario === null && (
+                        <p className="mt-0.5 text-xs font-normal text-slate-400">
+                          Sem usuário definido
+                        </p>
                       )}
-                    </td>
-                    <td className="px-6 py-4 text-slate-500">
-                      {c.cargo ?? <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-6 py-4 text-slate-500">
                       {PAPEL_LABEL[c.papel]}
                       {c.papel === "gestor_setor" && (
                         <p className="mt-0.5 text-xs text-slate-400">
-                          {c.temSenha ? "Login ativo" : "Sem senha definida"}
+                          {c.usuario !== null && c.temSenha
+                            ? "Login ativo"
+                            : "Sem acesso ao login"}
                         </p>
                       )}
                     </td>
@@ -144,9 +136,7 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
             key="novo"
             titulo="Novo colaborador"
             dadosIniciais={{
-              nome: "",
-              celular: "",
-              cargo: "",
+              usuario: "",
               // "Colaborador" (sem login) foi removido: todo cadastro feito
               // por aqui agora é Gestor de setor.
               papel: "gestor_setor",
@@ -164,11 +154,7 @@ export function ColaboradoresManager({ colaboradores }: ColaboradoresManagerProp
             key="editar"
             titulo="Editar colaborador"
             dadosIniciais={{
-              nome: modal.colaborador.nome,
-              celular: modal.colaborador.celular
-                ? maskPhoneInput(modal.colaborador.celular)
-                : "",
-              cargo: modal.colaborador.cargo ?? "",
+              usuario: modal.colaborador.usuario ?? "",
               papel: modal.colaborador.papel,
               ativo: modal.colaborador.ativo,
             }}
@@ -207,11 +193,7 @@ function FormModal({
   onSalvar: (dados: ColaboradorDados) => Promise<ColaboradorActionResult>;
   onSucesso: () => void;
 }) {
-  const [nome, setNome] = useState(dadosIniciais.nome);
-  const [celular, setCelular] = useState(dadosIniciais.celular);
-  // Campo "Cargo" não é mais editável neste formulário — mantém o valor
-  // original (vazio em "novo", o que já existir em edição) sem alterar.
-  const [cargo] = useState(dadosIniciais.cargo);
+  const [usuario, setUsuario] = useState(dadosIniciais.usuario);
   const [ativo, setAtivo] = useState(dadosIniciais.ativo);
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -230,17 +212,12 @@ function FormModal({
   const senhaObrigatoria = ehGestorDeSetor && !mostrarAtivo;
 
   function salvar() {
-    if (!nome.trim()) {
-      setErro("Informe o nome do colaborador.");
-      return;
-    }
-    const celularDigitos = celular.replace(/\D/g, "");
-    if (celularDigitos.length !== 10 && celularDigitos.length !== 11) {
-      setErro("Informe um celular válido, com DDD.");
+    if (!usuario.trim()) {
+      setErro("Informe o usuário.");
       return;
     }
     if (senhaObrigatoria && !senha.trim()) {
-      setErro("Defina uma senha de acesso pro Gestor de setor.");
+      setErro("Defina uma senha.");
       return;
     }
     if (senha.trim() && senha.trim().length < 4) {
@@ -250,9 +227,7 @@ function FormModal({
     setErro(null);
     startTransition(async () => {
       const resultado = await onSalvar({
-        nome,
-        celular,
-        cargo,
+        usuario,
         papel,
         ativo,
         senha: ehGestorDeSetor ? senha : undefined,
@@ -280,31 +255,23 @@ function FormModal({
       </div>
 
       <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-        Nome
+        Usuário
       </label>
       <input
         type="text"
         autoFocus
-        value={nome}
-        onChange={(e) => setNome(e.target.value)}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
-      />
-
-      <label className="mb-1.5 mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">
-        Celular
-      </label>
-      <input
-        type="tel"
-        value={celular}
-        onChange={(e) => setCelular(maskPhoneInput(e.target.value))}
-        placeholder="(79) 99999-9999"
+        autoComplete="off"
+        autoCapitalize="none"
+        spellCheck={false}
+        value={usuario}
+        onChange={(e) => setUsuario(e.target.value)}
         className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
       />
 
       {ehGestorDeSetor && (
         <>
           <label className="mb-1.5 mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">
-            Senha de acesso
+            Senha
             {mostrarAtivo && (
               <span className="ml-1 font-medium normal-case text-slate-400">
                 (deixe em branco pra manter a senha atual)
@@ -316,7 +283,6 @@ function FormModal({
             autoComplete="new-password"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
-            placeholder="Mínimo 4 caracteres"
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
           />
         </>

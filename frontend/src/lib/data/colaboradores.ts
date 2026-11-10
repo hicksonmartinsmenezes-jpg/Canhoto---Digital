@@ -8,13 +8,11 @@ import { colaboradores } from "@/lib/db/schema";
 export interface ColaboradorListItem {
   id: string;
   nome: string;
-  email: string | null;
-  celular: string | null;
-  cargo: string | null;
+  usuario: string | null;
   papel: PapelColaborador;
   ativo: boolean;
-  // Só relevante pra papel "gestor_setor" — se já tem senha definida (login
-  // liberado em /colaborador/login) ou ainda não.
+  // Só relevante pra papel "gestor_setor" — se já tem usuário e senha
+  // definidos (login liberado em /login) ou ainda não.
   temSenha: boolean;
 }
 
@@ -26,9 +24,7 @@ export async function getColaboradoresList(): Promise<ColaboradorListItem[]> {
     .select({
       id: colaboradores.id,
       nome: colaboradores.nome,
-      email: colaboradores.email,
-      celular: colaboradores.celular,
-      cargo: colaboradores.cargo,
+      usuario: colaboradores.usuario,
       papel: colaboradores.papel,
       ativo: colaboradores.ativo,
       senhaHash: colaboradores.senhaHash,
