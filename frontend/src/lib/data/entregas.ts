@@ -508,6 +508,26 @@ export interface EntregaListItem {
   aindaNaLoja: boolean;
 }
 
+/** Cliente, NF-e, pedido, telefone ou número da entrega (#123). */
+function condicaoBusca(buscaBruta: string | undefined) {
+  const busca = buscaBruta?.trim();
+  if (!busca) return undefined;
+
+  const padrao = `%${escaparLike(busca)}%`;
+  const numero = /^#?\d{1,9}$/.test(busca) ? Number(busca.replace("#", "")) : null;
+  const digitos = busca.replace(/\D/g, "");
+  const opcoes = [
+    sql`${entregas.clienteNome} ilike ${padrao}`,
+    sql`${entregas.numeroNfe} ilike ${padrao}`,
+    sql`${entregas.numeroPedido} ilike ${padrao}`,
+  ];
+  if (numero !== null) opcoes.push(eq(entregas.numero, numero));
+  if (digitos.length >= 4) {
+    opcoes.push(sql`${entregas.clienteTelefone} like ${`%${digitos}%`}`);
+  }
+  return or(...opcoes);
+}
+
 export interface FiltrosListaEntregas {
   situacao?: SituacaoEntrega;
   /** Só entregas abertas (pendentes e em rota), quando não há situação escolhida. */
@@ -567,22 +587,8 @@ export async function getEntregas(
     );
   }
 
-  const busca = filtros.busca?.trim();
-  if (busca) {
-    const padrao = `%${escaparLike(busca)}%`;
-    const numero = /^#?\d{1,9}$/.test(busca) ? Number(busca.replace("#", "")) : null;
-    const digitos = busca.replace(/\D/g, "");
-    const opcoes = [
-      sql`${entregas.clienteNome} ilike ${padrao}`,
-      sql`${entregas.numeroNfe} ilike ${padrao}`,
-      sql`${entregas.numeroPedido} ilike ${padrao}`,
-    ];
-    if (numero !== null) opcoes.push(eq(entregas.numero, numero));
-    if (digitos.length >= 4) {
-      opcoes.push(sql`${entregas.clienteTelefone} like ${`%${digitos}%`}`);
-    }
-    condicoes.push(or(...opcoes)!);
-  }
+  const condicaoDaBusca = condicaoBusca(filtros.busca);
+  if (condicaoDaBusca) condicoes.push(condicaoDaBusca);
 
   const rows = await db
     .select({
@@ -628,6 +634,8 @@ export interface RelatorioFiltros {
   status?: StatusEntrega;
   formaPagamento?: FormaPagamento;
   motoboyId?: string;
+  /** Cliente, NF-e, pedido, telefone ou número da entrega (#123). */
+  busca?: string;
   // undefined = Admin (tudo); null = sem acesso (vazio); uuid = só o setor.
   setorId?: string | null;
 }
@@ -777,7 +785,8 @@ export async function getRelatorioEntregas(
           ? eq(entregas.formaPagamento, filtros.formaPagamento)
           : undefined,
         filtros.motoboyId ? eq(entregas.motoboyId, filtros.motoboyId) : undefined,
-        filtros.setorId ? eq(entregas.setorId, filtros.setorId) : undefined
+        filtros.setorId ? eq(entregas.setorId, filtros.setorId) : undefined,
+        condicaoBusca(filtros.busca)
       )
     )
     .orderBy(desc(entregas.data), desc(entregas.numero));

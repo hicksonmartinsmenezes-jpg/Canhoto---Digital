@@ -5,6 +5,7 @@ import {
   FileBarChart,
   Filter,
   Package,
+  Search,
   Wallet,
   X,
 } from "lucide-react";
@@ -35,6 +36,7 @@ interface RelatoriosPageProps {
     status?: string;
     forma?: string;
     motorista?: string;
+    q?: string;
   }>;
 }
 
@@ -69,6 +71,8 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
       ? params.motorista
       : undefined;
 
+  const busca = (params.q ?? "").trim().slice(0, 80);
+
   const sessao = await obterSessaoOperador();
   const [{ itens, totais }, motoboys] = await Promise.all([
     getRelatorioEntregas({
@@ -77,16 +81,18 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
       status,
       formaPagamento,
       motoboyId,
+      busca,
       setorId: setorIdParaFiltro(sessao),
     }),
     getMotoboys(),
   ]);
 
-  const temFiltroExtra = Boolean(status || formaPagamento || motoboyId);
+  const temFiltroExtra = Boolean(status || formaPagamento || motoboyId || busca);
   const queryExport = new URLSearchParams({ inicio: dataInicio, fim: dataFim });
   if (status) queryExport.set("status", status);
   if (formaPagamento) queryExport.set("forma", formaPagamento);
   if (motoboyId) queryExport.set("motorista", motoboyId);
+  if (busca) queryExport.set("q", busca);
 
   // Link de cada entrega: abre os dados completos e volta para estes filtros.
   const voltarParaRelatorio = encodeURIComponent(
@@ -138,6 +144,21 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
             valorFim={dataFim}
             className="gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500"
           />
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Buscar
+            </span>
+            <span className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                name="q"
+                defaultValue={busca}
+                placeholder="Cliente, NF-e, pedido ou #nº"
+                className="w-64 rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3.5 text-sm text-slate-600 outline-none transition-colors focus:border-slate-400"
+              />
+            </span>
+          </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
               Situação
@@ -200,7 +221,7 @@ export default async function RelatoriosPage({ searchParams }: RelatoriosPagePro
             <Link
               href={`/relatorios?inicio=${dataInicio}&fim=${dataFim}`}
               prefetch={false}
-              aria-label="Limpar filtros de situação, pagamento e motorista"
+              aria-label="Limpar busca e filtros de situação, pagamento e motorista"
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 transition-[transform,color,border-color] duration-150 hover:border-red-500/40 hover:text-red-600 active:scale-95"
             >
               <X className="size-4" />

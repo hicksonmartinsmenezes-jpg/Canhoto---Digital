@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
   const statusParam = params.get("status");
   const formaParam = params.get("forma");
   const motoristaParam = params.get("motorista");
+  const busca = (params.get("q") ?? "").trim().slice(0, 80);
 
   const dataInicio = isDataIsoValida(inicioParam) ? inicioParam : undefined;
   const dataFim = isDataIsoValida(fimParam) ? fimParam : undefined;
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
     status,
     formaPagamento,
     motoboyId,
+    busca,
     setorId: setorIdParaFiltro(sessao),
   });
 
