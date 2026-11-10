@@ -557,13 +557,6 @@ export function AdicionarEntregaForm({
               )}
               {abrindoPacote ? "Abrindo pacote..." : "Anexar documento (XML, PDF, ZIP ou RAR)"}
             </button>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Ao anexar o XML da NF-e, cliente, endereço, valor e demais dados
-              da nota são preenchidos. O XML pode vir compactado em .zip ou
-              .rar — o pacote é aberto e os documentos de dentro entram sozinhos.
-              Sem XML, um PDF (DANFE) também tenta preencher os mesmos campos,
-              mas com menos confiança — confira antes de salvar.
-            </p>
             {documentos.length > 0 && (
               <ul className="mt-2 space-y-1.5">
                 {documentos.map((arquivo, indice) => (

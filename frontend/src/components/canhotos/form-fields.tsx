@@ -52,13 +52,7 @@ export function ClienteFinalCheckbox({
         onChange={(e) => onChange(e.target.checked)}
         className="mt-0.5 size-4 rounded border-slate-300 text-amber-500 focus:ring-slate-400/30"
       />
-      <span>
-        Cliente final (sem NF-e)
-        <span className="block text-xs font-normal text-slate-400">
-          Venda para consumidor final, sem nota fiscal. Não entra no alerta de
-          entregas sem NF-e.
-        </span>
-      </span>
+      <span>Cliente final (sem NF-e)</span>
     </label>
   );
 }
