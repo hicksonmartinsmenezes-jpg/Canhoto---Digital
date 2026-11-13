@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
+import { cookieDeveSerSeguro } from "@/lib/cookie-seguro";
 import {
   ADMIN_COOKIE_NAME,
   ADMIN_SESSAO_DURACAO_MS,
@@ -27,11 +28,9 @@ export async function definirCookieSessaoAdmin(
 
   cookieStore.set(ADMIN_COOKIE_NAME, token, {
     httpOnly: true,
-    // Portal Admin roda sempre em HTTP interno na rede da loja, nunca atras
-    // do Cloudflare Tunnel — "secure: true" bloquearia o cookie no acesso via
-    // IP local (ex.: http://192.168.0.x:3003), pois o navegador só trata
-    // "localhost" como contexto seguro, não IPs de rede comuns.
-    secure: false,
+    // "Secure" só quando o acesso veio por HTTPS (domínio público); por HTTP
+    // na rede da loja o navegador recusaria o cookie.
+    secure: await cookieDeveSerSeguro(),
     sameSite: "lax",
     path: "/",
     maxAge: Math.floor(ADMIN_SESSAO_DURACAO_MS / 1000),

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
+import { cookieDeveSerSeguro } from "@/lib/cookie-seguro";
 import {
   COLABORADOR_COOKIE_NAME,
   COLABORADOR_SESSAO_DURACAO_MS,
@@ -30,9 +31,8 @@ export async function definirCookieSessaoColaborador(
 
   cookieStore.set(COLABORADOR_COOKIE_NAME, token, {
     httpOnly: true,
-    // Portal roda sempre em HTTP interno na rede da loja, nunca atrás do
-    // Cloudflare Tunnel — ver o mesmo ajuste em admin-session.ts.
-    secure: false,
+    // "Secure" só quando o acesso veio por HTTPS; ver cookie-seguro.ts.
+    secure: await cookieDeveSerSeguro(),
     sameSite: "lax",
     path: "/",
     maxAge: Math.floor(COLABORADOR_SESSAO_DURACAO_MS / 1000),
