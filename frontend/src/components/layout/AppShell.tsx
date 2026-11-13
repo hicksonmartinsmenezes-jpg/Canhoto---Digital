@@ -38,7 +38,7 @@ export function AppShell({
   return (
     <>
       <Sidebar papel={papel} />
-      <main className="min-h-full p-4 pt-20 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] peer-hover:translate-x-48 sm:p-6 sm:pt-20 md:ml-16 md:pt-6 lg:p-8">
+      <main className="min-h-full print:!m-0 print:!p-0 p-4 pt-20 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] peer-hover:translate-x-48 sm:p-6 sm:pt-20 md:ml-16 md:pt-6 lg:p-8">
         {children}
       </main>
     </>

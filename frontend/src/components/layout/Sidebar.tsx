@@ -101,7 +101,7 @@ export function Sidebar({ papel }: { papel: PapelPortal }) {
       <MenuCelular itens={itensMenu} pathname={pathname} />
     <div
       data-testid="sidebar"
-      className="peer group fixed inset-y-0 left-0 z-40 hidden w-16 overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:w-64 md:block"
+      className="peer group fixed inset-y-0 left-0 z-40 hidden w-16 print:!hidden overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:w-64 md:block"
     >
       <aside className="flex h-full w-64 flex-col bg-[#0A1F44] text-white/70">
         <div className="relative flex h-[68px] shrink-0 items-center px-4">
@@ -343,7 +343,7 @@ function MenuCelular({
 
   return (
     <div className="md:hidden">
-      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between bg-[#0A1F44] px-4 text-white">
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 print:hidden items-center justify-between bg-[#0A1F44] px-4 text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/rildon-express-logo-white.svg"
