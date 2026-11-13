@@ -302,17 +302,17 @@ export default async function EntregaDetalhePage({
                 Nenhum comprovante registrado
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                A foto da entrega aparecerá aqui após a conclusão pelo
+                A foto do canhoto aparecerá aqui após a conclusão pelo
                 motorista.
               </p>
             </div>
           ) : (
             <div className="grid gap-5 p-6 md:grid-cols-2">
               <BlocoComprovante
-                titulo="Foto da entrega"
+                titulo="Foto do canhoto"
                 icone={<Camera className="size-4 text-[#0A1F44]" />}
                 itens={fotos}
-                alt="Foto da entrega"
+                alt="Foto do canhoto"
                 vazio="Foto não registrada."
               />
               {fotosProduto.length > 0 && (

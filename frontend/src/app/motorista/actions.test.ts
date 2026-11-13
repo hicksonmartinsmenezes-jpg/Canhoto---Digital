@@ -228,7 +228,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
-  it("exige foto da entrega antes de confirmar", async () => {
+  it("exige foto do canhoto antes de confirmar", async () => {
     const formData = new FormData();
     formData.set("recebedorNome", "Maria da Silva");
 
@@ -241,7 +241,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
-  it("confirma entrega não Pix só com a foto da entrega", async () => {
+  it("confirma entrega não Pix só com a foto do canhoto", async () => {
     const { db, tx, insertValues } = configurarDb({
       selectResultados: [
         [
@@ -295,7 +295,7 @@ describe("ações do motorista com PostgreSQL local", () => {
       statusNovo: "entregue",
       alteradoPorMotoboy: "motorista-a",
       observacao:
-        "Entrega confirmada com foto da entrega. Recebido por Maria da Silva.",
+        "Entrega confirmada com foto do canhoto. Recebido por Maria da Silva.",
     });
   });
 
@@ -325,7 +325,7 @@ describe("ações do motorista com PostgreSQL local", () => {
       statusNovo: "entregue",
       alteradoPorMotoboy: "motorista-a",
       observacao:
-        "Entrega confirmada com foto da entrega. Recebido por Maria da Silva.",
+        "Entrega confirmada com foto do canhoto. Recebido por Maria da Silva.",
     });
   });
 
@@ -376,7 +376,7 @@ describe("ações do motorista com PostgreSQL local", () => {
       statusNovo: "entregue",
       alteradoPorMotoboy: "motorista-a",
       observacao:
-        "Entrega confirmada com foto da entrega e comprovante Pix. Recebido por Maria da Silva.",
+        "Entrega confirmada com foto do canhoto e comprovante Pix. Recebido por Maria da Silva.",
     });
   });
 
@@ -412,7 +412,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         observacao:
-          "Entrega confirmada com foto da entrega e foto do produto. Recebido por Maria da Silva.",
+          "Entrega confirmada com foto do canhoto e foto do produto. Recebido por Maria da Silva.",
       }),
     );
   });
@@ -443,7 +443,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         observacao:
-          "Entrega confirmada com foto da entrega, comprovante Pix e foto do produto. Recebido por Maria da Silva.",
+          "Entrega confirmada com foto do canhoto, comprovante Pix e foto do produto. Recebido por Maria da Silva.",
       }),
     );
   });
@@ -477,7 +477,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         observacao:
-          "Entrega confirmada com foto da entrega e 3 fotos do produto. Recebido por Maria da Silva.",
+          "Entrega confirmada com foto do canhoto e 3 fotos do produto. Recebido por Maria da Silva.",
       }),
     );
   });

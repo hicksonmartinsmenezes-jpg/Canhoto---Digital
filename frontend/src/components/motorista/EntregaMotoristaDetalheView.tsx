@@ -380,7 +380,7 @@ export function EntregaMotoristaDetalheView({
             )}
           </p>
           <ul className="mt-3 space-y-1.5 text-sm font-semibold text-slate-700">
-            <ItemComprovante ok={entrega.comprovantes.foto} texto="Foto da entrega recebida pela loja" faltando="Foto da entrega não encontrada" />
+            <ItemComprovante ok={entrega.comprovantes.foto} texto="Foto do canhoto recebida pela loja" faltando="Foto do canhoto não encontrada" />
             {entrega.comprovantes.produto > 0 && (
               <ItemComprovante ok texto={entrega.comprovantes.produto > 1 ? `${entrega.comprovantes.produto} fotos do produto recebidas pela loja` : "Foto do produto recebida pela loja"} faltando="" />
             )}

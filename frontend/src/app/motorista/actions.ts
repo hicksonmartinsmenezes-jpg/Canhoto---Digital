@@ -550,7 +550,7 @@ export async function confirmarEntrega(
       sha256: "",
     });
   }
-  adicionarArquivo("foto", fotoEntrega, "foto-entrega", "da foto da entrega");
+  adicionarArquivo("foto", fotoEntrega, "foto-entrega", "da foto do canhoto");
   if (comprovantePixValido) {
     adicionarArquivo(
       "comprovante_pix",
@@ -625,7 +625,7 @@ export async function confirmarEntrega(
         }))
       );
 
-      const itensConfirmados = ["foto da entrega"];
+      const itensConfirmados = ["foto do canhoto"];
       if (comprovantePixValido) itensConfirmados.push("comprovante Pix");
       if (fotosProduto.length === 1) itensConfirmados.push("foto do produto");
       if (fotosProduto.length > 1) {
