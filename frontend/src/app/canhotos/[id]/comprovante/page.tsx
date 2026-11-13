@@ -100,8 +100,7 @@ export default async function ComprovanteEntregaPage({
             Comprovante de Entrega
           </h1>
           <p className="mt-1 text-xs text-slate-600">
-            Canhoto digitalizado e vinculado ao pedido e à nota fiscal. Emitido
-            em {dataHora(new Date().toISOString())}.
+            Emitido em {dataHora(new Date().toISOString())}.
           </p>
         </header>
 
