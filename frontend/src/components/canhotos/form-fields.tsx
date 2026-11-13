@@ -34,7 +34,7 @@ export function Field({
 }
 
 /**
- * Caixinha "Cliente final": venda para consumidor final não tem NF-e, então o
+ * Caixinha "Consumidor final": venda para consumidor final não tem NF-e, então o
  * número da nota fica desativado e a entrega não entra no alerta de "sem NF-e".
  */
 export function ClienteFinalCheckbox({
@@ -52,7 +52,7 @@ export function ClienteFinalCheckbox({
         onChange={(e) => onChange(e.target.checked)}
         className="mt-0.5 size-4 rounded border-slate-300 text-amber-500 focus:ring-slate-400/30"
       />
-      <span>Cliente final (sem NF-e)</span>
+      <span>Consumidor final (sem NF-e)</span>
     </label>
   );
 }

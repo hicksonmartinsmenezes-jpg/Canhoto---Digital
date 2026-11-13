@@ -129,7 +129,7 @@ export function EditarEntregaForm({ entrega, motoboys }: EditarEntregaFormProps)
                   value={form.numeroNfe}
                   onChange={(e) => set("numeroNfe", e.target.value)}
                   disabled={form.clienteFinal}
-                  placeholder={form.clienteFinal ? "Cliente final: sem NF-e" : undefined}
+                  placeholder={form.clienteFinal ? "Consumidor final: sem NF-e" : undefined}
                 />
               </Field>
               <div className="sm:col-span-2">

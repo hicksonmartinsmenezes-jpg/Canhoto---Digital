@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { codigoVerificacao } from "@/lib/comprovante-integridade";
 import { getAnexosComIntegridade } from "@/lib/data/comprovante-juridico";
 import { getEntregaById } from "@/lib/data/entregas";
-import { formatBRL, formatDateBR } from "@/lib/format";
+import { ROTULO_CONSUMIDOR_FINAL, formatBRL, formatDateBR } from "@/lib/format";
 import {
   obterSessaoOperador,
   sessaoPodeAcessarSetor,
@@ -48,7 +48,9 @@ export default async function ComprovanteEntregaPage({
     recebedorNome: entrega.recebedorNome ?? "",
     concluidaEm: entrega.concluidaEm,
     motoboyNome: entrega.motoboyNome,
-    hashesAnexos: anexos.flatMap((anexo) => (anexo.sha256 ? [anexo.sha256] : [])),
+    hashesAnexos: anexos.flatMap((anexo) =>
+      anexo.sha256 ? [anexo.sha256] : [],
+    ),
   });
 
   const fotoCanhoto = anexos.find((anexo) => anexo.tipo === "foto");
@@ -98,8 +100,11 @@ export default async function ComprovanteEntregaPage({
             <dd>{entrega.numeroPedido || "—"}</dd>
             <dt className="font-semibold">Nota fiscal (NF-e)</dt>
             <dd>
-              {entrega.numeroNfe ||
-                (entrega.clienteFinal ? "Venda a consumidor final (sem NF-e)" : "—")}
+              {entrega.numeroNfe
+                ? entrega.numeroNfe
+                : entrega.clienteFinal
+                  ? `${ROTULO_CONSUMIDOR_FINAL} (sem NF-e)`
+                  : "—"}
             </dd>
             <dt className="font-semibold">Cliente</dt>
             <dd>{entrega.clienteNome}</dd>
@@ -122,7 +127,8 @@ export default async function ComprovanteEntregaPage({
           <dl className="grid grid-cols-[170px_1fr] gap-x-4 gap-y-1.5 text-sm">
             <dt className="font-semibold">Recebido por</dt>
             <dd className="font-bold">
-              {entrega.recebedorNome ?? "Não registrado (entrega anterior ao registro)"}
+              {entrega.recebedorNome ??
+                "Não registrado (entrega anterior ao registro)"}
             </dd>
             <dt className="font-semibold">Data e hora da entrega</dt>
             <dd>{dataHora(entrega.concluidaEm)} (horário de Brasília)</dd>
@@ -148,7 +154,9 @@ export default async function ComprovanteEntregaPage({
         </section>
 
         <footer className="mt-6 break-inside-avoid border-t border-slate-300 pt-3">
-          <p className="text-xs font-semibold">Código de verificação do comprovante</p>
+          <p className="text-xs font-semibold">
+            Código de verificação do comprovante
+          </p>
           <p className="break-all font-mono text-[10px]">{codigo}</p>
           <p className="mt-2 text-[10px] text-slate-500">
             O código resume os dados deste comprovante e as impressões digitais

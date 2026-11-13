@@ -624,7 +624,7 @@ export function AdicionarEntregaForm({
               onChange={(e) => set("numeroNfe", e.target.value)}
               maxLength={60}
               disabled={form.clienteFinal}
-              placeholder={form.clienteFinal ? "Cliente final: sem NF-e" : undefined}
+              placeholder={form.clienteFinal ? "Consumidor final: sem NF-e" : undefined}
             />
           </Field>
           <Field label="Nº do pedido" optional>

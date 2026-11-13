@@ -23,7 +23,7 @@ import {
   getHistoricoEntrega,
   type EntregaComprovante,
 } from "@/lib/data/entregas";
-import { formatBRL, formatDateBR } from "@/lib/format";
+import { ROTULO_CONSUMIDOR_FINAL, formatBRL, formatDateBR } from "@/lib/format";
 import {
   obterSessaoOperador,
   sessaoPodeAcessarSetor,
@@ -69,7 +69,8 @@ export default async function EntregaDetalhePage({
   // aceita caminho interno de /relatorios (nada de endereço de outro site).
   const { voltar } = await searchParams;
   const veioDosRelatorios =
-    typeof voltar === "string" && /^\/relatorios\?[\w=&%.-]{0,300}$/.test(voltar);
+    typeof voltar === "string" &&
+    /^\/relatorios\?[\w=&%.-]{0,300}$/.test(voltar);
   const [entrega, comprovantes, documentos, historico] = await Promise.all([
     getEntregaById(id),
     getComprovantesEntrega(id),
@@ -85,13 +86,13 @@ export default async function EntregaDetalhePage({
 
   const fotos = comprovantes.filter((item) => item.tipo === "foto");
   const comprovantesPix = comprovantes.filter(
-    (item) => item.tipo === "comprovante_pix"
+    (item) => item.tipo === "comprovante_pix",
   );
   const fotosProduto = comprovantes.filter(
-    (item) => item.tipo === "foto_produto"
+    (item) => item.tipo === "foto_produto",
   );
   const assinaturas = comprovantes.filter(
-    (item) => item.tipo === "assinatura_cliente"
+    (item) => item.tipo === "assinatura_cliente",
   );
 
   return (
@@ -103,7 +104,9 @@ export default async function EntregaDetalhePage({
             className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-[#0A1F44]"
           >
             <ArrowLeft className="size-4" />
-            {veioDosRelatorios ? "Voltar para Relatórios" : "Voltar para Entregas"}
+            {veioDosRelatorios
+              ? "Voltar para Relatórios"
+              : "Voltar para Entregas"}
           </Link>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -185,8 +188,11 @@ export default async function EntregaDetalhePage({
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
               <dt className="font-semibold text-slate-500">NF-e</dt>
               <dd className="font-medium text-slate-800">
-                {entrega.numeroNfe ||
-                  (entrega.clienteFinal ? "Cliente final (sem NF-e)" : "—")}
+                {entrega.numeroNfe
+                  ? entrega.numeroNfe
+                  : entrega.clienteFinal
+                    ? `${ROTULO_CONSUMIDOR_FINAL} (sem NF-e)`
+                    : "—"}
               </dd>
             </div>
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
@@ -209,9 +215,7 @@ export default async function EntregaDetalhePage({
               </dd>
             </div>
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
-              <dt className="font-semibold text-slate-500">
-                Horário de saída
-              </dt>
+              <dt className="font-semibold text-slate-500">Horário de saída</dt>
               <dd>
                 {entrega.horaSaida ? (
                   <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-900">
@@ -298,7 +302,8 @@ export default async function EntregaDetalhePage({
                 Nenhum comprovante registrado
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                A foto da entrega aparecerá aqui após a conclusão pelo motorista.
+                A foto da entrega aparecerá aqui após a conclusão pelo
+                motorista.
               </p>
             </div>
           ) : (
@@ -312,7 +317,11 @@ export default async function EntregaDetalhePage({
               />
               {fotosProduto.length > 0 && (
                 <BlocoComprovante
-                  titulo={fotosProduto.length > 1 ? "Fotos do produto" : "Foto do produto"}
+                  titulo={
+                    fotosProduto.length > 1
+                      ? "Fotos do produto"
+                      : "Foto do produto"
+                  }
                   icone={<Package className="size-4 text-[#0A1F44]" />}
                   itens={fotosProduto}
                   alt="Foto do produto"
@@ -369,7 +378,10 @@ export default async function EntregaDetalhePage({
                       {item.statusAnterior !== item.statusNovo && (
                         <span className="font-medium text-slate-500">
                           {" "}
-                          · {item.statusAnterior ? `${STATUS_LABEL[item.statusAnterior]} → ` : ""}
+                          ·{" "}
+                          {item.statusAnterior
+                            ? `${STATUS_LABEL[item.statusAnterior]} → `
+                            : ""}
                           {STATUS_LABEL[item.statusNovo]}
                         </span>
                       )}
