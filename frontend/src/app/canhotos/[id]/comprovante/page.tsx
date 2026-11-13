@@ -87,6 +87,15 @@ export default async function ComprovanteEntregaPage({
         className="border border-slate-300 bg-white p-8 text-slate-900 print:border-0 print:p-0"
       >
         <header className="border-b-2 border-slate-900 pb-4">
+          {/* PNG colorido sobre fundo branco: imprime igual ao da tela. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/rildon-express-logo.png"
+            alt="Rildon Express"
+            width={900}
+            height={116}
+            className="mb-3 h-8 w-auto"
+          />
           <h1 className="text-xl font-black uppercase tracking-wide">
             Comprovante de Entrega
           </h1>
