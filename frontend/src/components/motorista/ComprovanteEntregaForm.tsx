@@ -325,7 +325,7 @@ export function ComprovanteEntregaForm({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={fotoEntregaUrl}
-              alt="Prévia da foto da entrega"
+              alt="Prévia da foto do canhoto"
               className="max-h-52 w-full object-cover"
             />
           </div>

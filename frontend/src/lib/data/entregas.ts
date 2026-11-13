@@ -438,7 +438,7 @@ export async function getAtividadeRecente(
         id: `historico-${historico.id}`,
         hora: rotuloQuando(historico.alteradoEm),
         titulo: "Entrega concluída",
-        descricao: `${historico.motoristaNome ? `O motorista ${historico.motoristaNome}` : "O motorista"} concluiu a entrega #${historico.numero} com foto da entrega.`,
+        descricao: `${historico.motoristaNome ? `O motorista ${historico.motoristaNome}` : "O motorista"} concluiu a entrega #${historico.numero} com foto do canhoto.`,
         cor: "info",
         timestamp: historico.alteradoEm,
       });

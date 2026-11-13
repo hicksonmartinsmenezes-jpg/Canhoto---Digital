@@ -160,7 +160,7 @@ export async function atualizarEntrega(
         return {
           ok: false as const,
           error:
-            "A entrega só pode ser concluída pelo fluxo do motorista com a foto da entrega.",
+            "A entrega só pode ser concluída pelo fluxo do motorista com a foto do canhoto.",
         };
       }
 

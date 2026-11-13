@@ -1,6 +1,6 @@
 // Rascunho do comprovante de entrega guardado no próprio celular (IndexedDB).
 //
-// A foto da entrega e, se houver, o comprovante Pix e as fotos do produto são
+// A foto do canhoto e, se houver, o comprovante Pix e as fotos do produto são
 // salvos aqui ANTES de
 // qualquer envio. Se o sinal cair, o Android matar o app ou a página
 // recarregar, nada se perde: o rascunho continua no aparelho até o servidor
