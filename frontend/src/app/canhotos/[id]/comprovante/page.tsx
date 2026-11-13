@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { codigoVerificacao } from "@/lib/comprovante-integridade";
 import { getAnexosComIntegridade } from "@/lib/data/comprovante-juridico";
-import { getEntregaById, getHistoricoEntrega } from "@/lib/data/entregas";
+import { getEntregaById } from "@/lib/data/entregas";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import {
   obterSessaoOperador,
@@ -15,19 +15,6 @@ import { BotaoImprimir } from "@/components/canhotos/BotaoImprimir";
 export const dynamic = "force-dynamic";
 
 const FONTE_DOCUMENTO = '"Times New Roman", Times, serif';
-
-const ROTULO_TIPO = {
-  foto: "Foto do canhoto assinado",
-  foto_produto: "Foto do produto",
-  comprovante_pix: "Comprovante Pix",
-} as const;
-
-const ROTULO_SITUACAO = {
-  conferido: "Conferido: arquivo idêntico ao recebido",
-  divergente: "DIVERGENTE: arquivo alterado após o envio",
-  sem_registro: "Sem impressão digital (anexo anterior ao registro)",
-  arquivo_ausente: "Arquivo não encontrado no armazenamento",
-} as const;
 
 function dataHora(valor: string): string {
   return new Date(valor).toLocaleString("pt-BR", {
@@ -46,10 +33,9 @@ export default async function ComprovanteEntregaPage({
   if (!sessao) redirect("/login");
 
   const { id } = await params;
-  const [entrega, anexos, historico] = await Promise.all([
+  const [entrega, anexos] = await Promise.all([
     getEntregaById(id),
     getAnexosComIntegridade(id),
-    getHistoricoEntrega(id),
   ]);
 
   if (!entrega || !sessaoPodeAcessarSetor(sessao, entrega.setorId)) notFound();
@@ -66,9 +52,6 @@ export default async function ComprovanteEntregaPage({
   });
 
   const fotoCanhoto = anexos.find((anexo) => anexo.tipo === "foto");
-  const todosConferidos =
-    anexos.length > 0 && anexos.every((anexo) => anexo.situacao === "conferido");
-
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex items-center justify-between gap-3 print:hidden">
@@ -162,53 +145,6 @@ export default async function ComprovanteEntregaPage({
           ) : (
             <p className="text-sm text-slate-500">Imagem não encontrada.</p>
           )}
-        </section>
-
-        <section className="mt-5 break-inside-avoid">
-          <h2 className="mb-2 text-xs font-black uppercase tracking-wider text-slate-500">
-            Integridade dos arquivos
-          </h2>
-          <table className="w-full border-collapse text-[11px]">
-            <thead>
-              <tr className="border-b border-slate-400 text-left">
-                <th className="py-1 pr-2">Arquivo</th>
-                <th className="py-1 pr-2">Enviado em</th>
-                <th className="py-1 pr-2">SHA-256 registrado</th>
-                <th className="py-1">Situação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {anexos.map((anexo) => (
-                <tr key={anexo.id} className="border-b border-slate-200 align-top">
-                  <td className="py-1 pr-2">{ROTULO_TIPO[anexo.tipo]}</td>
-                  <td className="py-1 pr-2">{dataHora(anexo.capturadoEm)}</td>
-                  <td className="break-all py-1 pr-2 font-mono text-[9px]">
-                    {anexo.sha256 ?? "—"}
-                  </td>
-                  <td className="py-1">{ROTULO_SITUACAO[anexo.situacao]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-2 text-xs font-semibold">
-            {todosConferidos
-              ? "Todos os arquivos foram reconferidos agora e permanecem idênticos aos recebidos no momento da entrega."
-              : "Atenção: ao menos um arquivo não pôde ser conferido (veja a coluna Situação)."}
-          </p>
-        </section>
-
-        <section className="mt-5 break-inside-avoid">
-          <h2 className="mb-2 text-xs font-black uppercase tracking-wider text-slate-500">
-            Trilha de registro
-          </h2>
-          <ul className="space-y-1 text-xs">
-            {historico.map((item) => (
-              <li key={item.id}>
-                {dataHora(item.alteradoEm)} — {item.responsavel}:{" "}
-                {item.observacao ?? "Alteração de status"}
-              </li>
-            ))}
-          </ul>
         </section>
 
         <footer className="mt-6 break-inside-avoid border-t border-slate-300 pt-3">
