@@ -14,6 +14,8 @@ import { BotaoImprimir } from "@/components/canhotos/BotaoImprimir";
 
 export const dynamic = "force-dynamic";
 
+const FONTE_DOCUMENTO = '"Times New Roman", Times, serif';
+
 const ROTULO_TIPO = {
   foto: "Foto do canhoto assinado",
   foto_produto: "Foto do produto",
@@ -80,7 +82,10 @@ export default async function ComprovanteEntregaPage({
         <BotaoImprimir />
       </div>
 
-      <article className="border border-slate-300 bg-white p-8 text-slate-900 print:border-0 print:p-0">
+      <article
+        style={{ fontFamily: FONTE_DOCUMENTO }}
+        className="border border-slate-300 bg-white p-8 text-slate-900 print:border-0 print:p-0"
+      >
         <header className="border-b-2 border-slate-900 pb-4">
           <h1 className="text-xl font-black uppercase tracking-wide">
             Comprovante de Entrega
