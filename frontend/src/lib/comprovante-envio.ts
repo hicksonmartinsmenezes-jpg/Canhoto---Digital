@@ -64,6 +64,10 @@ function extensaoDaFoto(tipo: string): string {
 export function montarFormData(rascunho: RascunhoComprovante): FormData {
   const formData = new FormData();
 
+  if (rascunho.recebedorNome) {
+    formData.set("recebedorNome", rascunho.recebedorNome);
+  }
+
   formData.set(
     "fotoEntrega",
     new File([rascunho.fotoEntrega], `foto-entrega.${extensaoDaFoto(rascunho.fotoEntrega.type)}`, {

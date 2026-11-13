@@ -126,6 +126,16 @@ export default async function EntregaDetalhePage({
               cliente={entrega.clienteNome}
             />
           )}
+          {entrega.status === "entregue" && (
+            <Link
+              href={`/canhotos/${entrega.id}/comprovante`}
+              prefetch={false}
+              className="inline-flex items-center gap-2 border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-[#0A1F44] transition-colors hover:bg-slate-50"
+            >
+              <ReceiptText className="size-4" />
+              Comprovante de entrega
+            </Link>
+          )}
           {podeEditar && (
             <Link
               href={`/canhotos/${entrega.id}/editar`}
@@ -215,6 +225,14 @@ export default async function EntregaDetalhePage({
                 )}
               </dd>
             </div>
+            {entrega.recebedorNome && (
+              <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
+                <dt className="font-semibold text-slate-500">Recebido por</dt>
+                <dd className="font-bold text-slate-900">
+                  {entrega.recebedorNome}
+                </dd>
+              </div>
+            )}
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
               <dt className="font-semibold text-slate-500">Endereço</dt>
               <dd className="flex items-start gap-2 font-medium text-slate-800">

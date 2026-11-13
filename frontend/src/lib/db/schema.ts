@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  char,
   date,
   index,
   integer,
@@ -355,6 +356,8 @@ export const entregas = pgTable(
     }).notNull(),
     formaPagamento: formaPagamentoEnum("forma_pagamento").notNull(),
     horaSaida: time("hora_saida"),
+    // Quem recebeu a mercadoria (migration 0023). NULL em entregas antigas.
+    recebedorNome: text("recebedor_nome"),
     // Rota com várias paradas (migration 0016): entregas da mesma rota têm o
     // mesmo rotaId; rotaOrdem é a posição na ordem de visita (1 = primeira).
     rotaId: uuid("rota_id"),
@@ -426,6 +429,8 @@ export const entregaAnexos = pgTable(
       .references(() => entregas.id, { onDelete: "cascade" }),
     tipo: tipoAnexoEntregaEnum("tipo").notNull(),
     arquivoUrl: text("arquivo_url").notNull(),
+    // SHA-256 do arquivo no momento do upload (migration 0023).
+    sha256: char("sha256", { length: 64 }),
     capturadoEm: timestamp("capturado_em", {
       withTimezone: true,
       mode: "string",

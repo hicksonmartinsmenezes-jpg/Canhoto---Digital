@@ -1,6 +1,6 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
@@ -378,6 +378,13 @@ export async function atualizarLocalizacaoMotorista(input: {
   }
 }
 
+function normalizarRecebedorNome(valor: FormDataEntryValue | null): string | null {
+  if (typeof valor !== "string") return null;
+  const nome = valor.replace(/\s+/g, " ").trim();
+  if (nome.length < 2 || nome.length > 120) return null;
+  return nome;
+}
+
 export async function confirmarEntrega(
   entregaId: string,
   formData: FormData
@@ -397,6 +404,14 @@ export async function confirmarEntrega(
 
   const acesso = await motoristaPodeAcessarEntrega(entregaId);
   if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
+
+  const recebedorNome = normalizarRecebedorNome(formData.get("recebedorNome"));
+  if (!recebedorNome) {
+    return {
+      ok: false,
+      error: "Informe o nome de quem recebeu a mercadoria.",
+    };
+  }
 
   const fotoEntrega = validarFoto(formData.get("fotoEntrega"));
   const comprovantePixEntrada = formData.get("comprovantePix");
@@ -514,6 +529,7 @@ export async function confirmarEntrega(
     caminho: string;
     url: string;
     gravado: boolean;
+    sha256: string;
   }> = [];
   function adicionarArquivo(
     tipo: "foto" | "comprovante_pix" | "foto_produto",
@@ -531,6 +547,7 @@ export async function confirmarEntrega(
       caminho: path.join(pastaEntrega, nome),
       url: `${pastaRelativaEntrega}/${nome}`,
       gravado: false,
+      sha256: "",
     });
   }
   adicionarArquivo("foto", fotoEntrega, "foto-entrega", "da foto da entrega");
@@ -568,6 +585,10 @@ export async function confirmarEntrega(
     }
 
     for (const [indice, item] of arquivos.entries()) {
+      item.sha256 = createHash("sha256").update(conteudos[indice]).digest("hex");
+    }
+
+    for (const [indice, item] of arquivos.entries()) {
       await writeFile(item.caminho, conteudos[indice], { flag: "wx" });
       item.gravado = true;
     }
@@ -579,6 +600,7 @@ export async function confirmarEntrega(
         .update(entregas)
         .set({
           clienteAssinouEm: new Date().toISOString(),
+          recebedorNome,
           status: "entregue",
         })
         .where(
@@ -598,6 +620,7 @@ export async function confirmarEntrega(
           entregaId,
           tipo: item.tipo,
           arquivoUrl: item.url,
+          sha256: item.sha256,
           capturadoPorMotoboy: acesso.motoboyId,
         }))
       );
@@ -618,7 +641,7 @@ export async function confirmarEntrega(
         statusAnterior: "pendente",
         statusNovo: "entregue",
         alteradoPorMotoboy: acesso.motoboyId,
-        observacao: `Entrega confirmada com ${textoItens}.`,
+        observacao: `Entrega confirmada com ${textoItens}. Recebido por ${recebedorNome}.`,
       });
 
       return true;

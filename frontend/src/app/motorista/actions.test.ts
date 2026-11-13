@@ -16,7 +16,7 @@ vi.mock("@/lib/comprovantes-storage", () => ({
   diretorioRaizUploads: vi.fn(() => "/tmp/canhoto-test"),
   diretorioRelativoEntrega: vi.fn(
     (clienteNome: string, numeroEntrega: number) =>
-      `entregas/${clienteNome.toLowerCase().replace(/\s+/g, "-")}/entrega-${String(numeroEntrega).padStart(6, "0")}`
+      `entregas/${clienteNome.toLowerCase().replace(/\s+/g, "-")}/entrega-${String(numeroEntrega).padStart(6, "0")}`,
   ),
 }));
 vi.mock("@/lib/rate-limit", () => ({
@@ -50,9 +50,7 @@ const writeFileMock = vi.mocked(writeFile);
 const rmMock = vi.mocked(rm);
 const getDbMock = vi.mocked(getDb);
 const checarRateLimitMock = vi.mocked(checarRateLimit);
-const motoristaPodeAcessarEntregaMock = vi.mocked(
-  motoristaPodeAcessarEntrega
-);
+const motoristaPodeAcessarEntregaMock = vi.mocked(motoristaPodeAcessarEntrega);
 
 const ENTREGA_ID = "11111111-1111-4111-8111-111111111111";
 const ENTREGA_ID_2 = "22222222-2222-4222-8222-222222222222";
@@ -126,13 +124,13 @@ function configurarDb({
     update: vi.fn().mockReturnValue(updateQuery),
     select: vi.fn().mockReturnValue(selectQuery),
     delete: vi.fn().mockReturnValue(deleteQuery),
-    transaction: vi.fn(
-      async (callback: (trx: typeof tx) => Promise<boolean>) => callback(tx)
+    transaction: vi.fn(async (callback: (trx: typeof tx) => Promise<boolean>) =>
+      callback(tx),
     ),
   };
 
   getDbMock.mockReturnValue(
-    db as unknown as NonNullable<ReturnType<typeof getDb>>
+    db as unknown as NonNullable<ReturnType<typeof getDb>>,
   );
 
   return {
@@ -163,6 +161,7 @@ function criarFormDataEntrega({
   fotosProduto?: number;
 } = {}): FormData {
   const formData = new FormData();
+  formData.set("recebedorNome", "Maria da Silva");
   formData.set("fotoEntrega", arquivoPng("entrega.png"));
 
   if (comprovantePix) {
@@ -207,7 +206,7 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("rejeita confirmação com identificador inválido antes de acessar o banco", async () => {
     await expect(
-      confirmarEntrega("entrega-invalida", criarFormDataEntrega())
+      confirmarEntrega("entrega-invalida", criarFormDataEntrega()),
     ).resolves.toEqual({
       ok: false,
       error: "Entrega inválida.",
@@ -216,8 +215,22 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
+  it("exige o nome de quem recebeu antes de confirmar", async () => {
+    const formData = criarFormDataEntrega();
+    formData.delete("recebedorNome");
+
+    const resultado = await confirmarEntrega(ENTREGA_ID, formData);
+
+    expect(resultado).toEqual({
+      ok: false,
+      error: "Informe o nome de quem recebeu a mercadoria.",
+    });
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
   it("exige foto da entrega antes de confirmar", async () => {
     const formData = new FormData();
+    formData.set("recebedorNome", "Maria da Silva");
 
     await expect(confirmarEntrega(ENTREGA_ID, formData)).resolves.toEqual({
       ok: false,
@@ -230,11 +243,21 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("confirma entrega não Pix só com a foto da entrega", async () => {
     const { db, tx, insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
+      selectResultados: [
+        [
+          {
+            id: ENTREGA_ID,
+            numero: 123,
+            clienteNome: "Cliente Teste",
+            formaPagamento: "dinheiro",
+          },
+        ],
+        [],
+      ],
     });
 
     await expect(
-      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega()),
     ).resolves.toEqual({
       ok: true,
     });
@@ -245,10 +268,10 @@ describe("ações do motorista com PostgreSQL local", () => {
     expect(writeFileMock).toHaveBeenCalledTimes(1);
     expect(writeFileMock).toHaveBeenCalledWith(
       expect.stringContaining(
-        "entregas/cliente-teste/entrega-000123".replaceAll("/", path.sep)
+        "entregas/cliente-teste/entrega-000123".replaceAll("/", path.sep),
       ),
       expect.any(Uint8Array),
-      { flag: "wx" }
+      { flag: "wx" },
     );
 
     expect(insertValues).toHaveBeenCalledWith(
@@ -258,12 +281,12 @@ describe("ações do motorista com PostgreSQL local", () => {
           tipo: "foto",
           capturadoPorMotoboy: "motorista-a",
         }),
-      ])
+      ]),
     );
     expect(insertValues).not.toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({ tipo: "assinatura_cliente" }),
-      ])
+      ]),
     );
 
     expect(insertValues).toHaveBeenCalledWith({
@@ -271,17 +294,28 @@ describe("ações do motorista com PostgreSQL local", () => {
       statusAnterior: "pendente",
       statusNovo: "entregue",
       alteradoPorMotoboy: "motorista-a",
-      observacao: "Entrega confirmada com foto da entrega.",
+      observacao:
+        "Entrega confirmada com foto da entrega. Recebido por Maria da Silva.",
     });
   });
 
   it("conclui entrega Pix sem comprovante (o comprovante é opcional)", async () => {
     const { insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }], []],
+      selectResultados: [
+        [
+          {
+            id: ENTREGA_ID,
+            numero: 123,
+            clienteNome: "Cliente Teste",
+            formaPagamento: "pix",
+          },
+        ],
+        [],
+      ],
     });
 
     await expect(
-      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega()),
     ).resolves.toEqual({ ok: true });
 
     expect(writeFileMock).toHaveBeenCalledTimes(1);
@@ -290,20 +324,31 @@ describe("ações do motorista com PostgreSQL local", () => {
       statusAnterior: "pendente",
       statusNovo: "entregue",
       alteradoPorMotoboy: "motorista-a",
-      observacao: "Entrega confirmada com foto da entrega.",
+      observacao:
+        "Entrega confirmada com foto da entrega. Recebido por Maria da Silva.",
     });
   });
 
   it("salva comprovante Pix separado quando o motorista envia", async () => {
     const { insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }], []],
+      selectResultados: [
+        [
+          {
+            id: ENTREGA_ID,
+            numero: 123,
+            clienteNome: "Cliente Teste",
+            formaPagamento: "pix",
+          },
+        ],
+        [],
+      ],
     });
 
     await expect(
       confirmarEntrega(
         ENTREGA_ID,
-        criarFormDataEntrega({ comprovantePix: true })
-      )
+        criarFormDataEntrega({ comprovantePix: true }),
+      ),
     ).resolves.toEqual({
       ok: true,
     });
@@ -322,7 +367,7 @@ describe("ações do motorista com PostgreSQL local", () => {
           tipo: "comprovante_pix",
           capturadoPorMotoboy: "motorista-a",
         }),
-      ])
+      ]),
     );
 
     expect(insertValues).toHaveBeenCalledWith({
@@ -330,17 +375,28 @@ describe("ações do motorista com PostgreSQL local", () => {
       statusAnterior: "pendente",
       statusNovo: "entregue",
       alteradoPorMotoboy: "motorista-a",
-      observacao: "Entrega confirmada com foto da entrega e comprovante Pix.",
+      observacao:
+        "Entrega confirmada com foto da entrega e comprovante Pix. Recebido por Maria da Silva.",
     });
   });
 
   it("salva a foto do produto quando o motorista envia", async () => {
     const { insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
+      selectResultados: [
+        [
+          {
+            id: ENTREGA_ID,
+            numero: 123,
+            clienteNome: "Cliente Teste",
+            formaPagamento: "dinheiro",
+          },
+        ],
+        [],
+      ],
     });
 
     await expect(
-      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega({ fotoProduto: true }))
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega({ fotoProduto: true })),
     ).resolves.toEqual({ ok: true });
 
     expect(writeFileMock).toHaveBeenCalledTimes(2);
@@ -351,55 +407,78 @@ describe("ações do motorista com PostgreSQL local", () => {
           tipo: "foto_produto",
           capturadoPorMotoboy: "motorista-a",
         }),
-      ])
+      ]),
     );
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
-        observacao: "Entrega confirmada com foto da entrega e foto do produto.",
-      })
+        observacao:
+          "Entrega confirmada com foto da entrega e foto do produto. Recebido por Maria da Silva.",
+      }),
     );
   });
 
   it("salva foto do produto e comprovante Pix juntos", async () => {
     const { insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "pix" }], []],
+      selectResultados: [
+        [
+          {
+            id: ENTREGA_ID,
+            numero: 123,
+            clienteNome: "Cliente Teste",
+            formaPagamento: "pix",
+          },
+        ],
+        [],
+      ],
     });
 
     await expect(
       confirmarEntrega(
         ENTREGA_ID,
-        criarFormDataEntrega({ comprovantePix: true, fotoProduto: true })
-      )
+        criarFormDataEntrega({ comprovantePix: true, fotoProduto: true }),
+      ),
     ).resolves.toEqual({ ok: true });
 
     expect(writeFileMock).toHaveBeenCalledTimes(3);
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         observacao:
-          "Entrega confirmada com foto da entrega, comprovante Pix e foto do produto.",
-      })
+          "Entrega confirmada com foto da entrega, comprovante Pix e foto do produto. Recebido por Maria da Silva.",
+      }),
     );
   });
 
   it("salva várias fotos do produto", async () => {
     const { insertValues } = configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
+      selectResultados: [
+        [
+          {
+            id: ENTREGA_ID,
+            numero: 123,
+            clienteNome: "Cliente Teste",
+            formaPagamento: "dinheiro",
+          },
+        ],
+        [],
+      ],
     });
 
     await expect(
-      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega({ fotosProduto: 3 }))
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega({ fotosProduto: 3 })),
     ).resolves.toEqual({ ok: true });
 
     expect(writeFileMock).toHaveBeenCalledTimes(4);
     const anexos = insertValues.mock.calls
       .map((chamada) => chamada[0])
       .find(Array.isArray) as Array<{ tipo: string }>;
-    expect(anexos.filter((item) => item.tipo === "foto_produto")).toHaveLength(3);
+    expect(anexos.filter((item) => item.tipo === "foto_produto")).toHaveLength(
+      3,
+    );
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         observacao:
-          "Entrega confirmada com foto da entrega e 3 fotos do produto.",
-      })
+          "Entrega confirmada com foto da entrega e 3 fotos do produto. Recebido por Maria da Silva.",
+      }),
     );
   });
 
@@ -407,8 +486,8 @@ describe("ações do motorista com PostgreSQL local", () => {
     await expect(
       confirmarEntrega(
         ENTREGA_ID,
-        criarFormDataEntrega({ fotosProduto: MAX_FOTOS_PRODUTO + 1 })
-      )
+        criarFormDataEntrega({ fotosProduto: MAX_FOTOS_PRODUTO + 1 }),
+      ),
     ).resolves.toEqual({
       ok: false,
       error: `Envie no máximo ${MAX_FOTOS_PRODUTO} fotos do produto.`,
@@ -421,7 +500,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     const formData = criarFormDataEntrega();
     formData.append(
       "fotoProduto",
-      new File(["nao-e-imagem"], "produto.txt", { type: "text/plain" })
+      new File(["nao-e-imagem"], "produto.txt", { type: "text/plain" }),
     );
 
     await expect(confirmarEntrega(ENTREGA_ID, formData)).resolves.toEqual({
@@ -439,7 +518,7 @@ describe("ações do motorista com PostgreSQL local", () => {
       "comprovantePix",
       new File(["conteudo-invalido"], "comprovante.txt", {
         type: "text/plain",
-      })
+      }),
     );
 
     await expect(confirmarEntrega(ENTREGA_ID, formData)).resolves.toEqual({
@@ -457,7 +536,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     });
 
     await expect(
-      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega()),
     ).resolves.toEqual({ ok: true, jaConcluida: true });
 
     expect(writeFileMock).not.toHaveBeenCalled();
@@ -470,7 +549,7 @@ describe("ações do motorista com PostgreSQL local", () => {
     });
 
     await expect(
-      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega()),
     ).resolves.toEqual({
       ok: false,
       error: "Entrega não encontrada, já concluída ou ainda não iniciada.",
@@ -482,14 +561,21 @@ describe("ações do motorista com PostgreSQL local", () => {
   it("envio simultâneo: se outro envio concluiu primeiro, devolve sucesso e apaga os arquivos extras", async () => {
     configurarDb({
       selectResultados: [
-        [{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }],
+        [
+          {
+            id: ENTREGA_ID,
+            numero: 123,
+            clienteNome: "Cliente Teste",
+            formaPagamento: "dinheiro",
+          },
+        ],
         [{ id: ENTREGA_ID }],
       ],
       transacaoResultados: [[]],
     });
 
     await expect(
-      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega()),
     ).resolves.toEqual({ ok: true, jaConcluida: true });
 
     expect(rmMock).toHaveBeenCalled();
@@ -507,7 +593,17 @@ describe("ações do motorista com PostgreSQL local", () => {
 
   it("revalida as telas após confirmar a entrega", async () => {
     configurarDb({
-      selectResultados: [[{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }], []],
+      selectResultados: [
+        [
+          {
+            id: ENTREGA_ID,
+            numero: 123,
+            clienteNome: "Cliente Teste",
+            formaPagamento: "dinheiro",
+          },
+        ],
+        [],
+      ],
     });
 
     await confirmarEntrega(ENTREGA_ID, criarFormDataEntrega());
@@ -519,19 +615,25 @@ describe("ações do motorista com PostgreSQL local", () => {
   it("mantém a localização do motorista quando ainda há outra entrega em rota", async () => {
     const { db } = configurarDb({
       selectResultados: [
-        [{ id: ENTREGA_ID, numero: 123, clienteNome: "Cliente Teste", formaPagamento: "dinheiro" }],
+        [
+          {
+            id: ENTREGA_ID,
+            numero: 123,
+            clienteNome: "Cliente Teste",
+            formaPagamento: "dinheiro",
+          },
+        ],
         [{ id: "outra-entrega" }],
       ],
     });
 
     await expect(
-      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega())
+      confirmarEntrega(ENTREGA_ID, criarFormDataEntrega()),
     ).resolves.toEqual({ ok: true });
 
     expect(db.delete).not.toHaveBeenCalled();
   });
 });
-
 
 describe("iniciarRota", () => {
   beforeEach(() => {
@@ -552,7 +654,7 @@ describe("iniciarRota", () => {
     });
 
     await expect(
-      iniciarRota([ENTREGA_ID_2, ENTREGA_ID, ENTREGA_ID_3])
+      iniciarRota([ENTREGA_ID_2, ENTREGA_ID, ENTREGA_ID_3]),
     ).resolves.toEqual({ ok: true });
 
     expect(tx.update).toHaveBeenCalledTimes(3);

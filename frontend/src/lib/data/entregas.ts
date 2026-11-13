@@ -849,6 +849,10 @@ export interface EntregaDetalhe {
   observacoes: string;
   status: StatusEntrega;
   setorId: string | null;
+  /** Quem recebeu a mercadoria (null em entregas anteriores ao registro). */
+  recebedorNome: string | null;
+  /** Momento em que o motorista concluiu a entrega (ISO). */
+  concluidaEm: string | null;
 }
 
 export async function getEntregaById(
@@ -879,6 +883,8 @@ export async function getEntregaById(
       motoboyId: entregas.motoboyId,
       motoboyNome: motoboys.nome,
       setorId: entregas.setorId,
+      recebedorNome: entregas.recebedorNome,
+      concluidaEm: entregas.clienteAssinouEm,
     })
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
@@ -910,6 +916,8 @@ export async function getEntregaById(
     observacoes: entrega.observacoes ?? "",
     status: entrega.status,
     setorId: entrega.setorId,
+    recebedorNome: entrega.recebedorNome,
+    concluidaEm: entrega.concluidaEm,
   };
 }
 

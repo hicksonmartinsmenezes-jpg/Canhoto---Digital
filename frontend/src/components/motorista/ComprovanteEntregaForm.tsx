@@ -50,6 +50,7 @@ export function ComprovanteEntregaForm({
   const [comprovantePixUrl, setComprovantePixUrl] = useState<string | null>(null);
   const [fotosProduto, setFotosProduto] = useState<FotoProdutoLocal[]>([]);
   const fotosProdutoRef = useRef<FotoProdutoLocal[]>([]);
+  const [recebedorNome, setRecebedorNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   // Foto sendo reduzida no aparelho (leva ~1 s): segura o botão Finalizar.
@@ -201,7 +202,13 @@ export function ComprovanteEntregaForm({
     }
 
     if (!fotoEntrega) {
-      setErro("Tire uma foto da entrega antes de finalizar.");
+      setErro("Tire a foto do canhoto assinado antes de finalizar.");
+      return;
+    }
+
+    const nomeRecebedor = recebedorNome.replace(/\s+/g, " ").trim();
+    if (nomeRecebedor.length < 2) {
+      setErro("Informe o nome de quem recebeu a mercadoria.");
       return;
     }
 
@@ -213,6 +220,7 @@ export function ComprovanteEntregaForm({
       const guardado = await salvarRascunho({
         entregaId,
         rotulo: rotulo ?? null,
+        recebedorNome: nomeRecebedor,
         fotoEntrega,
         comprovantePix: pixParaEnviar,
         fotosProduto: fotosProduto.map((foto) => foto.arquivo),
@@ -233,6 +241,7 @@ export function ComprovanteEntregaForm({
       // O aparelho não permitiu guardar (navegação restrita): envio direto,
       // mantendo as fotos na tela se falhar.
       const formData = new FormData();
+      formData.set("recebedorNome", nomeRecebedor);
       formData.set("fotoEntrega", fotoEntrega);
       if (pixParaEnviar) formData.set("comprovantePix", pixParaEnviar);
       for (const foto of fotosProduto) {
@@ -286,9 +295,29 @@ export function ComprovanteEntregaForm({
 
   return (
     <div className="p-4">
+      <div className="mb-5">
+        <label
+          htmlFor={`recebedor-${entregaId}`}
+          className="mb-2 block text-[11px] font-black uppercase tracking-[0.08em] text-slate-500"
+        >
+          Nome de quem recebeu
+        </label>
+        <input
+          id={`recebedor-${entregaId}`}
+          type="text"
+          autoComplete="off"
+          maxLength={120}
+          value={recebedorNome}
+          disabled={pending}
+          onChange={(event) => setRecebedorNome(event.target.value)}
+          placeholder="Nome completo de quem assinou o canhoto"
+          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#15924A]"
+        />
+      </div>
+
       <div>
         <p className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-500">
-          Foto da entrega
+          Foto do canhoto assinado
         </p>
 
         {fotoEntregaUrl && (
@@ -304,7 +333,7 @@ export function ComprovanteEntregaForm({
 
         <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50">
           <Camera className="size-4" />
-          {fotoEntrega ? "Tirar outra foto" : "Tirar foto da entrega"}
+          {fotoEntrega ? "Tirar outra foto" : "Tirar foto do canhoto"}
           <input
             type="file"
             accept="image/*"
