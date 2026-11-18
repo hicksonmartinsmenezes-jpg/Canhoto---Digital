@@ -801,5 +801,41 @@ describe("iniciarRota", () => {
         ]),
       );
     });
+
+    it("guarda a hora declarada pelo celular", async () => {
+      const { insertValues } = configurarDb({ selectResultados: selecaoEntrega });
+      const ontem = Date.now() - 20 * 60 * 60 * 1000;
+      const formData = criarFormDataEntrega();
+      formData.set("registradoEmDispositivo", String(ontem));
+
+      await confirmarEntrega(ENTREGA_ID, formData);
+
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            registradoEmDispositivo: new Date(ontem).toISOString(),
+          }),
+        ]),
+      );
+    });
+
+    it("ignora hora do celular no futuro ou muito antiga", async () => {
+      for (const ms of [Date.now() + 60 * 60 * 1000, Date.now() - 60 * 24 * 3600 * 1000]) {
+        vi.clearAllMocks();
+        checarRateLimitMock.mockResolvedValue({ permitido: true, restante: 9 });
+        motoristaPodeAcessarEntregaMock.mockResolvedValue(true);
+        const { insertValues } = configurarDb({ selectResultados: selecaoEntrega });
+        const formData = criarFormDataEntrega();
+        formData.set("registradoEmDispositivo", String(ms));
+
+        await confirmarEntrega(ENTREGA_ID, formData);
+
+        expect(insertValues).toHaveBeenCalledWith(
+          expect.arrayContaining([
+            expect.objectContaining({ registradoEmDispositivo: null }),
+          ]),
+        );
+      }
+    });
   });
 });

@@ -437,6 +437,11 @@ export const entregaAnexos = pgTable(
     sha256: char("sha256", { length: 64 }),
     // SHA-256 calculado no celular antes do envio (migration 0024).
     sha256Dispositivo: char("sha256_dispositivo", { length: 64 }),
+    // Hora declarada pelo celular em que a foto foi feita (migration 0024).
+    registradoEmDispositivo: timestamp("registrado_em_dispositivo", {
+      withTimezone: true,
+      mode: "string",
+    }),
     capturadoEm: timestamp("capturado_em", {
       withTimezone: true,
       mode: "string",

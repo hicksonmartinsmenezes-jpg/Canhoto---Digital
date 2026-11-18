@@ -16,6 +16,8 @@ export interface AnexoComIntegridade {
   id: string;
   tipo: "foto" | "foto_produto" | "comprovante_pix";
   capturadoEm: string;
+  /** Hora declarada pelo celular, quando houver. */
+  registradoEmDispositivo: string | null;
   sha256: string | null;
   situacao: SituacaoIntegridade;
 }
@@ -33,6 +35,7 @@ export async function getAnexosComIntegridade(
       tipo: entregaAnexos.tipo,
       arquivoUrl: entregaAnexos.arquivoUrl,
       capturadoEm: entregaAnexos.capturadoEm,
+      registradoEmDispositivo: entregaAnexos.registradoEmDispositivo,
       sha256: entregaAnexos.sha256,
     })
     .from(entregaAnexos)
@@ -63,6 +66,7 @@ export async function getAnexosComIntegridade(
       id: anexo.id,
       tipo: anexo.tipo,
       capturadoEm: anexo.capturadoEm,
+      registradoEmDispositivo: anexo.registradoEmDispositivo,
       sha256: anexo.sha256?.trim() ?? null,
       situacao: situacaoIntegridade(anexo.sha256?.trim() ?? null, atual),
     });

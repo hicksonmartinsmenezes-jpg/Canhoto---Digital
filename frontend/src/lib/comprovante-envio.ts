@@ -99,6 +99,10 @@ export function montarFormData(rascunho: RascunhoComprovante): FormData {
     );
   }
 
+  // Hora em que a foto foi guardada no celular: numa entrega sem sinal, o
+  // servidor só recebe depois.
+  formData.set("registradoEmDispositivo", String(rascunho.criadoEm));
+
   anexarHashes(formData, rascunho.hashes);
 
   return formData;

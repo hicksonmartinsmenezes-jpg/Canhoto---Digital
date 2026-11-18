@@ -263,6 +263,7 @@ export function ComprovanteEntregaForm({
       for (const foto of fotosProduto) {
         formData.append("fotoProduto", foto.arquivo);
       }
+      formData.set("registradoEmDispositivo", String(Date.now()));
       anexarHashes(
         formData,
         await calcularHashesComprovante({

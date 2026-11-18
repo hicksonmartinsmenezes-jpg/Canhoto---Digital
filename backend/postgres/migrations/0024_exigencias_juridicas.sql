@@ -104,3 +104,9 @@ create trigger trg_entregas_conclusao_imutavel
   for each row execute function bloquear_alteracao_conclusao();
 
 commit;
+
+-- Hora em que a foto foi feita no celular, declarada pelo aparelho. Em
+-- entrega sem sinal, o servidor só recebe o comprovante depois: capturado_em
+-- é a hora da chegada ao servidor, esta é a do registro no celular.
+ALTER TABLE entrega_anexos
+  ADD COLUMN IF NOT EXISTS registrado_em_dispositivo timestamptz;

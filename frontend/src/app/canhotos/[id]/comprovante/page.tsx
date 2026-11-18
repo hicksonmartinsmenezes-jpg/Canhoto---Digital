@@ -69,6 +69,16 @@ export default async function ComprovanteEntregaPage({
   const enderecoConsulta = host ? `https://${host}/verificar` : "/verificar";
 
   const fotoCanhoto = anexos.find((anexo) => anexo.tipo === "foto");
+
+  // Entrega sem sinal: a foto fica no celular e o servidor só recebe depois.
+  // Quando as duas horas se afastam, as duas aparecem no documento.
+  const registroNoCelular = fotoCanhoto?.registradoEmDispositivo ?? null;
+  const atrasoEnvioMs = registroNoCelular
+    ? new Date(entrega.concluidaEm).getTime() -
+      new Date(registroNoCelular).getTime()
+    : 0;
+  const envioAtrasado = atrasoEnvioMs > 2 * 60 * 1000;
+
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex items-center justify-between gap-3 print:hidden">
@@ -151,8 +161,25 @@ export default async function ComprovanteEntregaPage({
                 <dd>{entrega.recebedorVinculo}</dd>
               </>
             )}
-            <dt className="font-semibold">Data e hora da entrega</dt>
-            <dd>{dataHora(entrega.concluidaEm)} (horário de Brasília)</dd>
+            {envioAtrasado && registroNoCelular ? (
+              <>
+                <dt className="font-semibold">Data e hora da entrega</dt>
+                <dd>
+                  {dataHora(registroNoCelular)} (horário de Brasília), registrado
+                  no celular do entregador
+                </dd>
+                <dt className="font-semibold">Recebido pelo servidor</dt>
+                <dd>
+                  {dataHora(entrega.concluidaEm)} — a entrega foi feita sem
+                  sinal de internet e o comprovante subiu quando o sinal voltou
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt className="font-semibold">Data e hora da entrega</dt>
+                <dd>{dataHora(entrega.concluidaEm)} (horário de Brasília)</dd>
+              </>
+            )}
             <dt className="font-semibold">Entregador</dt>
             <dd>{entrega.motoboyNome || "—"}</dd>
           </dl>

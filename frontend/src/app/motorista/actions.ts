@@ -375,6 +375,25 @@ export async function atualizarLocalizacaoMotorista(input: {
   }
 }
 
+/**
+ * Hora declarada pelo celular. Só aceita algo plausível: o relógio do aparelho
+ * pode estar errado ou mentir, então nada no futuro e nada mais velho que a
+ * validade do rascunho. Fora disso, fica sem registro.
+ */
+function lerRegistroDoDispositivo(valor: FormDataEntryValue | null): string | null {
+  if (typeof valor !== "string") return null;
+  const ms = Number(valor);
+  if (!Number.isFinite(ms)) return null;
+
+  const agora = Date.now();
+  const TOLERANCIA_FUTURO_MS = 5 * 60 * 1000;
+  const VALIDADE_MS = 30 * 24 * 60 * 60 * 1000;
+  if (ms > agora + TOLERANCIA_FUTURO_MS) return null;
+  if (ms < agora - VALIDADE_MS) return null;
+
+  return new Date(ms).toISOString();
+}
+
 /** Aceita só SHA-256 em hexadecimal; qualquer outra coisa vira "sem hash". */
 function lerHashDispositivo(valor: FormDataEntryValue | null): string | null {
   if (typeof valor !== "string") return null;
@@ -561,6 +580,10 @@ export async function confirmarEntrega(
       sha256Dispositivo,
     });
   }
+  const registradoEmDispositivo = lerRegistroDoDispositivo(
+    formData.get("registradoEmDispositivo")
+  );
+
   const hashesFotosProduto = formData
     .getAll("hashFotoProduto")
     .map((valor) => lerHashDispositivo(valor));
@@ -659,6 +682,7 @@ export async function confirmarEntrega(
           arquivoUrl: item.url,
           sha256: item.sha256,
           sha256Dispositivo: item.sha256Dispositivo,
+          registradoEmDispositivo,
           capturadoPorMotoboy: acesso.motoboyId,
         }))
       );
