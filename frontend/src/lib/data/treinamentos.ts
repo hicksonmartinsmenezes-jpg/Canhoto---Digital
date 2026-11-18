@@ -5,6 +5,16 @@ import { getDb } from "@/lib/db";
 import { treinamentoProgresso } from "@/lib/db/schema";
 import type { StatusTreinamento } from "@/lib/treinamentos";
 
+export type DonoTreinamento =
+  | { usuarioAdminId: string; colaboradorId?: undefined }
+  | { colaboradorId: string; usuarioAdminId?: undefined };
+
+export function condicaoDono(dono: DonoTreinamento) {
+  return dono.colaboradorId
+    ? eq(treinamentoProgresso.colaboradorId, dono.colaboradorId)
+    : eq(treinamentoProgresso.usuarioAdminId, dono.usuarioAdminId as string);
+}
+
 export interface TreinamentoProgressoItem {
   slug: string;
   status: Exclude<StatusTreinamento, "nao_iniciado">;
@@ -13,7 +23,7 @@ export interface TreinamentoProgressoItem {
 }
 
 export async function getTreinamentosProgresso(
-  usuarioAdminId: string
+  dono: DonoTreinamento
 ): Promise<TreinamentoProgressoItem[]> {
   const db = getDb();
   if (!db) return [];
@@ -26,11 +36,11 @@ export async function getTreinamentosProgresso(
       concluidoEm: treinamentoProgresso.concluidoEm,
     })
     .from(treinamentoProgresso)
-    .where(eq(treinamentoProgresso.usuarioAdminId, usuarioAdminId));
+    .where(condicaoDono(dono));
 }
 
 export async function getTreinamentoProgresso(
-  usuarioAdminId: string,
+  dono: DonoTreinamento,
   slug: string
 ): Promise<TreinamentoProgressoItem | null> {
   const db = getDb();
@@ -46,7 +56,7 @@ export async function getTreinamentoProgresso(
     .from(treinamentoProgresso)
     .where(
       and(
-        eq(treinamentoProgresso.usuarioAdminId, usuarioAdminId),
+        condicaoDono(dono),
         eq(treinamentoProgresso.treinamentoSlug, slug)
       )
     )

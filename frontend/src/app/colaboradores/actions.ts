@@ -1,18 +1,14 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { eq, ilike } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { exigirAdminAutenticado } from "@/lib/admin-auth";
 import { getDb } from "@/lib/db";
-import {
-  codigoErroPostgres,
-  mensagemErroBanco,
-  nomeConstraintPostgres,
-} from "@/lib/db/errors";
-import { colaboradores, setores } from "@/lib/db/schema";
+import { codigoErroPostgres, mensagemErroBanco } from "@/lib/db/errors";
+import { colaboradores } from "@/lib/db/schema";
+import { obterUnidadeValidaId } from "@/lib/data/setores";
 import { checarRateLimit, RATE_LIMIT_ESTRITO } from "@/lib/rate-limit";
-import { normalizarTelefone } from "@/lib/motorista-auth";
 import type { PapelColaborador } from "@/types/database";
 
 export interface ColaboradorActionResult {
@@ -21,14 +17,11 @@ export interface ColaboradorActionResult {
 }
 
 export interface ColaboradorDados {
-  nome: string;
-  // Não é mais coletado no painel de Colaboradores — o login passa a usar
-  // celular (ver migration 0012_login_colaborador_por_celular.sql). Mantido
-  // opcional só por compatibilidade com registros antigos que já têm
-  // e-mail salvo.
-  email?: string;
-  celular: string;
-  cargo: string;
+  // Nome de usuário do login (o mesmo campo "Usuário" da tela de entrada).
+  usuario: string;
+  // Unidade de origem das entregas que o colaborador cadastra (Matriz ou
+  // Distribuidora) — id do setor.
+  unidadeId: string;
   papel: PapelColaborador;
   ativo: boolean;
   // Só usado quando papel === "gestor_setor". Vazio/undefined ao editar =
@@ -36,50 +29,28 @@ export interface ColaboradorDados {
   senha?: string;
 }
 
-const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const NOME_SETOR_PADRAO = "Expedição";
+const REGEX_USUARIO = /^[a-z0-9._-]{3,30}$/;
 const ERRO_BANCO =
   "Banco de dados indisponível neste ambiente — confirme a DATABASE_URL.";
+const ERRO_USUARIO_DUPLICADO = "Esse usuário já está em uso.";
 
-function validarDados(
-  dados: ColaboradorDados
-):
-  | {
-      ok: true;
-      nome: string;
-      email: string | null;
-      celular: string;
-      cargo: string;
-    }
-  | { ok: false; error: string } {
-  const nome = dados.nome.trim();
-  if (!nome) {
-    return { ok: false, error: "Informe o nome do colaborador." };
+// O usuário é sempre guardado em minúsculas e sem espaços nas pontas: o login
+// compara sem diferenciar maiúsculas de minúsculas.
+function validarUsuario(
+  bruto: string
+): { ok: true; usuario: string } | { ok: false; error: string } {
+  const usuario = bruto.trim().toLowerCase();
+  if (!usuario) {
+    return { ok: false, error: "Informe o usuário." };
   }
-
-  // E-mail não é mais obrigatório nem coletado pelo formulário atual — só
-  // valida formato se vier preenchido (edição de registro antigo).
-  const emailBruto = (dados.email ?? "").trim().toLowerCase();
-  if (emailBruto && !REGEX_EMAIL.test(emailBruto)) {
-    return { ok: false, error: "Informe um e-mail válido." };
+  if (!REGEX_USUARIO.test(usuario)) {
+    return {
+      ok: false,
+      error:
+        "Use de 3 a 30 caracteres: letras sem acento, números, ponto, hífen ou _.",
+    };
   }
-  const email = emailBruto || null;
-
-  // Celular é o identificador de login em /colaborador/login pra papel
-  // gestor_setor — por isso é obrigatório e precisa ser único (constraint
-  // colaboradores_celular_key).
-  const celular = normalizarTelefone(dados.celular);
-  if (celular.length !== 10 && celular.length !== 11) {
-    return { ok: false, error: "Informe um celular válido, com DDD." };
-  }
-
-  return {
-    ok: true,
-    nome,
-    email,
-    celular,
-    cargo: dados.cargo.trim(),
-  };
+  return { ok: true, usuario };
 }
 
 // Retorna o hash pronto pra gravar, ou null se não deve mexer na senha
@@ -98,10 +69,7 @@ async function resolverSenhaHash(
 
   if (!senhaLimpa) {
     if (obrigatoria) {
-      return {
-        ok: false,
-        error: "Defina uma senha de acesso pro Gestor de setor.",
-      };
+      return { ok: false, error: "Defina uma senha." };
     }
     return { ok: true, hash: null };
   }
@@ -116,24 +84,11 @@ async function resolverSenhaHash(
   return { ok: true, hash: await bcrypt.hash(senhaLimpa, 12) };
 }
 
-async function obterSetorPadrao(): Promise<string | null> {
-  const db = getDb();
-  if (!db) return null;
-
-  const [existente] = await db
-    .select({ id: setores.id })
-    .from(setores)
-    .where(ilike(setores.nome, NOME_SETOR_PADRAO))
-    .limit(1);
-
-  if (existente) return existente.id;
-
-  const [criado] = await db
-    .insert(setores)
-    .values({ nome: NOME_SETOR_PADRAO })
-    .returning({ id: setores.id });
-
-  return criado?.id ?? null;
+async function validarUnidade(
+  unidadeId: string
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const id = await obterUnidadeValidaId(unidadeId);
+  return id ? { ok: true, id } : { ok: false, error: "Escolha a unidade." };
 }
 
 export async function criarColaborador(
@@ -155,7 +110,7 @@ export async function criarColaborador(
   const db = getDb();
   if (!db) return { ok: false, error: ERRO_BANCO };
 
-  const validado = validarDados(dados);
+  const validado = validarUsuario(dados.usuario);
   if (!validado.ok) return { ok: false, error: validado.error };
 
   const senhaResolvida = await resolverSenhaHash(dados.papel, dados.senha, {
@@ -165,31 +120,22 @@ export async function criarColaborador(
     return { ok: false, error: senhaResolvida.error };
   }
 
-  try {
-    const setorId = await obterSetorPadrao();
-    if (!setorId) {
-      return { ok: false, error: "Não foi possível localizar o setor padrão." };
-    }
+  const unidade = await validarUnidade(dados.unidadeId);
+  if (!unidade.ok) return { ok: false, error: unidade.error };
 
+  try {
+    // "nome" é obrigatório no banco e aparece no histórico das entregas:
+    // enquanto o formulário só pede o usuário, ele serve de nome também.
     await db.insert(colaboradores).values({
-      nome: validado.nome,
-      email: validado.email,
-      celular: validado.celular,
-      setorId,
-      cargo: validado.cargo || null,
+      nome: validado.usuario,
+      usuario: validado.usuario,
+      setorId: unidade.id,
       papel: dados.papel,
       senhaHash: senhaResolvida.hash,
     });
   } catch (error) {
     if (codigoErroPostgres(error) === "23505") {
-      const constraint = nomeConstraintPostgres(error);
-      return {
-        ok: false,
-        error:
-          constraint === "colaboradores_celular_key"
-            ? "Esse celular já está cadastrado para outro colaborador."
-            : "Esse e-mail já está cadastrado para outro colaborador.",
-      };
+      return { ok: false, error: ERRO_USUARIO_DUPLICADO };
     }
     return {
       ok: false,
@@ -221,7 +167,7 @@ export async function atualizarColaborador(
   const db = getDb();
   if (!db) return { ok: false, error: ERRO_BANCO };
 
-  const validado = validarDados(dados);
+  const validado = validarUsuario(dados.usuario);
   if (!validado.ok) return { ok: false, error: validado.error };
 
   // Ao editar, senha não é obrigatória — campo vazio significa "manter a
@@ -235,20 +181,31 @@ export async function atualizarColaborador(
     return { ok: false, error: senhaResolvida.error };
   }
 
+  const unidade = await validarUnidade(dados.unidadeId);
+  if (!unidade.ok) return { ok: false, error: unidade.error };
+
   try {
-    const setorId = await obterSetorPadrao();
-    if (!setorId) {
-      return { ok: false, error: "Não foi possível localizar o setor padrão." };
+    const [atual] = await db
+      .select({ nome: colaboradores.nome, usuario: colaboradores.usuario })
+      .from(colaboradores)
+      .where(eq(colaboradores.id, id))
+      .limit(1);
+
+    if (!atual) {
+      return { ok: false, error: "Colaborador não encontrado." };
     }
+
+    // Se o nome era só o próprio usuário (cadastro novo), acompanha a troca;
+    // um nome de verdade (cadastro antigo) não é sobrescrito.
+    const nomeAcompanhaUsuario =
+      atual.usuario !== null && atual.nome === atual.usuario;
 
     const [atualizado] = await db
       .update(colaboradores)
       .set({
-        nome: validado.nome,
-        email: validado.email,
-        celular: validado.celular,
-        setorId,
-        cargo: validado.cargo || null,
+        usuario: validado.usuario,
+        ...(nomeAcompanhaUsuario ? { nome: validado.usuario } : {}),
+        setorId: unidade.id,
         papel: dados.papel,
         ativo: dados.ativo,
         ...(senhaResolvida.hash !== null
@@ -263,14 +220,7 @@ export async function atualizarColaborador(
     }
   } catch (error) {
     if (codigoErroPostgres(error) === "23505") {
-      const constraint = nomeConstraintPostgres(error);
-      return {
-        ok: false,
-        error:
-          constraint === "colaboradores_celular_key"
-            ? "Esse celular já está cadastrado para outro colaborador."
-            : "Esse e-mail já está cadastrado para outro colaborador.",
-      };
+      return { ok: false, error: ERRO_USUARIO_DUPLICADO };
     }
     return {
       ok: false,

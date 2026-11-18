@@ -8,6 +8,7 @@ import {
 import { EntregaRowActions } from "@/components/canhotos/EntregaRowActions";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { EntregaListItem } from "@/lib/data/entregas";
+import { ROTULO_CONSUMIDOR_FINAL, rotuloNfe } from "@/lib/format";
 
 function Cell({ value }: { value: string | null }) {
   return <span className={value ? "" : "text-slate-300"}>{value ?? "—"}</span>;
@@ -76,7 +77,11 @@ export function CanhotosTable({
               </p>
               <p className="mt-0.5 truncate text-xs text-slate-500">
                 {c.motoboy ?? "Sem motorista"}
-                {c.numeroNfe ? ` · NF-e ${c.numeroNfe}` : ""}
+                {c.numeroNfe
+                  ? ` · NF-e ${c.numeroNfe}`
+                  : c.clienteFinal
+                    ? ` · ${ROTULO_CONSUMIDOR_FINAL}`
+                    : ""}
               </p>
             </Link>
             <EntregaRowActions
@@ -137,7 +142,7 @@ export function CanhotosTable({
                   {c.cliente}
                 </td>
                 <td className="truncate px-3 py-3.5 align-middle tabular-nums">
-                  <Cell value={c.numeroNfe} />
+                  <Cell value={rotuloNfe(c.numeroNfe, c.clienteFinal)} />
                 </td>
                 <td className="whitespace-nowrap py-3.5 pl-3 pr-8 text-right align-middle tabular-nums">
                   {c.valor}

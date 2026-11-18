@@ -39,6 +39,7 @@ const inputBase: AtualizarEntregaInput = {
   cep: "49000000",
   numeroPedido: "123",
   numeroNfe: "456",
+  clienteFinal: false,
   valorPagamento: 100,
   formaPagamento: "pix",
   motoboyId: "",
@@ -156,7 +157,7 @@ describe("edição administrativa de entrega", () => {
     expect(resultado).toEqual({
       ok: false,
       error:
-        "A entrega só pode ser concluída pelo fluxo do motorista com a foto da entrega.",
+        "A entrega só pode ser concluída pelo fluxo do motorista com a foto do canhoto.",
     });
     expect(tx.update).not.toHaveBeenCalled();
   });
@@ -175,6 +176,32 @@ describe("edição administrativa de entrega", () => {
         "Uma entrega concluída com comprovante não pode voltar para outro status.",
     });
     expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it("cliente final grava a marca e descarta o número da NF-e", async () => {
+    const { updateQuery } = configurarDb("pendente");
+
+    const resultado = await atualizarEntrega("entrega-1", {
+      ...inputBase,
+      clienteFinal: true,
+      numeroNfe: "456",
+    });
+
+    expect(resultado).toEqual({ ok: true });
+    expect(updateQuery.set).toHaveBeenCalledWith(
+      expect.objectContaining({ clienteFinal: true, numeroNfe: null })
+    );
+  });
+
+  it("sem marcar cliente final, mantém o número da NF-e informado", async () => {
+    const { updateQuery } = configurarDb("pendente");
+
+    const resultado = await atualizarEntrega("entrega-1", inputBase);
+
+    expect(resultado).toEqual({ ok: true });
+    expect(updateQuery.set).toHaveBeenCalledWith(
+      expect.objectContaining({ clienteFinal: false, numeroNfe: "456" })
+    );
   });
 
   it("permite editar dados de uma entrega que já está entregue mantendo o status", async () => {

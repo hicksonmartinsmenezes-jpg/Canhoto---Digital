@@ -192,11 +192,7 @@ export async function cancelarEntrega(
         .for("update")
         .limit(1);
 
-      if (
-        !atual ||
-        (operador.tipo === "gestor_setor" &&
-          (!operador.setorId || atual.setorId !== operador.setorId))
-      ) {
+      if (!atual) {
         return { ok: false as const, error: "Entrega não encontrada." };
       }
       if (atual.status === "cancelado") {

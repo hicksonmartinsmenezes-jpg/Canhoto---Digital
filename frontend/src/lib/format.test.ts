@@ -5,6 +5,7 @@ import {
   maskCurrencyInput,
   maskPhoneInput,
   parseCurrencyInput,
+  rotuloNfe,
 } from "./format";
 
 describe("formatBRL", () => {
@@ -73,5 +74,18 @@ describe("maskPhoneInput", () => {
 
   it("trunca em 11 dígitos mesmo com entrada maior", () => {
     expect(maskPhoneInput("119876543219999")).toBe("(11) 98765-4321");
+  });
+});
+
+describe("rotuloNfe", () => {
+  it("mostra o número da nota quando existe", () => {
+    expect(rotuloNfe("123", true)).toBe("123");
+  });
+  it("mostra Consumidor final quando não há nota e a venda é marcada", () => {
+    expect(rotuloNfe(null, true)).toBe("Consumidor final");
+    expect(rotuloNfe("  ", true)).toBe("Consumidor final");
+  });
+  it("devolve null quando não há nota nem marcação (pendência)", () => {
+    expect(rotuloNfe(null, false)).toBeNull();
   });
 });

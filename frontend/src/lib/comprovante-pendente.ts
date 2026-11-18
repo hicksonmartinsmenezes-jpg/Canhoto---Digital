@@ -1,6 +1,6 @@
 // Rascunho do comprovante de entrega guardado no próprio celular (IndexedDB).
 //
-// A foto da entrega e, se houver, o comprovante Pix e as fotos do produto são
+// A foto do canhoto e, se houver, o comprovante Pix e as fotos do produto são
 // salvos aqui ANTES de
 // qualquer envio. Se o sinal cair, o Android matar o app ou a página
 // recarregar, nada se perde: o rascunho continua no aparelho até o servidor
@@ -10,6 +10,8 @@ export interface RascunhoComprovante {
   entregaId: string;
   /** Texto curto para identificar a entrega na lista (ex.: "#123 · Maria"). */
   rotulo: string | null;
+  /** Nome de quem recebeu. Ausente em rascunhos antigos. */
+  recebedorNome?: string;
   fotoEntrega: Blob;
   comprovantePix: Blob | null;
   /** Fotos do produto (opcionais). */
@@ -26,6 +28,7 @@ export interface RascunhoComprovante {
 export interface NovoRascunhoComprovante {
   entregaId: string;
   rotulo?: string | null;
+  recebedorNome: string;
   fotoEntrega: Blob;
   comprovantePix?: Blob | null;
   fotosProduto?: Blob[];
@@ -104,6 +107,7 @@ export async function salvarRascunho(
   const rascunho: RascunhoComprovante = {
     entregaId: novo.entregaId,
     rotulo: novo.rotulo ?? null,
+    recebedorNome: novo.recebedorNome,
     fotoEntrega: novo.fotoEntrega,
     comprovantePix: novo.comprovantePix ?? null,
     fotosProduto: novo.fotosProduto ?? [],

@@ -53,7 +53,6 @@ export function maskPhoneInput(raw: string): string {
   return `(${ddd}) ${meio}-${fim}`;
 }
 
-
 export function maskCepInput(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 5) return digits;
@@ -66,7 +65,22 @@ function normalizeCep(raw: string): string {
 
 export function formatCep(raw: string): string {
   const digits = normalizeCep(raw);
-  return digits.length === 8
-    ? `${digits.slice(0, 5)}-${digits.slice(5)}`
-    : raw;
+  return digits.length === 8 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : raw;
+}
+
+/** Texto padrão para vendas sem NF-e (caixa "Consumidor final"). */
+export const ROTULO_CONSUMIDOR_FINAL = "Consumidor final";
+
+/**
+ * O que mostrar no lugar do número da NF-e: o número, ou "Consumidor final"
+ * quando a venda é marcada assim; null quando não há nota nem marcação
+ * (continua aparecendo como pendência de NF-e).
+ */
+export function rotuloNfe(
+  numeroNfe: string | null | undefined,
+  clienteFinal: boolean,
+): string | null {
+  const numero = numeroNfe?.trim();
+  if (numero) return numero;
+  return clienteFinal ? ROTULO_CONSUMIDOR_FINAL : null;
 }

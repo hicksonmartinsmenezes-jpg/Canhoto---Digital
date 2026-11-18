@@ -40,6 +40,10 @@ export async function GET(request: NextRequest) {
   const statusParam = params.get("status");
   const formaParam = params.get("forma");
   const motoristaParam = params.get("motorista");
+  const unidadeParam = params.get("unidade");
+  const unidadeId =
+    unidadeParam && /^[0-9a-f-]{36}$/i.test(unidadeParam) ? unidadeParam : undefined;
+  const busca = (params.get("q") ?? "").trim().slice(0, 80);
 
   const dataInicio = isDataIsoValida(inicioParam) ? inicioParam : undefined;
   const dataFim = isDataIsoValida(fimParam) ? fimParam : undefined;
@@ -56,6 +60,8 @@ export async function GET(request: NextRequest) {
     status,
     formaPagamento,
     motoboyId,
+    busca,
+    unidadeId,
     setorId: setorIdParaFiltro(sessao),
   });
 
@@ -69,6 +75,7 @@ export async function GET(request: NextRequest) {
     "NF-e",
     "Pedido",
     "Valor (R$)",
+    "Unidade",
     "Forma de pagamento",
     "Motorista",
     "Situação",
@@ -85,6 +92,7 @@ export async function GET(request: NextRequest) {
       item.numeroNfe ?? "",
       item.numeroPedido ?? "",
       item.valorNumerico.toFixed(2).replace(".", ","),
+      item.unidade ?? "",
       FORMA_PAGAMENTO_LABEL[item.formaPagamento],
       item.motoboy ?? "",
       SITUACAO_LABEL[item.situacao],

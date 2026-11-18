@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  char,
   date,
   index,
   integer,
@@ -34,6 +35,7 @@ export const formaPagamentoEnum = pgEnum("forma_pagamento", [
   "debito",
   "cartao_1x",
   "prazo",
+  "boleto",
 ]);
 
 export const tipoAnexoEntregaEnum = pgEnum("tipo_anexo_entrega", [
@@ -75,9 +77,12 @@ export const colaboradores = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     nome: text("nome").notNull(),
     email: text("email").unique(),
-    // Identificador de login em /colaborador/login (papel gestor_setor) —
-    // ver migration 0012_login_colaborador_por_celular.sql.
+    // Legado: antes era o identificador de login do colaborador (migration
+    // 0012). Hoje o login é por "usuario"; o celular não é mais coletado.
     celular: text("celular").unique(),
+    // Nome de usuário usado no login (migration 0020): minúsculas, sem
+    // espaços, único. Null em colaboradores antigos, que ainda não têm acesso.
+    usuario: text("usuario"),
     setorId: uuid("setor_id").references(() => setores.id, {
       onDelete: "set null",
     }),
@@ -91,7 +96,12 @@ export const colaboradores = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("idx_colaboradores_setor").on(table.setorId)]
+  (table) => [
+    index("idx_colaboradores_setor").on(table.setorId),
+    uniqueIndex("colaboradores_usuario_key")
+      .on(table.usuario)
+      .where(sql`${table.usuario} is not null`),
+  ]
 );
 
 export const usuariosAdmin = pgTable(
@@ -266,9 +276,13 @@ export const treinamentoProgresso = pgTable(
   "treinamento_progresso",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    usuarioAdminId: uuid("usuario_admin_id")
-      .notNull()
-      .references(() => usuariosAdmin.id, { onDelete: "cascade" }),
+    usuarioAdminId: uuid("usuario_admin_id").references(
+      () => usuariosAdmin.id,
+      { onDelete: "cascade" }
+    ),
+    colaboradorId: uuid("colaborador_id").references(() => colaboradores.id, {
+      onDelete: "cascade",
+    }),
     treinamentoSlug: text("treinamento_slug").notNull(),
     status: statusTreinamentoEnum("status")
       .notNull()
@@ -295,7 +309,15 @@ export const treinamentoProgresso = pgTable(
       table.usuarioAdminId,
       table.treinamentoSlug
     ),
+    uniqueIndex("treinamento_progresso_colaborador_slug_key")
+      .on(table.colaboradorId, table.treinamentoSlug)
+      .where(sql`${table.colaboradorId} is not null`),
     index("idx_treinamento_progresso_usuario").on(table.usuarioAdminId),
+    index("idx_treinamento_progresso_colaborador").on(table.colaboradorId),
+    check(
+      "ck_treinamento_progresso_dono",
+      sql`(${table.usuarioAdminId} is null) <> (${table.colaboradorId} is null)`
+    ),
     index("idx_treinamento_progresso_status").on(table.status),
     check(
       "ck_treinamento_progresso_slug",
@@ -325,12 +347,17 @@ export const entregas = pgTable(
     longitude: numeric("longitude", { precision: 9, scale: 6 }),
     numeroPedido: text("numero_pedido"),
     numeroNfe: text("numero_nfe"),
+    // Venda a consumidor final (migration 0019): não tem NF-e, então não entra
+    // no alerta "sem número de NF-e".
+    clienteFinal: boolean("cliente_final").notNull().default(false),
     valorPagamento: numeric("valor_pagamento", {
       precision: 12,
       scale: 2,
     }).notNull(),
     formaPagamento: formaPagamentoEnum("forma_pagamento").notNull(),
     horaSaida: time("hora_saida"),
+    // Quem recebeu a mercadoria (migration 0023). NULL em entregas antigas.
+    recebedorNome: text("recebedor_nome"),
     // Rota com várias paradas (migration 0016): entregas da mesma rota têm o
     // mesmo rotaId; rotaOrdem é a posição na ordem de visita (1 = primeira).
     rotaId: uuid("rota_id"),
@@ -402,6 +429,8 @@ export const entregaAnexos = pgTable(
       .references(() => entregas.id, { onDelete: "cascade" }),
     tipo: tipoAnexoEntregaEnum("tipo").notNull(),
     arquivoUrl: text("arquivo_url").notNull(),
+    // SHA-256 do arquivo no momento do upload (migration 0023).
+    sha256: char("sha256", { length: 64 }),
     capturadoEm: timestamp("capturado_em", {
       withTimezone: true,
       mode: "string",

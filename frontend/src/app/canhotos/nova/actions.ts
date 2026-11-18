@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
 import { entregas } from "@/lib/db/schema";
-import { obterSetorPadraoId } from "@/lib/data/setores";
+import { obterUnidadeValidaId } from "@/lib/data/setores";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { avisarEntregaNovaAoMotorista } from "@/lib/push/avisar-motorista";
@@ -19,10 +19,14 @@ export interface CriarEntregaInput {
   cep: string;
   numeroPedido: string;
   numeroNfe: string;
+  /** Venda a consumidor final: sem NF-e (o número da nota é ignorado). */
+  clienteFinal: boolean;
   valorPagamento: number;
   formaPagamento: FormaPagamento | "";
   motoboyId: string;
   observacoes: string;
+  /** Matriz ou Distribuidora. Só vale para o Admin; colaborador usa a própria. */
+  unidadeId?: string;
 }
 
 export interface CriarEntregaResult {
@@ -86,13 +90,15 @@ export async function criarEntrega(
     cep,
   });
 
-  // gestor_setor cadastra sempre no próprio setor. Admin não tem setor
-  // próprio, então a entrega cai no setor padrão (única forma de continuar
-  // visível pros gestores de setor) — ver @/lib/data/setores.
-  const setorId =
-    operador.tipo === "gestor_setor"
-      ? operador.setorId
-      : await obterSetorPadraoId();
+  // Unidade de origem (Matriz ou Distribuidora): o colaborador cadastra
+  // sempre na própria; o Admin escolhe no formulário.
+  let setorId: string | null;
+  if (operador.tipo === "gestor_setor") {
+    setorId = operador.setorId;
+  } else {
+    setorId = await obterUnidadeValidaId(input.unidadeId ?? "");
+    if (!setorId) return { ok: false, error: "Escolha a unidade." };
+  }
 
   let numero: number | undefined;
   let entregaId: string | undefined;
@@ -108,7 +114,8 @@ export async function criarEntrega(
       longitude:
         coordenadas === null ? null : coordenadas.longitude.toFixed(6),
       numeroPedido: input.numeroPedido.trim() || null,
-      numeroNfe: input.numeroNfe.trim() || null,
+      numeroNfe: input.clienteFinal ? null : input.numeroNfe.trim() || null,
+      clienteFinal: input.clienteFinal,
       valorPagamento: input.valorPagamento.toFixed(2),
       formaPagamento: input.formaPagamento,
       motoboyId: input.motoboyId || null,

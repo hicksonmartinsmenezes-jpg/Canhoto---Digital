@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, FileText, Loader2, Paperclip, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { Field, inputClass } from "@/components/canhotos/form-fields";
+import {
+  ClienteFinalCheckbox,
+  Field,
+  inputClass,
+} from "@/components/canhotos/form-fields";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 import {
   formatCep,
@@ -34,6 +38,7 @@ import {
   formatoCompactado,
 } from "@/lib/arquivo-compactado";
 import type { MotoboyOption } from "@/lib/data/motoboys";
+import type { UnidadeOption } from "@/lib/data/setores";
 import type { ClienteRecente } from "@/lib/data/entregas";
 import type { FormaPagamento } from "@/types/database";
 
@@ -42,9 +47,11 @@ interface FormState {
   clienteNome: string;
   numeroPedido: string;
   numeroNfe: string;
+  clienteFinal: boolean;
   valorPagamento: string;
   formaPagamento: FormaPagamento | "";
   motoboyId: string;
+  unidadeId: string;
   clienteTelefone: string;
   endereco: string;
   cep: string;
@@ -68,10 +75,13 @@ export function AdicionarEntregaForm({
   motoboys,
   clientes,
   hoje,
+  unidades,
 }: {
   motoboys: MotoboyOption[];
   clientes: ClienteRecente[];
   hoje: string;
+  /** Só preenchido para o Admin escolher a unidade; vazio para colaborador. */
+  unidades: UnidadeOption[];
 }) {
   const router = useRouter();
   const listaClientesId = useId();
@@ -93,9 +103,11 @@ export function AdicionarEntregaForm({
     clienteNome: "",
     numeroPedido: "",
     numeroNfe: "",
+    clienteFinal: false,
     valorPagamento: "",
     formaPagamento: "",
     motoboyId: "",
+    unidadeId: "",
     clienteTelefone: "",
     endereco: "",
     cep: "",
@@ -212,6 +224,8 @@ export function AdicionarEntregaForm({
         ? maskPhoneInput(dados.clienteTelefone)
         : f.clienteTelefone,
       numeroNfe: dados.numeroNfe ?? f.numeroNfe,
+      // Documento com número de NF-e: a venda tem nota, então desmarca.
+      clienteFinal: dados.numeroNfe ? false : f.clienteFinal,
       numeroPedido: dados.numeroPedido ?? f.numeroPedido,
       valorPagamento: dados.valor
         ? maskCurrencyInput(String(Math.round(dados.valor * 100)))
@@ -317,6 +331,7 @@ export function AdicionarEntregaForm({
     const valor = parseCurrencyInput(form.valorPagamento);
     if (!valor || valor <= 0) return "Informe um valor de pagamento válido.";
     if (!form.formaPagamento) return "Selecione a forma de pagamento.";
+    if (unidades.length > 0 && !form.unidadeId) return "Escolha a unidade.";
     const cep = form.cep.replace(/\D/g, "");
     if (cep && cep.length !== 8) return "Informe um CEP válido com 8 dígitos.";
     return null;
@@ -342,9 +357,11 @@ export function AdicionarEntregaForm({
             clienteNome: form.clienteNome,
             numeroPedido: form.numeroPedido,
             numeroNfe: form.numeroNfe,
+            clienteFinal: form.clienteFinal,
             valorPagamento: parseCurrencyInput(form.valorPagamento),
             formaPagamento: form.formaPagamento,
             motoboyId: form.motoboyId,
+            unidadeId: form.unidadeId,
             clienteTelefone: form.clienteTelefone,
             endereco: form.endereco,
             cep: form.cep,
@@ -496,6 +513,22 @@ export function AdicionarEntregaForm({
               ))}
             </select>
           </Field>
+          {unidades.length > 0 && (
+            <Field label="Unidade">
+              <select
+                className={inputClass}
+                value={form.unidadeId}
+                onChange={(e) => set("unidadeId", e.target.value)}
+              >
+                <option value="">Selecione</option>
+                {unidades.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Motorista" optional>
             <select
               className={inputClass}
@@ -548,13 +581,6 @@ export function AdicionarEntregaForm({
               )}
               {abrindoPacote ? "Abrindo pacote..." : "Anexar documento (XML, PDF, ZIP ou RAR)"}
             </button>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Ao anexar o XML da NF-e, cliente, endereço, valor e demais dados
-              da nota são preenchidos. O XML pode vir compactado em .zip ou
-              .rar — o pacote é aberto e os documentos de dentro entram sozinhos.
-              Sem XML, um PDF (DANFE) também tenta preencher os mesmos campos,
-              mas com menos confiança — confira antes de salvar.
-            </p>
             {documentos.length > 0 && (
               <ul className="mt-2 space-y-1.5">
                 {documentos.map((arquivo, indice) => (
@@ -597,6 +623,8 @@ export function AdicionarEntregaForm({
               value={form.numeroNfe}
               onChange={(e) => set("numeroNfe", e.target.value)}
               maxLength={60}
+              disabled={form.clienteFinal}
+              placeholder={form.clienteFinal ? "Consumidor final: sem NF-e" : undefined}
             />
           </Field>
           <Field label="Nº do pedido" optional>
@@ -608,6 +636,18 @@ export function AdicionarEntregaForm({
               maxLength={60}
             />
           </Field>
+          <div className="sm:col-span-2">
+            <ClienteFinalCheckbox
+              checked={form.clienteFinal}
+              onChange={(marcado) =>
+                setForm((f) => ({
+                  ...f,
+                  clienteFinal: marcado,
+                  numeroNfe: marcado ? "" : f.numeroNfe,
+                }))
+              }
+            />
+          </div>
           <div className="sm:col-span-2">
             <Field label="Observações" optional>
               <textarea

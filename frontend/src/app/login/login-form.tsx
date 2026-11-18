@@ -2,21 +2,21 @@
 
 import { useState, useTransition } from "react";
 import { Loader2, LockKeyhole, LogIn } from "lucide-react";
-import { entrarAdmin } from "./actions";
+import { entrar as entrarNoPainel } from "./actions";
 
 type LoginFormProps = {
   initialError: string | null;
 };
 
 export default function LoginForm({ initialError }: LoginFormProps) {
-  const [email, setEmail] = useState("");
+  const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(initialError);
   const [pending, startTransition] = useTransition();
 
   function entrar() {
-    if (!email.trim()) {
-      setErro("Informe seu e-mail.");
+    if (!usuario.trim()) {
+      setErro("Informe seu usuário.");
       return;
     }
     if (!senha) {
@@ -26,7 +26,7 @@ export default function LoginForm({ initialError }: LoginFormProps) {
 
     setErro(null);
     startTransition(async () => {
-      const resultado = await entrarAdmin(email, senha);
+      const resultado = await entrarNoPainel(usuario, senha);
       if (resultado.ok) {
         window.location.assign("/");
         return;
@@ -52,16 +52,17 @@ export default function LoginForm({ initialError }: LoginFormProps) {
         <div className="p-7">
           <div>
             <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-              E-mail
+              Usuário
             </label>
             <input
-              type="email"
-              placeholder="voce@rildon.com.br"
+              type="text"
               autoFocus
               autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-400/15"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={usuario}
+              onChange={(e) => setUsuario(e.target.value)}
             />
           </div>
 

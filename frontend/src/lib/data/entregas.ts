@@ -28,6 +28,7 @@ import {
   entregas,
   motoboyLocalizacoes,
   motoboys,
+  setores,
   usuariosAdmin,
 } from "@/lib/db/schema";
 import { formatBRL, formatCep, formatDateBR } from "@/lib/format";
@@ -298,6 +299,7 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
       .where(
         and(
           isNull(entregas.numeroNfe),
+          eq(entregas.clienteFinal, false),
           ne(entregas.status, "cancelado"),
           filtroSetor
         )
@@ -436,7 +438,7 @@ export async function getAtividadeRecente(
         id: `historico-${historico.id}`,
         hora: rotuloQuando(historico.alteradoEm),
         titulo: "Entrega concluída",
-        descricao: `${historico.motoristaNome ? `O motorista ${historico.motoristaNome}` : "O motorista"} concluiu a entrega #${historico.numero} com foto da entrega.`,
+        descricao: `${historico.motoristaNome ? `O motorista ${historico.motoristaNome}` : "O motorista"} concluiu a entrega #${historico.numero} com foto do canhoto.`,
         cor: "info",
         timestamp: historico.alteradoEm,
       });
@@ -496,6 +498,8 @@ export interface EntregaListItem {
   cliente: string;
   numeroPedido: string | null;
   numeroNfe: string | null;
+  /** Venda a consumidor final (sem NF-e). */
+  clienteFinal: boolean;
   valor: string;
   formaPagamento: FormaPagamento;
   motoboy: string | null;
@@ -503,6 +507,26 @@ export interface EntregaListItem {
   situacao: SituacaoEntrega;
   /** Ainda na loja (pendente e sem saída): pode excluir ou cancelar. */
   aindaNaLoja: boolean;
+}
+
+/** Cliente, NF-e, pedido, telefone ou número da entrega (#123). */
+function condicaoBusca(buscaBruta: string | undefined) {
+  const busca = buscaBruta?.trim();
+  if (!busca) return undefined;
+
+  const padrao = `%${escaparLike(busca)}%`;
+  const numero = /^#?\d{1,9}$/.test(busca) ? Number(busca.replace("#", "")) : null;
+  const digitos = busca.replace(/\D/g, "");
+  const opcoes = [
+    sql`${entregas.clienteNome} ilike ${padrao}`,
+    sql`${entregas.numeroNfe} ilike ${padrao}`,
+    sql`${entregas.numeroPedido} ilike ${padrao}`,
+  ];
+  if (numero !== null) opcoes.push(eq(entregas.numero, numero));
+  if (digitos.length >= 4) {
+    opcoes.push(sql`${entregas.clienteTelefone} like ${`%${digitos}%`}`);
+  }
+  return or(...opcoes);
 }
 
 export interface FiltrosListaEntregas {
@@ -516,7 +540,8 @@ export interface FiltrosListaEntregas {
   motoboyId?: string;
   /**
    * Só entregas sem número de NF-e e não canceladas — mesmo critério do alerta
-   * "sem número de NF-e" do Dashboard (canceladas não precisam de nota).
+   * "sem número de NF-e" do Dashboard (canceladas e vendas a consumidor final
+   * não precisam de nota).
    */
   semNfe?: boolean;
 }
@@ -556,25 +581,15 @@ export async function getEntregas(
   if (filtros.dataFim) condicoes.push(lte(entregas.data, filtros.dataFim));
   if (filtros.motoboyId) condicoes.push(eq(entregas.motoboyId, filtros.motoboyId));
   if (filtros.semNfe) {
-    condicoes.push(isNull(entregas.numeroNfe), ne(entregas.status, "cancelado"));
+    condicoes.push(
+      isNull(entregas.numeroNfe),
+      eq(entregas.clienteFinal, false),
+      ne(entregas.status, "cancelado")
+    );
   }
 
-  const busca = filtros.busca?.trim();
-  if (busca) {
-    const padrao = `%${escaparLike(busca)}%`;
-    const numero = /^#?\d{1,9}$/.test(busca) ? Number(busca.replace("#", "")) : null;
-    const digitos = busca.replace(/\D/g, "");
-    const opcoes = [
-      sql`${entregas.clienteNome} ilike ${padrao}`,
-      sql`${entregas.numeroNfe} ilike ${padrao}`,
-      sql`${entregas.numeroPedido} ilike ${padrao}`,
-    ];
-    if (numero !== null) opcoes.push(eq(entregas.numero, numero));
-    if (digitos.length >= 4) {
-      opcoes.push(sql`${entregas.clienteTelefone} like ${`%${digitos}%`}`);
-    }
-    condicoes.push(or(...opcoes)!);
-  }
+  const condicaoDaBusca = condicaoBusca(filtros.busca);
+  if (condicaoDaBusca) condicoes.push(condicaoDaBusca);
 
   const rows = await db
     .select({
@@ -584,6 +599,7 @@ export async function getEntregas(
       clienteNome: entregas.clienteNome,
       numeroPedido: entregas.numeroPedido,
       numeroNfe: entregas.numeroNfe,
+      clienteFinal: entregas.clienteFinal,
       valorPagamento: entregas.valorPagamento,
       formaPagamento: entregas.formaPagamento,
       status: entregas.status,
@@ -603,6 +619,7 @@ export async function getEntregas(
     cliente: entrega.clienteNome,
     numeroPedido: entrega.numeroPedido,
     numeroNfe: entrega.numeroNfe,
+    clienteFinal: entrega.clienteFinal,
     valor: formatBRL(Number(entrega.valorPagamento)),
     formaPagamento: entrega.formaPagamento,
     motoboy: entrega.motoboyNome,
@@ -618,6 +635,10 @@ export interface RelatorioFiltros {
   status?: StatusEntrega;
   formaPagamento?: FormaPagamento;
   motoboyId?: string;
+  /** Cliente, NF-e, pedido, telefone ou número da entrega (#123). */
+  busca?: string;
+  /** Só entregas desta unidade (Matriz ou Distribuidora). */
+  unidadeId?: string;
   // undefined = Admin (tudo); null = sem acesso (vazio); uuid = só o setor.
   setorId?: string | null;
 }
@@ -635,6 +656,8 @@ interface RelatorioEntregaItem {
   valorNumerico: number;
   formaPagamento: FormaPagamento;
   motoboy: string | null;
+  /** Unidade de origem (Matriz, Distribuidora…) ou null. */
+  unidade: string | null;
   status: StatusEntrega;
   situacao: SituacaoEntrega;
   /** "HH:MM" ou null. */
@@ -749,9 +772,11 @@ export async function getRelatorioEntregas(
       horaSaida: entregas.horaSaida,
       clienteAssinouEm: entregas.clienteAssinouEm,
       motoboyNome: motoboys.nome,
+      unidadeNome: setores.nome,
     })
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
+    .leftJoin(setores, eq(entregas.setorId, setores.id))
     .where(
       and(
         filtros.dataInicio
@@ -767,7 +792,9 @@ export async function getRelatorioEntregas(
           ? eq(entregas.formaPagamento, filtros.formaPagamento)
           : undefined,
         filtros.motoboyId ? eq(entregas.motoboyId, filtros.motoboyId) : undefined,
-        filtros.setorId ? eq(entregas.setorId, filtros.setorId) : undefined
+        filtros.setorId ? eq(entregas.setorId, filtros.setorId) : undefined,
+        filtros.unidadeId ? eq(entregas.setorId, filtros.unidadeId) : undefined,
+        condicaoBusca(filtros.busca)
       )
     )
     .orderBy(desc(entregas.data), desc(entregas.numero));
@@ -785,6 +812,7 @@ export async function getRelatorioEntregas(
     valorNumerico: Number(entrega.valorPagamento),
     formaPagamento: entrega.formaPagamento,
     motoboy: entrega.motoboyNome,
+    unidade: entrega.unidadeNome,
     status: entrega.status,
     situacao: situacaoEntrega(entrega.status, entrega.horaSaida),
     horaSaida: entrega.horaSaida ? entrega.horaSaida.slice(0, 5) : null,
@@ -809,6 +837,8 @@ export interface EntregaDetalhe {
   longitude: number | null;
   numeroPedido: string;
   numeroNfe: string;
+  /** Venda a consumidor final (sem NF-e). */
+  clienteFinal: boolean;
   valorPagamento: string;
   formaPagamento: FormaPagamento;
   motoboyId: string;
@@ -819,6 +849,10 @@ export interface EntregaDetalhe {
   observacoes: string;
   status: StatusEntrega;
   setorId: string | null;
+  /** Quem recebeu a mercadoria (null em entregas anteriores ao registro). */
+  recebedorNome: string | null;
+  /** Momento em que o motorista concluiu a entrega (ISO). */
+  concluidaEm: string | null;
 }
 
 export async function getEntregaById(
@@ -840,6 +874,7 @@ export async function getEntregaById(
       longitude: entregas.longitude,
       numeroPedido: entregas.numeroPedido,
       numeroNfe: entregas.numeroNfe,
+      clienteFinal: entregas.clienteFinal,
       valorPagamento: entregas.valorPagamento,
       formaPagamento: entregas.formaPagamento,
       horaSaida: entregas.horaSaida,
@@ -848,6 +883,8 @@ export async function getEntregaById(
       motoboyId: entregas.motoboyId,
       motoboyNome: motoboys.nome,
       setorId: entregas.setorId,
+      recebedorNome: entregas.recebedorNome,
+      concluidaEm: entregas.clienteAssinouEm,
     })
     .from(entregas)
     .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
@@ -870,6 +907,7 @@ export async function getEntregaById(
       entrega.longitude === null ? null : Number(entrega.longitude),
     numeroPedido: entrega.numeroPedido ?? "",
     numeroNfe: entrega.numeroNfe ?? "",
+    clienteFinal: entrega.clienteFinal,
     valorPagamento: String(entrega.valorPagamento),
     formaPagamento: entrega.formaPagamento,
     motoboyId: entrega.motoboyId ?? "",
@@ -878,6 +916,8 @@ export async function getEntregaById(
     observacoes: entrega.observacoes ?? "",
     status: entrega.status,
     setorId: entrega.setorId,
+    recebedorNome: entrega.recebedorNome,
+    concluidaEm: entrega.concluidaEm,
   };
 }
 

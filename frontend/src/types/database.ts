@@ -9,7 +9,8 @@ export type FormaPagamento =
   | "pix"
   | "debito"
   | "cartao_1x"
-  | "prazo";
+  | "prazo"
+  | "boleto";
 type TipoAnexoEntrega =
   | "xml_nfe"
   | "xml_cte"
@@ -71,6 +72,7 @@ interface Entrega {
   endereco: string | null;
   numero_pedido: string | null;
   numero_nfe: string | null;
+  cliente_final: boolean;
   valor_pagamento: number;
   forma_pagamento: FormaPagamento;
   hora_saida: string | null;

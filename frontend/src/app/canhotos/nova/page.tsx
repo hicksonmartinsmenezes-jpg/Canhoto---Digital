@@ -1,4 +1,5 @@
 import { getMotoboys } from "@/lib/data/motoboys";
+import { getUnidades } from "@/lib/data/setores";
 import { getClientesRecentes } from "@/lib/data/entregas";
 import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
 import { AdicionarEntregaForm } from "@/components/canhotos/AdicionarEntregaForm";
@@ -7,9 +8,10 @@ export const dynamic = "force-dynamic";
 
 export default async function NovaEntregaPage() {
   const sessao = await obterSessaoOperador();
-  const [motoboys, clientes] = await Promise.all([
+  const [motoboys, clientes, unidades] = await Promise.all([
     getMotoboys(),
     getClientesRecentes(setorIdParaFiltro(sessao)),
+    getUnidades(),
   ]);
   const agora = new Date();
   const hoje = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(
@@ -22,7 +24,13 @@ export default async function NovaEntregaPage() {
         <h1 className="text-2xl font-bold tracking-tight">Adicionar Entrega</h1>
       </div>
 
-      <AdicionarEntregaForm motoboys={motoboys} clientes={clientes} hoje={hoje} />
+      <AdicionarEntregaForm
+        motoboys={motoboys}
+        clientes={clientes}
+        hoje={hoje}
+        // Colaborador cadastra na própria unidade; só o Admin escolhe.
+        unidades={sessao?.tipo === "admin" ? unidades : []}
+      />
     </div>
   );
 }

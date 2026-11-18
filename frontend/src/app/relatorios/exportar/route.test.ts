@@ -30,6 +30,7 @@ function itemRelatorio(sobrescrever: Partial<RelatorioItem> = {}): RelatorioItem
     valorNumerico: 10,
     formaPagamento: "pix",
     motoboy: "Motorista",
+    unidade: "Matriz",
     status: "entregue",
     situacao: "entregue",
     horaSaida: null,
@@ -97,9 +98,9 @@ describe("exportação CSV do relatório", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/csv");
     expect(csv).toContain(
-      "Código;Data;Cliente;Telefone;Endereço;NF-e;Pedido;Valor (R$);Forma de pagamento;Motorista;Situação;Saída;Concluída em"
+      "Código;Data;Cliente;Telefone;Endereço;NF-e;Pedido;Valor (R$);Unidade;Forma de pagamento;Motorista;Situação;Saída;Concluída em"
     );
-    expect(csv).toContain("'=1+1;'+2026-10-10;\"' -cliente;teste\";;;;;0,00;Pix;\"'\r-SUM(A1)\";Entregue;;");
+    expect(csv).toContain("'=1+1;'+2026-10-10;\"' -cliente;teste\";;;;;0,00;Matriz;Pix;\"'\r-SUM(A1)\";Entregue;;");
     expect(arquivarRelatorioCsv).toHaveBeenCalledOnce();
     expect(erroLog).toHaveBeenCalledWith(
       expect.stringMatching(/^\[CSV_ARCHIVE_FAILED\] data_hora=.* usuario=admin%40example\.com motivo=EACCES$/)

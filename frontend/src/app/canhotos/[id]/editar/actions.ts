@@ -27,6 +27,8 @@ export interface AtualizarEntregaInput {
   cep: string;
   numeroPedido: string;
   numeroNfe: string;
+  /** Venda a consumidor final: sem NF-e (o número da nota é ignorado). */
+  clienteFinal: boolean;
   valorPagamento: number;
   formaPagamento: FormaPagamento | "";
   motoboyId: string;
@@ -102,14 +104,6 @@ export async function atualizarEntrega(
     return { ok: false, error: "Entrega não encontrada." };
   }
 
-  // gestor_setor só edita entregas do próprio setor (o id vem do cliente).
-  if (
-    operador.tipo === "gestor_setor" &&
-    (!operador.setorId || dadosAtuais.setorId !== operador.setorId)
-  ) {
-    return { ok: false, error: "Entrega não encontrada." };
-  }
-
   // Entrega concluída mexe com o caixa: só o Admin corrige, e tudo que ele
   // muda fica no histórico (ver descreverAlteracoes abaixo).
   if (operador.tipo === "gestor_setor" && dadosAtuais.status === "entregue") {
@@ -166,7 +160,7 @@ export async function atualizarEntrega(
         return {
           ok: false as const,
           error:
-            "A entrega só pode ser concluída pelo fluxo do motorista com a foto da entrega.",
+            "A entrega só pode ser concluída pelo fluxo do motorista com a foto do canhoto.",
         };
       }
 
@@ -200,7 +194,8 @@ export async function atualizarEntrega(
           longitude:
             coordenadas === null ? null : coordenadas.longitude.toFixed(6),
           numeroPedido: input.numeroPedido.trim() || null,
-          numeroNfe: input.numeroNfe.trim() || null,
+          numeroNfe: input.clienteFinal ? null : input.numeroNfe.trim() || null,
+          clienteFinal: input.clienteFinal,
           valorPagamento: input.valorPagamento.toFixed(2),
           formaPagamento,
           motoboyId: input.motoboyId || null,

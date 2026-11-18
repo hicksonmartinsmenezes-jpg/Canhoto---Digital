@@ -125,17 +125,17 @@ export const TREINAMENTOS: Treinamento[] = [
     perfis: ["motorista"],
     duracaoMinutos: 5,
     objetivo:
-      "Registrar a foto da entrega e, se quiser, as fotos do produto e (em pagamentos Pix) o comprovante de pagamento.",
+      "Registrar a foto do canhoto e, se quiser, as fotos do produto e (em pagamentos Pix) o comprovante de pagamento.",
     passos: [
       "Abra a entrega que está em rota.",
-      "Registre a foto da entrega realizada.",
+      "Registre a foto do canhoto assinado.",
       "Se quiser, tire também fotos do produto entregue (toque no + para adicionar mais de uma).",
       "Se o pagamento for Pix, você também pode fotografar o comprovante de pagamento.",
       "Revise os registros e finalize a entrega.",
     ],
     pontosImportantes: [
-      "Só a foto da entrega é obrigatória para concluir a entrega.",
-      "As fotos do produto e o comprovante Pix são opcionais e aparecem separados da foto da entrega no Portal Admin.",
+      "Só a foto do canhoto é obrigatória para concluir a entrega.",
+      "As fotos do produto e o comprovante Pix são opcionais e aparecem separados da foto do canhoto no Portal Admin.",
     ],
   },
   {

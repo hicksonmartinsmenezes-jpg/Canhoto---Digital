@@ -3,9 +3,10 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obterAdminAutenticado } from "@/lib/admin-auth";
 import { getDb } from "@/lib/db";
 import { treinamentoProgresso } from "@/lib/db/schema";
+import { condicaoDono } from "@/lib/data/treinamentos";
+import { obterDonoTreinamento } from "@/lib/treinamento-dono";
 import { checarRateLimit } from "@/lib/rate-limit";
 import { obterTreinamentoPorSlug } from "@/lib/treinamentos";
 
@@ -18,8 +19,8 @@ export async function iniciarTreinamento(slug: string): Promise<void> {
     redirect("/treinamentos");
   }
 
-  const admin = await obterAdminAutenticado();
-  if (!admin) {
+  const dono = await obterDonoTreinamento();
+  if (!dono) {
     redirect("/login");
   }
 
@@ -38,19 +39,14 @@ export async function iniciarTreinamento(slug: string): Promise<void> {
   await db
     .insert(treinamentoProgresso)
     .values({
-      usuarioAdminId: admin.usuarioAdminId,
+      ...dono,
       treinamentoSlug: slug,
       status: "em_andamento",
       iniciadoEm: agora,
       concluidoEm: null,
       atualizadoEm: agora,
     })
-    .onConflictDoNothing({
-      target: [
-        treinamentoProgresso.usuarioAdminId,
-        treinamentoProgresso.treinamentoSlug,
-      ],
-    });
+    .onConflictDoNothing();
 
   revalidatePath("/treinamentos");
   revalidatePath(`/treinamentos/${slug}`);
@@ -62,8 +58,8 @@ export async function concluirTreinamento(slug: string): Promise<void> {
     redirect("/treinamentos");
   }
 
-  const admin = await obterAdminAutenticado();
-  if (!admin) {
+  const dono = await obterDonoTreinamento();
+  if (!dono) {
     redirect("/login");
   }
 
@@ -80,7 +76,7 @@ export async function concluirTreinamento(slug: string): Promise<void> {
     .from(treinamentoProgresso)
     .where(
       and(
-        eq(treinamentoProgresso.usuarioAdminId, admin.usuarioAdminId),
+        condicaoDono(dono),
         eq(treinamentoProgresso.treinamentoSlug, slug)
       )
     )
@@ -97,7 +93,7 @@ export async function concluirTreinamento(slug: string): Promise<void> {
       .where(eq(treinamentoProgresso.id, existente.id));
   } else {
     await db.insert(treinamentoProgresso).values({
-      usuarioAdminId: admin.usuarioAdminId,
+      ...dono,
       treinamentoSlug: slug,
       status: "concluido",
       iniciadoEm: agora,

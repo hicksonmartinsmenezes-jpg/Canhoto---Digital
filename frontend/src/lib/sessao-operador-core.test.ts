@@ -16,11 +16,9 @@ describe("setorIdParaFiltro", () => {
   it("admin não filtra", () => {
     expect(setorIdParaFiltro(admin)).toBeUndefined();
   });
-  it("gestor filtra pelo próprio setor", () => {
-    expect(setorIdParaFiltro(gestor("s1"))).toBe("s1");
-  });
-  it("gestor sem setor não vê nada (null)", () => {
-    expect(setorIdParaFiltro(gestor(null))).toBeNull();
+  it("colaborador também não filtra: vê os mesmos dados do admin", () => {
+    expect(setorIdParaFiltro(gestor("s1"))).toBeUndefined();
+    expect(setorIdParaFiltro(gestor(null))).toBeUndefined();
   });
   it("sem sessão falha fechado (null, nunca undefined)", () => {
     expect(setorIdParaFiltro(null)).toBeNull();
@@ -32,13 +30,10 @@ describe("sessaoPodeAcessarSetor", () => {
     expect(sessaoPodeAcessarSetor(admin, "s9")).toBe(true);
     expect(sessaoPodeAcessarSetor(admin, null)).toBe(true);
   });
-  it("gestor só acessa o próprio setor", () => {
+  it("colaborador acessa entregas de qualquer setor, como o admin", () => {
     expect(sessaoPodeAcessarSetor(gestor("s1"), "s1")).toBe(true);
-    expect(sessaoPodeAcessarSetor(gestor("s1"), "s2")).toBe(false);
-    expect(sessaoPodeAcessarSetor(gestor("s1"), null)).toBe(false);
-  });
-  it("gestor sem setor nunca acessa, nem entrega sem setor", () => {
-    expect(sessaoPodeAcessarSetor(gestor(null), null)).toBe(false);
+    expect(sessaoPodeAcessarSetor(gestor("s1"), "s2")).toBe(true);
+    expect(sessaoPodeAcessarSetor(gestor(null), null)).toBe(true);
   });
   it("sem sessão nega", () => {
     expect(sessaoPodeAcessarSetor(null, "s1")).toBe(false);

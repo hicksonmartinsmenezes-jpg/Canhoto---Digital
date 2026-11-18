@@ -72,7 +72,7 @@ export function ComprovanteGuardadoPainel({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={rascunho.fotoUrl}
-            alt="Foto da entrega guardada"
+            alt="Foto do canhoto guardada"
             className="h-24 w-full object-cover"
           />
         </div>
