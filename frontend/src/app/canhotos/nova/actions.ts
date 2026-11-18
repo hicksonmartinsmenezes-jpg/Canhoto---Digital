@@ -7,6 +7,7 @@ import { entregas } from "@/lib/db/schema";
 import { obterUnidadeValidaId } from "@/lib/data/setores";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
 import { checarRateLimit } from "@/lib/rate-limit";
+import { MENSAGEM_SEM_VINCULO, temVinculoFiscal } from "@/lib/vinculo-fiscal";
 import { avisarEntregaNovaAoMotorista } from "@/lib/push/avisar-motorista";
 import { geocodificarEntregaGratis } from "@/lib/geocodificacao-gratis";
 import type { FormaPagamento } from "@/types/database";
@@ -73,6 +74,11 @@ export async function criarEntrega(
   }
   if (!input.formaPagamento) {
     return { ok: false, error: "Selecione a forma de pagamento." };
+  }
+
+  // O comprovante precisa ficar ligado ao documento da venda.
+  if (!temVinculoFiscal(input)) {
+    return { ok: false, error: MENSAGEM_SEM_VINCULO };
   }
 
   // Endereço obrigatório: o motorista e o Waze dependem dele.

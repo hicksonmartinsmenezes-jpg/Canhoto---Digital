@@ -17,6 +17,10 @@ import {
   observacaoDeAlteracoes,
   type NomesMotoboy,
 } from "@/lib/auditoria-entrega";
+import {
+  MENSAGEM_VINCULO_APAGADO,
+  vinculoFoiApagado,
+} from "@/lib/vinculo-fiscal";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 
 export interface AtualizarEntregaInput {
@@ -147,6 +151,8 @@ export async function atualizarEntrega(
           valorPagamento: entregas.valorPagamento,
           formaPagamento: entregas.formaPagamento,
           motoboyId: entregas.motoboyId,
+          numeroPedido: entregas.numeroPedido,
+          numeroNfe: entregas.numeroNfe,
         })
         .from(entregas)
         .where(eq(entregas.id, id))
@@ -170,6 +176,12 @@ export async function atualizarEntrega(
           error:
             "Uma entrega concluída com comprovante não pode voltar para outro status.",
         };
+      }
+
+      // Entregas antigas podem não ter pedido nem NF-e, mas quem já tem
+      // vínculo com a venda não pode perdê-lo numa edição.
+      if (vinculoFoiApagado(atual, input)) {
+        return { ok: false as const, error: MENSAGEM_VINCULO_APAGADO };
       }
 
       // Cancelar tem ação própria (com motivo obrigatório no histórico).

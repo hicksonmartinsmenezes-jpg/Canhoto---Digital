@@ -20,6 +20,7 @@ import {
   motoboys,
 } from "@/lib/db/schema";
 import { MAX_FOTOS_PRODUTO } from "@/lib/comprovante-limites";
+import { diaNaLoja, horaNaLoja } from "@/lib/fuso-loja";
 import {
   MENSAGEM_NOME_COMPLETO,
   nomeRecebedorValido,
@@ -63,18 +64,6 @@ const EXTENSAO_POR_MIME: Record<string, string> = {
   "image/heic": "heic",
   "image/heif": "heif",
 };
-
-function horaLocalAtual(): string {
-  return new Date().toTimeString().slice(0, 8);
-}
-
-function dataLocalAtual(): string {
-  const agora = new Date();
-  const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, "0");
-  const dia = String(agora.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
-}
 
 // Reenvio seguro: se a resposta de um envio anterior se perdeu (sinal caiu
 // depois do servidor gravar), o app tenta de novo e a entrega já está
@@ -174,7 +163,7 @@ export async function iniciarEntrega(
   try {
     const [atualizada] = await db
       .update(entregas)
-      .set({ horaSaida: horaLocalAtual() })
+      .set({ horaSaida: horaNaLoja() })
       .where(
         and(
           eq(entregas.id, entregaId),
@@ -198,7 +187,7 @@ export async function iniciarEntrega(
       .where(
         and(
           eq(entregas.motoboyId, acesso.motoboyId),
-          eq(entregas.data, dataLocalAtual()),
+          eq(entregas.data, diaNaLoja()),
           eq(entregas.status, "pendente"),
           isNotNull(entregas.horaSaida),
           ne(entregas.id, entregaId)
@@ -261,7 +250,7 @@ export async function iniciarRota(
   try {
     await db.transaction(async (tx) => {
       const rotaId = randomUUID();
-      const horaSaida = horaLocalAtual();
+      const horaSaida = horaNaLoja();
 
       for (const [indice, entregaId] of entregaIds.entries()) {
         const [atualizada] = await tx
@@ -343,7 +332,7 @@ export async function atualizarLocalizacaoMotorista(input: {
       .where(
         and(
           eq(entregas.motoboyId, motoboyId),
-          eq(entregas.data, dataLocalAtual()),
+          eq(entregas.data, diaNaLoja()),
           eq(entregas.status, "pendente"),
           isNotNull(entregas.horaSaida)
         )

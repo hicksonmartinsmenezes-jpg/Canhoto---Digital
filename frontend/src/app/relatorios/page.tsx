@@ -9,6 +9,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { diaNaLoja } from "@/lib/fuso-loja";
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { CampoPeriodo } from "@/components/ui/CampoPeriodo";
@@ -42,15 +43,11 @@ interface RelatoriosPageProps {
   }>;
 }
 
-// "AAAA-MM-DD" de hoje e do primeiro dia do mês corrente, em horário local
-// (mesmo cuidado de `paraChaveDiaLocal` em lib/data/entregas.ts — não usa
-// toISOString(), que converte pra UTC e pode empurrar pro dia errado).
+// "AAAA-MM-DD" de hoje e do primeiro dia do mês corrente, sempre no fuso da
+// loja (toISOString() converteria pra UTC e empurraria pro dia errado).
 function periodoPadrao(): { inicio: string; fim: string } {
-  const hoje = new Date();
-  const chave = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  return { inicio: chave(primeiroDiaMes), fim: chave(hoje) };
+  const fim = diaNaLoja();
+  return { inicio: `${fim.slice(0, 7)}-01`, fim };
 }
 
 export default async function RelatoriosPage({ searchParams }: RelatoriosPageProps) {

@@ -34,6 +34,7 @@ import {
 import { formatBRL, formatCep, formatDateBR } from "@/lib/format";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 import { situacaoEntrega, type SituacaoEntrega } from "@/lib/status";
+import { FUSO_LOJA, diaNaLoja } from "@/lib/fuso-loja";
 
 function paraDataInput(dataIso: string): string {
   return dataIso.slice(0, 10);
@@ -63,7 +64,7 @@ export async function getMotoristasEmRota(
   if (!db) return [];
   if (setorId === null) return [];
 
-  const hoje = paraChaveDiaLocal(new Date());
+  const hoje = diaNaLoja();
 
   const rows = await db
     .select({
@@ -154,7 +155,7 @@ export async function getDashboardStats(
     return { totalEntregas: 0, entregues: 0, pendentes: 0, motoristasAtivos: 0 };
   }
 
-  const hoje = paraChaveDiaLocal(new Date());
+  const hoje = diaNaLoja();
   const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
   const [total, entregues, pendentes, motoristasAtivos] = await Promise.all([
@@ -202,12 +203,7 @@ export interface EntregaPorDia {
   total: number;
 }
 
-function paraChaveDiaLocal(d: Date): string {
-  const ano = d.getFullYear();
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const dia = String(d.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
-}
+
 
 export async function getEntregasPorDia(
   dias = 7,
@@ -221,7 +217,7 @@ export async function getEntregasPorDia(
   for (let i = 0; i < dias; i++) {
     const d = new Date(inicio);
     d.setDate(d.getDate() + i);
-    porDia.set(paraChaveDiaLocal(d), 0);
+    porDia.set(diaNaLoja(d), 0);
   }
 
   const db = getDb();
@@ -231,8 +227,8 @@ export async function getEntregasPorDia(
       .from(entregas)
       .where(
         and(
-          gte(entregas.data, paraChaveDiaLocal(inicio)),
-          lte(entregas.data, paraChaveDiaLocal(hoje)),
+          gte(entregas.data, diaNaLoja(inicio)),
+          lte(entregas.data, diaNaLoja(hoje)),
           setorId ? eq(entregas.setorId, setorId) : undefined
         )
       );
@@ -289,7 +285,7 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
         and(
           eq(entregas.status, "pendente"),
           isNull(entregas.horaSaida),
-          lt(entregas.data, paraChaveDiaLocal(new Date())),
+          lt(entregas.data, diaNaLoja()),
           filtroSetor
         )
       ),
@@ -459,12 +455,6 @@ export async function getAtividadeRecente(
   return itens
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, limit);
-}
-
-const FUSO_LOJA = "America/Sao_Paulo";
-
-function diaNaLoja(data: Date): string {
-  return data.toLocaleDateString("en-CA", { timeZone: FUSO_LOJA });
 }
 
 /**
@@ -1088,7 +1078,7 @@ export async function getEntregasDoMotorista(
   const db = getDb();
   if (!db) return [];
 
-  const hoje = paraChaveDiaLocal(new Date());
+  const hoje = diaNaLoja();
 
   const rows = await db
     .select({
