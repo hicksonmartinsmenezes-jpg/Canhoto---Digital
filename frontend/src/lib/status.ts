@@ -26,7 +26,7 @@ export const FORMA_PAGAMENTO_LABEL: Record<FormaPagamento, string> = {
   dinheiro: "Dinheiro",
   pix: "Pix",
   debito: "Débito",
-  cartao_1x: "Cartão 1x",
+  cartao_1x: "Cartão parcelado",
   prazo: "Prazo",
   boleto: "Boleto",
 };
