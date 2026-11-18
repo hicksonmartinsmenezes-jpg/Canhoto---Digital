@@ -25,7 +25,9 @@ export function AppShell({
   // lateral: antes da autenticação não há sessão, e o menu não pode ficar
   // visível/clicável nessas rotas (AGENTS.md — falhar fechado em auth).
   const telaDeLogin =
-    pathname === "/login" || pathname.startsWith("/colaborador/login");
+    pathname === "/login" ||
+    pathname.startsWith("/colaborador/login") ||
+    pathname === "/verificar";
 
   if (areaMotorista || telaDeLogin) {
     return (

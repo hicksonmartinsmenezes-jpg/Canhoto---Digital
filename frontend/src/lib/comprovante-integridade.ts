@@ -33,6 +33,8 @@ export interface DadosCodigoVerificacao {
   numeroPedido: string;
   numeroNfe: string;
   recebedorNome: string;
+  /** Empresa ou vínculo; só entra no código quando preenchido. */
+  recebedorVinculo?: string | null;
   concluidaEm: string;
   motoboyNome: string;
   /** Impressões digitais dos anexos registradas no envio. */
@@ -49,6 +51,7 @@ export function codigoVerificacao(dados: DadosCodigoVerificacao): string {
     dados.numeroPedido,
     dados.numeroNfe,
     dados.recebedorNome,
+    ...(dados.recebedorVinculo ? [dados.recebedorVinculo] : []),
     new Date(dados.concluidaEm).toISOString(),
     dados.motoboyNome,
     ...[...dados.hashesAnexos].sort(),

@@ -851,6 +851,8 @@ export interface EntregaDetalhe {
   setorId: string | null;
   /** Quem recebeu a mercadoria (null em entregas anteriores ao registro). */
   recebedorNome: string | null;
+  recebedorVinculo: string | null;
+  codigoVerificacao: string | null;
   /** Momento em que o motorista concluiu a entrega (ISO). */
   concluidaEm: string | null;
 }
@@ -884,6 +886,8 @@ export async function getEntregaById(
       motoboyNome: motoboys.nome,
       setorId: entregas.setorId,
       recebedorNome: entregas.recebedorNome,
+      recebedorVinculo: entregas.recebedorVinculo,
+      codigoVerificacao: entregas.codigoVerificacao,
       concluidaEm: entregas.clienteAssinouEm,
     })
     .from(entregas)
@@ -917,6 +921,8 @@ export async function getEntregaById(
     status: entrega.status,
     setorId: entrega.setorId,
     recebedorNome: entrega.recebedorNome,
+    recebedorVinculo: entrega.recebedorVinculo,
+    codigoVerificacao: entrega.codigoVerificacao?.trim() ?? null,
     concluidaEm: entrega.concluidaEm,
   };
 }

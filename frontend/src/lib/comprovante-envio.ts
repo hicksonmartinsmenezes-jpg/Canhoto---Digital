@@ -2,6 +2,7 @@
 // interface e recebe tudo de fora (leitura, gravação, envio) para poder ser
 // testado sem navegador nem servidor.
 
+import { anexarHashes } from "@/lib/hash-dispositivo";
 import {
   fotosDoProduto,
   type RascunhoComprovante,
@@ -67,6 +68,9 @@ export function montarFormData(rascunho: RascunhoComprovante): FormData {
   if (rascunho.recebedorNome) {
     formData.set("recebedorNome", rascunho.recebedorNome);
   }
+  if (rascunho.recebedorVinculo) {
+    formData.set("recebedorVinculo", rascunho.recebedorVinculo);
+  }
 
   formData.set(
     "fotoEntrega",
@@ -94,6 +98,8 @@ export function montarFormData(rascunho: RascunhoComprovante): FormData {
       })
     );
   }
+
+  anexarHashes(formData, rascunho.hashes);
 
   return formData;
 }

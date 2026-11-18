@@ -237,6 +237,12 @@ export default async function EntregaDetalhePage({
                 </dd>
               </div>
             )}
+            {entrega.recebedorVinculo && (
+              <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
+                <dt className="font-semibold text-slate-500">Vínculo</dt>
+                <dd className="text-slate-900">{entrega.recebedorVinculo}</dd>
+              </div>
+            )}
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
               <dt className="font-semibold text-slate-500">Endereço</dt>
               <dd className="flex items-start gap-2 font-medium text-slate-800">
