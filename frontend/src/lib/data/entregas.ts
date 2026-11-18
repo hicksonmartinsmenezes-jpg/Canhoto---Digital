@@ -266,7 +266,8 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
   if (setorId === null) return [];
   const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
-  const [aguardandoSaida, aguardandoAntigas, semNfe] = await Promise.all([
+  const [aguardandoSaida, aguardandoAntigas, semNfe, semNfeEntregues] =
+    await Promise.all([
     db
       .select({ total: count() })
       .from(entregas)
@@ -300,11 +301,24 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
           filtroSetor
         )
       ),
+    // Já entregues: o pagamento aconteceu, então a nota já pode ser lançada.
+    db
+      .select({ total: count() })
+      .from(entregas)
+      .where(
+        and(
+          isNull(entregas.numeroNfe),
+          eq(entregas.clienteFinal, false),
+          eq(entregas.status, "entregue"),
+          filtroSetor
+        )
+      ),
   ]);
 
   const aguardandoSaidaTotal = aguardandoSaida[0]?.total ?? 0;
   const aguardandoAntigasTotal = aguardandoAntigas[0]?.total ?? 0;
   const semNfeTotal = semNfe[0]?.total ?? 0;
+  const semNfeEntreguesTotal = semNfeEntregues[0]?.total ?? 0;
   const alertas: Alerta[] = [];
 
   if (aguardandoSaidaTotal > 0) {
@@ -327,8 +341,11 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
       id: "sem-nfe",
       tag: "CADASTRO",
       titulo: `${pluralEntregas(semNfeTotal)} sem número de NF-e`,
-      descricao: "Cadastro incompleto — dificulta a consulta depois.",
-      tom: "info",
+      descricao:
+        semNfeEntreguesTotal > 0
+          ? `Inclui ${semNfeEntreguesTotal} já entregues: o pagamento saiu, a nota pode ser lançada.`
+          : "A nota sai depois do pagamento. Lance o número quando ela for emitida.",
+      tom: semNfeEntreguesTotal > 0 ? "atencao" : "info",
       href: "/canhotos?semNfe=1",
     });
   }
