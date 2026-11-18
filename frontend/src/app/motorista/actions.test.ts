@@ -823,7 +823,7 @@ describe("iniciarRota", () => {
       for (const ms of [Date.now() + 60 * 60 * 1000, Date.now() - 60 * 24 * 3600 * 1000]) {
         vi.clearAllMocks();
         checarRateLimitMock.mockResolvedValue({ permitido: true, restante: 9 });
-        motoristaPodeAcessarEntregaMock.mockResolvedValue(true);
+        motoristaPodeAcessarEntregaMock.mockResolvedValue({ motoboyId: "motorista-a" });
         const { insertValues } = configurarDb({ selectResultados: selecaoEntrega });
         const formData = criarFormDataEntrega();
         formData.set("registradoEmDispositivo", String(ms));
