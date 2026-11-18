@@ -6,9 +6,8 @@ import { getDb } from "@/lib/db";
 import { mensagemErroBanco } from "@/lib/db/errors";
 import { entregaHistorico, entregas } from "@/lib/db/schema";
 import { obterOperadorAutenticado } from "@/lib/operador-auth";
+import { MAX_NUMERO_NFE } from "@/lib/nota-fiscal";
 import { checarRateLimit } from "@/lib/rate-limit";
-
-export const MAX_NUMERO_NFE = 60;
 
 export interface LancarNotaResult {
   ok: boolean;

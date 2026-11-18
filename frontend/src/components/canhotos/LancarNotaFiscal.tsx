@@ -3,10 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import {
-  MAX_NUMERO_NFE,
-  lancarNotaFiscal,
-} from "@/app/canhotos/[id]/nota-actions";
+import { lancarNotaFiscal } from "@/app/canhotos/[id]/nota-actions";
+import { MAX_NUMERO_NFE } from "@/lib/nota-fiscal";
 
 /**
  * Campo para lançar a NF-e que faltava. Aparece só quando a entrega está sem
