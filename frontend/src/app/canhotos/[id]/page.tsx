@@ -36,6 +36,7 @@ import {
   STATUS_LABEL,
 } from "@/lib/status";
 import { CancelarEntregaBotao } from "@/components/canhotos/CancelarEntregaBotao";
+import { LancarNotaFiscal } from "@/components/canhotos/LancarNotaFiscal";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,9 @@ export default async function EntregaDetalhePage({
 
   // Entrega concluída só o Admin edita (ver editar/actions.ts).
   const podeEditar = sessao.tipo === "admin" || entrega.status !== "entregue";
+  // A NF-e que faltou pode ser lançada mesmo com a entrega concluída: a nota
+  // sai depois do pagamento. Preencher o que está vazio não é editar o resto.
+  const podeLancarNota = entrega.status !== "cancelado";
   const situacao = situacaoEntrega(entrega.status, entrega.horaSaida);
 
   const fotos = comprovantes.filter((item) => item.tipo === "foto");
@@ -193,6 +197,9 @@ export default async function EntregaDetalhePage({
                   : entrega.clienteFinal
                     ? `${ROTULO_CONSUMIDOR_FINAL} (sem NF-e)`
                     : "—"}
+                {!entrega.numeroNfe && !entrega.clienteFinal && podeLancarNota && (
+                  <LancarNotaFiscal entregaId={entrega.id} />
+                )}
               </dd>
             </div>
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
@@ -235,6 +242,12 @@ export default async function EntregaDetalhePage({
                 <dd className="font-bold text-slate-900">
                   {entrega.recebedorNome}
                 </dd>
+              </div>
+            )}
+            {entrega.recebedorVinculo && (
+              <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">
+                <dt className="font-semibold text-slate-500">Vínculo</dt>
+                <dd className="text-slate-900">{entrega.recebedorVinculo}</dd>
               </div>
             )}
             <div className="grid grid-cols-[130px_1fr] gap-4 py-3.5 text-sm">

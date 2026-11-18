@@ -30,9 +30,9 @@ export function situacaoIntegridade(
 
 export interface DadosCodigoVerificacao {
   entregaId: string;
-  numeroPedido: string;
-  numeroNfe: string;
   recebedorNome: string;
+  /** Empresa ou vínculo; só entra no código quando preenchido. */
+  recebedorVinculo?: string | null;
   concluidaEm: string;
   motoboyNome: string;
   /** Impressões digitais dos anexos registradas no envio. */
@@ -40,15 +40,21 @@ export interface DadosCodigoVerificacao {
 }
 
 /**
- * Código que resume os dados do comprovante. Se qualquer campo ou arquivo
- * mudar, o código muda — serve para conferir um comprovante impresso.
+ * Código que resume o ato da entrega: quem recebeu, quando, com quem e com
+ * quais arquivos. Se qualquer um desses dados ou das imagens mudar, o código
+ * muda — serve para conferir um comprovante impresso.
+ *
+ * Pedido e NF-e ficam de fora de propósito: a nota costuma ser emitida depois
+ * do pagamento, que muitas vezes acontece na própria entrega, então o número
+ * é preenchido depois da conclusão. Se entrasse no código, esse lançamento
+ * normal faria o comprovante já impresso parecer adulterado. A ligação com a
+ * venda fica registrada na entrega e no histórico, que não pode ser alterado.
  */
 export function codigoVerificacao(dados: DadosCodigoVerificacao): string {
   const canonico = [
     dados.entregaId,
-    dados.numeroPedido,
-    dados.numeroNfe,
     dados.recebedorNome,
+    ...(dados.recebedorVinculo ? [dados.recebedorVinculo] : []),
     new Date(dados.concluidaEm).toISOString(),
     dados.motoboyNome,
     ...[...dados.hashesAnexos].sort(),

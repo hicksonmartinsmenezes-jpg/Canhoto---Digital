@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash, randomUUID } from "node:crypto";
+import { codigoVerificacao } from "@/lib/comprovante-integridade";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
@@ -16,8 +17,16 @@ import {
   entregaHistorico,
   entregas,
   motoboyLocalizacoes,
+  motoboys,
 } from "@/lib/db/schema";
 import { MAX_FOTOS_PRODUTO } from "@/lib/comprovante-limites";
+import { diaNaLoja, horaNaLoja } from "@/lib/fuso-loja";
+import {
+  MENSAGEM_NOME_COMPLETO,
+  nomeRecebedorValido,
+  normalizarNomeRecebedor,
+  normalizarVinculoRecebedor,
+} from "@/lib/recebedor";
 import { MAX_PARADAS_ROTA, MIN_PARADAS_ROTA } from "@/lib/rota-limites";
 import { checarRateLimit } from "@/lib/rate-limit";
 import {
@@ -55,18 +64,6 @@ const EXTENSAO_POR_MIME: Record<string, string> = {
   "image/heic": "heic",
   "image/heif": "heif",
 };
-
-function horaLocalAtual(): string {
-  return new Date().toTimeString().slice(0, 8);
-}
-
-function dataLocalAtual(): string {
-  const agora = new Date();
-  const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, "0");
-  const dia = String(agora.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
-}
 
 // Reenvio seguro: se a resposta de um envio anterior se perdeu (sinal caiu
 // depois do servidor gravar), o app tenta de novo e a entrega já está
@@ -166,7 +163,7 @@ export async function iniciarEntrega(
   try {
     const [atualizada] = await db
       .update(entregas)
-      .set({ horaSaida: horaLocalAtual() })
+      .set({ horaSaida: horaNaLoja() })
       .where(
         and(
           eq(entregas.id, entregaId),
@@ -190,7 +187,7 @@ export async function iniciarEntrega(
       .where(
         and(
           eq(entregas.motoboyId, acesso.motoboyId),
-          eq(entregas.data, dataLocalAtual()),
+          eq(entregas.data, diaNaLoja()),
           eq(entregas.status, "pendente"),
           isNotNull(entregas.horaSaida),
           ne(entregas.id, entregaId)
@@ -253,7 +250,7 @@ export async function iniciarRota(
   try {
     await db.transaction(async (tx) => {
       const rotaId = randomUUID();
-      const horaSaida = horaLocalAtual();
+      const horaSaida = horaNaLoja();
 
       for (const [indice, entregaId] of entregaIds.entries()) {
         const [atualizada] = await tx
@@ -335,7 +332,7 @@ export async function atualizarLocalizacaoMotorista(input: {
       .where(
         and(
           eq(entregas.motoboyId, motoboyId),
-          eq(entregas.data, dataLocalAtual()),
+          eq(entregas.data, diaNaLoja()),
           eq(entregas.status, "pendente"),
           isNotNull(entregas.horaSaida)
         )
@@ -378,11 +375,30 @@ export async function atualizarLocalizacaoMotorista(input: {
   }
 }
 
-function normalizarRecebedorNome(valor: FormDataEntryValue | null): string | null {
+/**
+ * Hora declarada pelo celular. Só aceita algo plausível: o relógio do aparelho
+ * pode estar errado ou mentir, então nada no futuro e nada mais velho que a
+ * validade do rascunho. Fora disso, fica sem registro.
+ */
+function lerRegistroDoDispositivo(valor: FormDataEntryValue | null): string | null {
   if (typeof valor !== "string") return null;
-  const nome = valor.replace(/\s+/g, " ").trim();
-  if (nome.length < 2 || nome.length > 120) return null;
-  return nome;
+  const ms = Number(valor);
+  if (!Number.isFinite(ms)) return null;
+
+  const agora = Date.now();
+  const TOLERANCIA_FUTURO_MS = 5 * 60 * 1000;
+  const VALIDADE_MS = 30 * 24 * 60 * 60 * 1000;
+  if (ms > agora + TOLERANCIA_FUTURO_MS) return null;
+  if (ms < agora - VALIDADE_MS) return null;
+
+  return new Date(ms).toISOString();
+}
+
+/** Aceita só SHA-256 em hexadecimal; qualquer outra coisa vira "sem hash". */
+function lerHashDispositivo(valor: FormDataEntryValue | null): string | null {
+  if (typeof valor !== "string") return null;
+  const limpo = valor.trim().toLowerCase();
+  return /^[0-9a-f]{64}$/.test(limpo) ? limpo : null;
 }
 
 export async function confirmarEntrega(
@@ -405,13 +421,23 @@ export async function confirmarEntrega(
   const acesso = await motoristaPodeAcessarEntrega(entregaId);
   if (!acesso) return { ok: false, error: ERRO_MOTORISTA_SESSAO };
 
-  const recebedorNome = normalizarRecebedorNome(formData.get("recebedorNome"));
-  if (!recebedorNome) {
-    return {
-      ok: false,
-      error: "Informe o nome de quem recebeu a mercadoria.",
-    };
+  const recebedorBruto = formData.get("recebedorNome");
+  const recebedorNome =
+    typeof recebedorBruto === "string"
+      ? normalizarNomeRecebedor(recebedorBruto)
+      : "";
+  if (!nomeRecebedorValido(recebedorNome)) {
+    return { ok: false, error: MENSAGEM_NOME_COMPLETO };
   }
+
+  const vinculoBruto = formData.get("recebedorVinculo");
+  const vinculo = normalizarVinculoRecebedor(
+    typeof vinculoBruto === "string" ? vinculoBruto : null,
+  );
+  if (!vinculo.ok) {
+    return { ok: false, error: "A empresa ou vínculo está muito longo." };
+  }
+  const recebedorVinculo = vinculo.valor;
 
   const fotoEntrega = validarFoto(formData.get("fotoEntrega"));
   const comprovantePixEntrada = formData.get("comprovantePix");
@@ -530,12 +556,15 @@ export async function confirmarEntrega(
     url: string;
     gravado: boolean;
     sha256: string;
+    /** Impressão digital calculada no celular (ausente em apps antigos). */
+    sha256Dispositivo: string | null;
   }> = [];
   function adicionarArquivo(
     tipo: "foto" | "comprovante_pix" | "foto_produto",
     arquivo: File,
     prefixo: string,
-    descricao: string
+    descricao: string,
+    sha256Dispositivo: string | null
   ) {
     const nome = `${prefixo}-${randomUUID()}.${EXTENSAO_POR_MIME[arquivo.type]}`;
     arquivos.push({
@@ -548,23 +577,40 @@ export async function confirmarEntrega(
       url: `${pastaRelativaEntrega}/${nome}`,
       gravado: false,
       sha256: "",
+      sha256Dispositivo,
     });
   }
-  adicionarArquivo("foto", fotoEntrega, "foto-entrega", "da foto do canhoto");
+  const registradoEmDispositivo = lerRegistroDoDispositivo(
+    formData.get("registradoEmDispositivo")
+  );
+
+  const hashesFotosProduto = formData
+    .getAll("hashFotoProduto")
+    .map((valor) => lerHashDispositivo(valor));
+
+  adicionarArquivo(
+    "foto",
+    fotoEntrega,
+    "foto-entrega",
+    "da foto do canhoto",
+    lerHashDispositivo(formData.get("hashFotoEntrega"))
+  );
   if (comprovantePixValido) {
     adicionarArquivo(
       "comprovante_pix",
       comprovantePixValido,
       "comprovante-pix",
-      "do comprovante Pix"
+      "do comprovante Pix",
+      lerHashDispositivo(formData.get("hashComprovantePix"))
     );
   }
-  for (const fotoProduto of fotosProduto) {
+  for (const [indice, fotoProduto] of fotosProduto.entries()) {
     adicionarArquivo(
       "foto_produto",
       fotoProduto,
       "foto-produto",
-      "da foto do produto"
+      "da foto do produto",
+      hashesFotosProduto[indice] ?? null
     );
   }
 
@@ -588,10 +634,23 @@ export async function confirmarEntrega(
       item.sha256 = createHash("sha256").update(conteudos[indice]).digest("hex");
     }
 
+    // A impressão digital calculada no celular precisa ser igual à do arquivo
+    // que chegou: se mudou no caminho, a foto não vale como prova.
+    for (const item of arquivos) {
+      if (item.sha256Dispositivo && item.sha256Dispositivo !== item.sha256) {
+        return {
+          ok: false,
+          error: `O arquivo ${item.descricao} chegou diferente do que foi tirado no celular. Tire a foto novamente.`,
+        };
+      }
+    }
+
     for (const [indice, item] of arquivos.entries()) {
       await writeFile(item.caminho, conteudos[indice], { flag: "wx" });
       item.gravado = true;
     }
+
+    const concluidaEm = new Date().toISOString();
 
     const confirmado = await db.transaction(async (tx) => {
       // clienteAssinouEm guarda o horário em que a entrega foi concluída (o
@@ -599,8 +658,9 @@ export async function confirmarEntrega(
       const [atualizada] = await tx
         .update(entregas)
         .set({
-          clienteAssinouEm: new Date().toISOString(),
+          clienteAssinouEm: concluidaEm,
           recebedorNome,
+          recebedorVinculo,
           status: "entregue",
         })
         .where(
@@ -621,9 +681,34 @@ export async function confirmarEntrega(
           tipo: item.tipo,
           arquivoUrl: item.url,
           sha256: item.sha256,
+          sha256Dispositivo: item.sha256Dispositivo,
+          registradoEmDispositivo,
           capturadoPorMotoboy: acesso.motoboyId,
         }))
       );
+
+      // O código de verificação fica gravado na conclusão, com os dados do
+      // pedido como estavam nesse momento.
+      const [dadosPedido] = await tx
+        .select({ motoboyNome: motoboys.nome })
+        .from(entregas)
+        .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
+        .where(eq(entregas.id, entregaId))
+        .limit(1);
+
+      await tx
+        .update(entregas)
+        .set({
+          codigoVerificacao: codigoVerificacao({
+            entregaId,
+            recebedorNome,
+            recebedorVinculo,
+            concluidaEm,
+            motoboyNome: dadosPedido?.motoboyNome ?? "",
+            hashesAnexos: arquivos.map((item) => item.sha256),
+          }),
+        })
+        .where(eq(entregas.id, entregaId));
 
       const itensConfirmados = ["foto do canhoto"];
       if (comprovantePixValido) itensConfirmados.push("comprovante Pix");
@@ -641,7 +726,7 @@ export async function confirmarEntrega(
         statusAnterior: "pendente",
         statusNovo: "entregue",
         alteradoPorMotoboy: acesso.motoboyId,
-        observacao: `Entrega confirmada com ${textoItens}. Recebido por ${recebedorNome}.`,
+        observacao: `Entrega confirmada com ${textoItens}. Recebido por ${recebedorNome}${recebedorVinculo ? ` (${recebedorVinculo})` : ""}.`,
       });
 
       return true;

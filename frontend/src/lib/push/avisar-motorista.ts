@@ -1,6 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { dispositivosPush, entregas } from "@/lib/db/schema";
+import { diaNaLoja } from "@/lib/fuso-loja";
 import {
   enviarPush,
   enviarPushComDetalhe,
@@ -8,11 +9,7 @@ import {
   type MensagemPush,
 } from "./fcm";
 
-function chaveDiaLocal(d: Date): string {
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const dia = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mes}-${dia}`;
-}
+
 
 /** Texto da notificação de entrega nova. */
 export function mensagemEntregaNova(entrega: {
@@ -107,7 +104,7 @@ export async function avisarEntregaNovaAoMotorista(
       !entrega ||
       !entrega.motoboyId ||
       entrega.status !== "pendente" ||
-      entrega.data !== chaveDiaLocal(new Date())
+      entrega.data !== diaNaLoja()
     ) {
       return;
     }
@@ -138,7 +135,7 @@ export async function avisarEntregaRetiradaDoMotorista(
       .where(eq(entregas.id, entregaId))
       .limit(1);
 
-    if (!entrega || entrega.data !== chaveDiaLocal(new Date())) return;
+    if (!entrega || entrega.data !== diaNaLoja()) return;
 
     await enviarParaMotorista(motoboyId, mensagemEntregaRetirada(entrega, motivo));
   } catch (erro) {

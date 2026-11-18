@@ -1,3 +1,5 @@
+import { MENSAGEM_NOME_COMPLETO } from "@/lib/recebedor";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -109,7 +111,20 @@ function configurarDb({
   const txUpdateQuery = criarUpdate(transacaoResultados);
   const insertValues = vi.fn().mockResolvedValue(undefined);
 
+  const txSelectQuery = {
+    from: vi.fn(),
+    leftJoin: vi.fn(),
+    where: vi.fn(),
+    limit: vi.fn().mockResolvedValue([
+      { numeroPedido: "123", numeroNfe: "456", motoboyNome: "Motorista" },
+    ]),
+  };
+  txSelectQuery.from.mockReturnValue(txSelectQuery);
+  txSelectQuery.leftJoin.mockReturnValue(txSelectQuery);
+  txSelectQuery.where.mockReturnValue(txSelectQuery);
+
   const tx = {
+    select: vi.fn().mockReturnValue(txSelectQuery),
     update: vi.fn().mockReturnValue(txUpdateQuery),
     insert: vi.fn().mockReturnValue({
       values: insertValues,
@@ -223,7 +238,30 @@ describe("ações do motorista com PostgreSQL local", () => {
 
     expect(resultado).toEqual({
       ok: false,
-      error: "Informe o nome de quem recebeu a mercadoria.",
+      error: MENSAGEM_NOME_COMPLETO,
+    });
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it("recusa nome de quem recebeu com uma palavra só", async () => {
+    const formData = criarFormDataEntrega();
+    formData.set("recebedorNome", "Alexandre");
+
+    const resultado = await confirmarEntrega(ENTREGA_ID, formData);
+
+    expect(resultado).toEqual({ ok: false, error: MENSAGEM_NOME_COMPLETO });
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it("recusa empresa ou vínculo acima do limite", async () => {
+    const formData = criarFormDataEntrega();
+    formData.set("recebedorVinculo", "x".repeat(121));
+
+    const resultado = await confirmarEntrega(ENTREGA_ID, formData);
+
+    expect(resultado).toEqual({
+      ok: false,
+      error: "A empresa ou vínculo está muito longo.",
     });
     expect(getDbMock).not.toHaveBeenCalled();
   });
@@ -262,7 +300,7 @@ describe("ações do motorista com PostgreSQL local", () => {
       ok: true,
     });
 
-    expect(tx.update).toHaveBeenCalledTimes(1);
+    expect(tx.update).toHaveBeenCalledTimes(2);
     // Sem outra entrega em rota: a última posição do motorista é apagada.
     expect(db.delete).toHaveBeenCalledTimes(1);
     expect(writeFileMock).toHaveBeenCalledTimes(1);
@@ -702,6 +740,102 @@ describe("iniciarRota", () => {
     await expect(iniciarRota([ENTREGA_ID, ENTREGA_ID_2])).resolves.toEqual({
       ok: false,
       error: "Sessão expirada — faça login novamente.",
+    });
+  });
+
+  describe("hash do celular e código de verificação", () => {
+    const selecaoEntrega = [
+      [
+        {
+          id: ENTREGA_ID,
+          numero: 123,
+          clienteNome: "Cliente Teste",
+          formaPagamento: "dinheiro" as const,
+        },
+      ],
+      [],
+    ];
+
+    it("recusa foto cujo hash do celular não confere", async () => {
+      const { tx } = configurarDb({ selectResultados: selecaoEntrega });
+      const formData = criarFormDataEntrega();
+      formData.set("hashFotoEntrega", "a".repeat(64));
+
+      const resultado = await confirmarEntrega(ENTREGA_ID, formData);
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.error).toMatch(/Tire a foto novamente/);
+      expect(tx.update).not.toHaveBeenCalled();
+    });
+
+    it("aceita foto com hash igual, grava sha256_dispositivo e o código", async () => {
+      const { txUpdateQuery, insertValues } = configurarDb({
+        selectResultados: selecaoEntrega,
+      });
+      const hash = createHash("sha256").update(CABECALHO_PNG).digest("hex");
+      const formData = criarFormDataEntrega();
+      formData.set("hashFotoEntrega", hash);
+
+      await expect(
+        confirmarEntrega(ENTREGA_ID, formData),
+      ).resolves.toEqual({ ok: true });
+
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ sha256: hash, sha256Dispositivo: hash }),
+        ]),
+      );
+      const gravados = txUpdateQuery.set.mock.calls.map((c) => c[0]);
+      expect(gravados.some((g) => /^[0-9a-f]{64}$/.test(g.codigoVerificacao ?? ""))).toBe(true);
+    });
+
+    it("aceita envio sem hash (rascunho antigo)", async () => {
+      const { insertValues } = configurarDb({ selectResultados: selecaoEntrega });
+
+      await expect(
+        confirmarEntrega(ENTREGA_ID, criarFormDataEntrega()),
+      ).resolves.toEqual({ ok: true });
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ sha256Dispositivo: null }),
+        ]),
+      );
+    });
+
+    it("guarda a hora declarada pelo celular", async () => {
+      const { insertValues } = configurarDb({ selectResultados: selecaoEntrega });
+      const ontem = Date.now() - 20 * 60 * 60 * 1000;
+      const formData = criarFormDataEntrega();
+      formData.set("registradoEmDispositivo", String(ontem));
+
+      await confirmarEntrega(ENTREGA_ID, formData);
+
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            registradoEmDispositivo: new Date(ontem).toISOString(),
+          }),
+        ]),
+      );
+    });
+
+    it("ignora hora do celular no futuro ou muito antiga", async () => {
+      for (const ms of [Date.now() + 60 * 60 * 1000, Date.now() - 60 * 24 * 3600 * 1000]) {
+        vi.clearAllMocks();
+        checarRateLimitMock.mockResolvedValue({ permitido: true, restante: 9 });
+        motoristaPodeAcessarEntregaMock.mockResolvedValue({ motoboyId: "motorista-a" });
+        const { insertValues } = configurarDb({ selectResultados: selecaoEntrega });
+        const formData = criarFormDataEntrega();
+        formData.set("registradoEmDispositivo", String(ms));
+
+        await confirmarEntrega(ENTREGA_ID, formData);
+
+        expect(insertValues).toHaveBeenCalledWith(
+          expect.arrayContaining([
+            expect.objectContaining({ registradoEmDispositivo: null }),
+          ]),
+        );
+      }
     });
   });
 });

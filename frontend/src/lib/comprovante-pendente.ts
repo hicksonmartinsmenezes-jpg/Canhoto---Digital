@@ -6,18 +6,27 @@
 // recarregar, nada se perde: o rascunho continua no aparelho até o servidor
 // confirmar. Só código de navegador — não importar em Server Components.
 
+import {
+  calcularHashesComprovante,
+  type HashesComprovante,
+} from "@/lib/hash-dispositivo";
+
 export interface RascunhoComprovante {
   entregaId: string;
   /** Texto curto para identificar a entrega na lista (ex.: "#123 · Maria"). */
   rotulo: string | null;
   /** Nome de quem recebeu. Ausente em rascunhos antigos. */
   recebedorNome?: string;
+  /** Empresa ou vínculo de quem recebeu (opcional). */
+  recebedorVinculo?: string | null;
   fotoEntrega: Blob;
   comprovantePix: Blob | null;
   /** Fotos do produto (opcionais). */
   fotosProduto?: Blob[];
   /** Campo antigo (uma só foto). Use `fotosDoProduto()` para ler. */
   fotoProduto?: Blob | null;
+  /** Impressões digitais calculadas no celular ao guardar. Ausente em rascunhos antigos. */
+  hashes?: HashesComprovante;
   criadoEm: number;
   tentativas: number;
   /** O servidor recusou (não é falha de rede): para o reenvio automático. */
@@ -29,6 +38,7 @@ export interface NovoRascunhoComprovante {
   entregaId: string;
   rotulo?: string | null;
   recebedorNome: string;
+  recebedorVinculo?: string | null;
   fotoEntrega: Blob;
   comprovantePix?: Blob | null;
   fotosProduto?: Blob[];
@@ -108,9 +118,11 @@ export async function salvarRascunho(
     entregaId: novo.entregaId,
     rotulo: novo.rotulo ?? null,
     recebedorNome: novo.recebedorNome,
+    recebedorVinculo: novo.recebedorVinculo ?? null,
     fotoEntrega: novo.fotoEntrega,
     comprovantePix: novo.comprovantePix ?? null,
     fotosProduto: novo.fotosProduto ?? [],
+    hashes: await calcularHashesComprovante(novo),
     criadoEm: Date.now(),
     tentativas: 0,
     rejeitado: false,

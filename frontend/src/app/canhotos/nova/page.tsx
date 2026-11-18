@@ -1,5 +1,6 @@
 import { getMotoboys } from "@/lib/data/motoboys";
 import { getUnidades } from "@/lib/data/setores";
+import { diaNaLoja } from "@/lib/fuso-loja";
 import { getClientesRecentes } from "@/lib/data/entregas";
 import { obterSessaoOperador, setorIdParaFiltro } from "@/lib/sessao-operador";
 import { AdicionarEntregaForm } from "@/components/canhotos/AdicionarEntregaForm";
@@ -13,10 +14,7 @@ export default async function NovaEntregaPage() {
     getClientesRecentes(setorIdParaFiltro(sessao)),
     getUnidades(),
   ]);
-  const agora = new Date();
-  const hoje = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(
-    agora.getDate()
-  ).padStart(2, "0")}`;
+  const hoje = diaNaLoja();
 
   return (
     <div>

@@ -31,6 +31,13 @@ export async function proxy(request: NextRequest) {
     });
   }
 
+  // Consulta pública do código de verificação do comprovante: quem recebe o
+  // papel precisa conferir sem login. Só mostra o mínimo (ver
+  // lib/data/comprovante-juridico.ts) e tem limite de consultas por IP.
+  if (pathname === "/verificar") {
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/motorista")) {
     // /motorista/offline é uma página fixa, sem dados: precisa abrir mesmo
     // sem sessão para o service worker guardá-la na instalação.

@@ -1,8 +1,12 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { codigoVerificacao } from "@/lib/comprovante-integridade";
-import { getAnexosComIntegridade } from "@/lib/data/comprovante-juridico";
+import {
+  garantirCodigoVerificacao,
+  getAnexosComIntegridade,
+} from "@/lib/data/comprovante-juridico";
 import { getEntregaById } from "@/lib/data/entregas";
 import { ROTULO_CONSUMIDOR_FINAL, formatBRL, formatDateBR } from "@/lib/format";
 import {
@@ -41,11 +45,10 @@ export default async function ComprovanteEntregaPage({
   if (!entrega || !sessaoPodeAcessarSetor(sessao, entrega.setorId)) notFound();
   if (entrega.status !== "entregue" || !entrega.concluidaEm) notFound();
 
-  const codigo = codigoVerificacao({
+  const codigoCalculado = codigoVerificacao({
     entregaId: entrega.id,
-    numeroPedido: entrega.numeroPedido,
-    numeroNfe: entrega.numeroNfe,
     recebedorNome: entrega.recebedorNome ?? "",
+    recebedorVinculo: entrega.recebedorVinculo,
     concluidaEm: entrega.concluidaEm,
     motoboyNome: entrega.motoboyNome,
     hashesAnexos: anexos.flatMap((anexo) =>
@@ -53,7 +56,27 @@ export default async function ComprovanteEntregaPage({
     ),
   });
 
+  // O código fica gravado desde a conclusão. Em entregas antigas, grava o
+  // calculado na primeira abertura, para a consulta pública funcionar.
+  const codigo = entrega.codigoVerificacao ?? codigoCalculado;
+  if (!entrega.codigoVerificacao) {
+    await garantirCodigoVerificacao(entrega.id, codigoCalculado);
+  }
+
+  const host = (await headers()).get("host");
+  const enderecoConsulta = host ? `https://${host}/verificar` : "/verificar";
+
   const fotoCanhoto = anexos.find((anexo) => anexo.tipo === "foto");
+
+  // Entrega sem sinal: a foto fica no celular e o servidor só recebe depois.
+  // Quando as duas horas se afastam, as duas aparecem no documento.
+  const registroNoCelular = fotoCanhoto?.registradoEmDispositivo ?? null;
+  const atrasoEnvioMs = registroNoCelular
+    ? new Date(entrega.concluidaEm).getTime() -
+      new Date(registroNoCelular).getTime()
+    : 0;
+  const envioAtrasado = atrasoEnvioMs > 2 * 60 * 1000;
+
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex items-center justify-between gap-3 print:hidden">
@@ -115,7 +138,7 @@ export default async function ComprovanteEntregaPage({
               {formatBRL(Number(entrega.valorPagamento))} ·{" "}
               {FORMA_PAGAMENTO_LABEL[entrega.formaPagamento]}
             </dd>
-            <dt className="font-semibold">Data do pedido</dt>
+            <dt className="font-semibold">Data do registro da entrega</dt>
             <dd>{formatDateBR(entrega.data)}</dd>
           </dl>
         </section>
@@ -130,8 +153,31 @@ export default async function ComprovanteEntregaPage({
               {entrega.recebedorNome ??
                 "Não registrado (entrega anterior ao registro)"}
             </dd>
-            <dt className="font-semibold">Data e hora da entrega</dt>
-            <dd>{dataHora(entrega.concluidaEm)} (horário de Brasília)</dd>
+            {entrega.recebedorVinculo && (
+              <>
+                <dt className="font-semibold">Empresa ou vínculo</dt>
+                <dd>{entrega.recebedorVinculo}</dd>
+              </>
+            )}
+            {envioAtrasado && registroNoCelular ? (
+              <>
+                <dt className="font-semibold">Data e hora da entrega</dt>
+                <dd>
+                  {dataHora(registroNoCelular)} (horário de Brasília), registrado
+                  no celular do entregador
+                </dd>
+                <dt className="font-semibold">Recebido pelo servidor</dt>
+                <dd>
+                  {dataHora(entrega.concluidaEm)} — a entrega foi feita sem
+                  sinal de internet e o comprovante subiu quando o sinal voltou
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt className="font-semibold">Data e hora da entrega</dt>
+                <dd>{dataHora(entrega.concluidaEm)} (horário de Brasília)</dd>
+              </>
+            )}
             <dt className="font-semibold">Entregador</dt>
             <dd>{entrega.motoboyNome || "—"}</dd>
           </dl>
@@ -159,9 +205,13 @@ export default async function ComprovanteEntregaPage({
           </p>
           <p className="break-all font-mono text-[10px]">{codigo}</p>
           <p className="mt-2 text-[10px] text-slate-500">
-            O código resume os dados deste comprovante e as impressões digitais
-            dos arquivos. Qualquer alteração nos dados ou nas imagens gera um
-            código diferente.
+            O código resume o registro da entrega — quem recebeu, quando, com
+            qual entregador — e as impressões digitais das imagens. Qualquer
+            alteração nesses dados ou nas imagens gera um código diferente.
+          </p>
+          <p className="mt-1 text-[10px] text-slate-500">
+            Para conferir este comprovante, acesse {enderecoConsulta} e digite o
+            código acima.
           </p>
         </footer>
       </article>

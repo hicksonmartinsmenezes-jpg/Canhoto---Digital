@@ -34,6 +34,7 @@ import {
 import { formatBRL, formatCep, formatDateBR } from "@/lib/format";
 import type { FormaPagamento, StatusEntrega } from "@/types/database";
 import { situacaoEntrega, type SituacaoEntrega } from "@/lib/status";
+import { FUSO_LOJA, diaNaLoja } from "@/lib/fuso-loja";
 
 function paraDataInput(dataIso: string): string {
   return dataIso.slice(0, 10);
@@ -63,7 +64,7 @@ export async function getMotoristasEmRota(
   if (!db) return [];
   if (setorId === null) return [];
 
-  const hoje = paraChaveDiaLocal(new Date());
+  const hoje = diaNaLoja();
 
   const rows = await db
     .select({
@@ -154,7 +155,7 @@ export async function getDashboardStats(
     return { totalEntregas: 0, entregues: 0, pendentes: 0, motoristasAtivos: 0 };
   }
 
-  const hoje = paraChaveDiaLocal(new Date());
+  const hoje = diaNaLoja();
   const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
   const [total, entregues, pendentes, motoristasAtivos] = await Promise.all([
@@ -202,12 +203,7 @@ export interface EntregaPorDia {
   total: number;
 }
 
-function paraChaveDiaLocal(d: Date): string {
-  const ano = d.getFullYear();
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const dia = String(d.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
-}
+
 
 export async function getEntregasPorDia(
   dias = 7,
@@ -221,7 +217,7 @@ export async function getEntregasPorDia(
   for (let i = 0; i < dias; i++) {
     const d = new Date(inicio);
     d.setDate(d.getDate() + i);
-    porDia.set(paraChaveDiaLocal(d), 0);
+    porDia.set(diaNaLoja(d), 0);
   }
 
   const db = getDb();
@@ -231,8 +227,8 @@ export async function getEntregasPorDia(
       .from(entregas)
       .where(
         and(
-          gte(entregas.data, paraChaveDiaLocal(inicio)),
-          lte(entregas.data, paraChaveDiaLocal(hoje)),
+          gte(entregas.data, diaNaLoja(inicio)),
+          lte(entregas.data, diaNaLoja(hoje)),
           setorId ? eq(entregas.setorId, setorId) : undefined
         )
       );
@@ -270,7 +266,8 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
   if (setorId === null) return [];
   const filtroSetor = setorId ? eq(entregas.setorId, setorId) : undefined;
 
-  const [aguardandoSaida, aguardandoAntigas, semNfe] = await Promise.all([
+  const [aguardandoSaida, aguardandoAntigas, semNfe, semNfeEntregues] =
+    await Promise.all([
     db
       .select({ total: count() })
       .from(entregas)
@@ -289,7 +286,7 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
         and(
           eq(entregas.status, "pendente"),
           isNull(entregas.horaSaida),
-          lt(entregas.data, paraChaveDiaLocal(new Date())),
+          lt(entregas.data, diaNaLoja()),
           filtroSetor
         )
       ),
@@ -304,11 +301,24 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
           filtroSetor
         )
       ),
+    // Já entregues: o pagamento aconteceu, então a nota já pode ser lançada.
+    db
+      .select({ total: count() })
+      .from(entregas)
+      .where(
+        and(
+          isNull(entregas.numeroNfe),
+          eq(entregas.clienteFinal, false),
+          eq(entregas.status, "entregue"),
+          filtroSetor
+        )
+      ),
   ]);
 
   const aguardandoSaidaTotal = aguardandoSaida[0]?.total ?? 0;
   const aguardandoAntigasTotal = aguardandoAntigas[0]?.total ?? 0;
   const semNfeTotal = semNfe[0]?.total ?? 0;
+  const semNfeEntreguesTotal = semNfeEntregues[0]?.total ?? 0;
   const alertas: Alerta[] = [];
 
   if (aguardandoSaidaTotal > 0) {
@@ -331,8 +341,11 @@ export async function getAlertas(setorId?: string | null): Promise<Alerta[]> {
       id: "sem-nfe",
       tag: "CADASTRO",
       titulo: `${pluralEntregas(semNfeTotal)} sem número de NF-e`,
-      descricao: "Cadastro incompleto — dificulta a consulta depois.",
-      tom: "info",
+      descricao:
+        semNfeEntreguesTotal > 0
+          ? `Inclui ${semNfeEntreguesTotal} já entregues: o pagamento saiu, a nota pode ser lançada.`
+          : "A nota sai depois do pagamento. Lance o número quando ela for emitida.",
+      tom: semNfeEntreguesTotal > 0 ? "atencao" : "info",
       href: "/canhotos?semNfe=1",
     });
   }
@@ -459,12 +472,6 @@ export async function getAtividadeRecente(
   return itens
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, limit);
-}
-
-const FUSO_LOJA = "America/Sao_Paulo";
-
-function diaNaLoja(data: Date): string {
-  return data.toLocaleDateString("en-CA", { timeZone: FUSO_LOJA });
 }
 
 /**
@@ -851,6 +858,8 @@ export interface EntregaDetalhe {
   setorId: string | null;
   /** Quem recebeu a mercadoria (null em entregas anteriores ao registro). */
   recebedorNome: string | null;
+  recebedorVinculo: string | null;
+  codigoVerificacao: string | null;
   /** Momento em que o motorista concluiu a entrega (ISO). */
   concluidaEm: string | null;
 }
@@ -884,6 +893,8 @@ export async function getEntregaById(
       motoboyNome: motoboys.nome,
       setorId: entregas.setorId,
       recebedorNome: entregas.recebedorNome,
+      recebedorVinculo: entregas.recebedorVinculo,
+      codigoVerificacao: entregas.codigoVerificacao,
       concluidaEm: entregas.clienteAssinouEm,
     })
     .from(entregas)
@@ -917,6 +928,8 @@ export async function getEntregaById(
     status: entrega.status,
     setorId: entrega.setorId,
     recebedorNome: entrega.recebedorNome,
+    recebedorVinculo: entrega.recebedorVinculo,
+    codigoVerificacao: entrega.codigoVerificacao?.trim() ?? null,
     concluidaEm: entrega.concluidaEm,
   };
 }
@@ -1082,7 +1095,7 @@ export async function getEntregasDoMotorista(
   const db = getDb();
   if (!db) return [];
 
-  const hoje = paraChaveDiaLocal(new Date());
+  const hoje = diaNaLoja();
 
   const rows = await db
     .select({

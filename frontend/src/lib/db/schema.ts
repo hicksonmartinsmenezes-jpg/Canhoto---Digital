@@ -358,6 +358,10 @@ export const entregas = pgTable(
     horaSaida: time("hora_saida"),
     // Quem recebeu a mercadoria (migration 0023). NULL em entregas antigas.
     recebedorNome: text("recebedor_nome"),
+    // Empresa ou vínculo de quem recebeu (migration 0024). Opcional.
+    recebedorVinculo: text("recebedor_vinculo"),
+    // Código de verificação gravado na conclusão (migration 0024).
+    codigoVerificacao: char("codigo_verificacao", { length: 64 }),
     // Rota com várias paradas (migration 0016): entregas da mesma rota têm o
     // mesmo rotaId; rotaOrdem é a posição na ordem de visita (1 = primeira).
     rotaId: uuid("rota_id"),
@@ -431,6 +435,13 @@ export const entregaAnexos = pgTable(
     arquivoUrl: text("arquivo_url").notNull(),
     // SHA-256 do arquivo no momento do upload (migration 0023).
     sha256: char("sha256", { length: 64 }),
+    // SHA-256 calculado no celular antes do envio (migration 0024).
+    sha256Dispositivo: char("sha256_dispositivo", { length: 64 }),
+    // Hora declarada pelo celular em que a foto foi feita (migration 0024).
+    registradoEmDispositivo: timestamp("registrado_em_dispositivo", {
+      withTimezone: true,
+      mode: "string",
+    }),
     capturadoEm: timestamp("capturado_em", {
       withTimezone: true,
       mode: "string",

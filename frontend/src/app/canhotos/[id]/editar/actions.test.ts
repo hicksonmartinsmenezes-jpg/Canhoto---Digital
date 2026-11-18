@@ -1,3 +1,4 @@
+import { MENSAGEM_VINCULO_APAGADO } from "@/lib/vinculo-fiscal";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({
@@ -52,9 +53,13 @@ function configurarDb(
   {
     motoboyAtual = null,
     nomesMotoboys = [],
+    numeroPedidoAtual = inputBase.numeroPedido,
+    numeroNfeAtual = inputBase.numeroNfe,
   }: {
     motoboyAtual?: string | null;
     nomesMotoboys?: Array<{ id: string; nome: string }>;
+    numeroPedidoAtual?: string | null;
+    numeroNfeAtual?: string | null;
   } = {}
 ) {
   const dadosAtuaisQuery = {
@@ -85,6 +90,8 @@ function configurarDb(
         valorPagamento: inputBase.valorPagamento.toFixed(2),
         formaPagamento: inputBase.formaPagamento,
         motoboyId: motoboyAtual,
+        numeroPedido: numeroPedidoAtual,
+        numeroNfe: numeroNfeAtual,
       },
     ]),
   };
@@ -160,6 +167,35 @@ describe("edição administrativa de entrega", () => {
         "A entrega só pode ser concluída pelo fluxo do motorista com a foto do canhoto.",
     });
     expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it("não deixa apagar o vínculo com pedido e NF-e", async () => {
+    const { tx } = configurarDb("pendente");
+
+    const resultado = await atualizarEntrega("entrega-1", {
+      ...inputBase,
+      numeroPedido: "",
+      numeroNfe: "",
+    });
+
+    expect(resultado).toEqual({ ok: false, error: MENSAGEM_VINCULO_APAGADO });
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it("deixa editar entrega antiga que nunca teve pedido nem NF-e", async () => {
+    const { tx } = configurarDb("pendente", {
+      numeroPedidoAtual: null,
+      numeroNfeAtual: null,
+    });
+
+    await expect(
+      atualizarEntrega("entrega-1", {
+        ...inputBase,
+        numeroPedido: "",
+        numeroNfe: "",
+      })
+    ).resolves.toEqual({ ok: true });
+    expect(tx.update).toHaveBeenCalled();
   });
 
   it("bloqueia regressão de uma entrega já concluída", async () => {

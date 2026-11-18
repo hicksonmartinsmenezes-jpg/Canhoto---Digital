@@ -25,8 +25,6 @@ describe("situacaoIntegridade", () => {
 describe("codigoVerificacao", () => {
   const base = {
     entregaId: "e1",
-    numeroPedido: "123",
-    numeroNfe: "456",
     recebedorNome: "Maria",
     concluidaEm: "2026-11-13T15:00:00.000Z",
     motoboyNome: "João",
@@ -39,9 +37,17 @@ describe("codigoVerificacao", () => {
     );
     expect(codigoVerificacao(base)).toMatch(/^[0-9a-f]{64}$/);
   });
-  it("muda se qualquer dado mudar", () => {
-    expect(codigoVerificacao(base)).not.toBe(
-      codigoVerificacao({ ...base, recebedorNome: "Outra pessoa" })
-    );
+  it("muda se qualquer dado da entrega mudar", () => {
+    for (const diferente of [
+      { recebedorNome: "Outra pessoa" },
+      { recebedorVinculo: "Transportadora X" },
+      { concluidaEm: "2026-11-13T15:01:00.000Z" },
+      { motoboyNome: "Outro entregador" },
+      { hashesAnexos: ["a", "c"] },
+    ]) {
+      expect(codigoVerificacao(base)).not.toBe(
+        codigoVerificacao({ ...base, ...diferente })
+      );
+    }
   });
 });

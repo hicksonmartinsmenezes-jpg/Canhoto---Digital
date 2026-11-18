@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  MENSAGEM_NOME_COMPLETO,
+  nomeRecebedorValido,
+  normalizarNomeRecebedor,
+  normalizarVinculoRecebedor,
+} from "@/lib/recebedor";
+import {
   Camera,
   CheckCircle2,
   Loader2,
@@ -14,6 +20,7 @@ import {
 import { confirmarEntrega } from "@/app/motorista/actions";
 import { comprimirImagem } from "@/lib/comprimir-imagem";
 import { MAX_FOTOS_PRODUTO } from "@/lib/comprovante-limites";
+import { anexarHashes, calcularHashesComprovante } from "@/lib/hash-dispositivo";
 import { salvarRascunho } from "@/lib/comprovante-pendente";
 import { ComprovanteGuardadoPainel } from "@/components/motorista/ComprovanteGuardadoPainel";
 import {
@@ -51,6 +58,7 @@ export function ComprovanteEntregaForm({
   const [fotosProduto, setFotosProduto] = useState<FotoProdutoLocal[]>([]);
   const fotosProdutoRef = useRef<FotoProdutoLocal[]>([]);
   const [recebedorNome, setRecebedorNome] = useState("");
+  const [recebedorVinculo, setRecebedorVinculo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   // Foto sendo reduzida no aparelho (leva ~1 s): segura o botão Finalizar.
@@ -206,11 +214,17 @@ export function ComprovanteEntregaForm({
       return;
     }
 
-    const nomeRecebedor = recebedorNome.replace(/\s+/g, " ").trim();
-    if (nomeRecebedor.length < 2) {
-      setErro("Informe o nome de quem recebeu a mercadoria.");
+    const nomeRecebedor = normalizarNomeRecebedor(recebedorNome);
+    if (!nomeRecebedorValido(nomeRecebedor)) {
+      setErro(MENSAGEM_NOME_COMPLETO);
       return;
     }
+    const vinculo = normalizarVinculoRecebedor(recebedorVinculo);
+    if (!vinculo.ok) {
+      setErro("A empresa ou vínculo está muito longo.");
+      return;
+    }
+    const vinculoRecebedor = vinculo.valor;
 
     startTransition(async () => {
       const pixParaEnviar = formaPagamento === "pix" ? comprovantePix : null;
@@ -221,6 +235,7 @@ export function ComprovanteEntregaForm({
         entregaId,
         rotulo: rotulo ?? null,
         recebedorNome: nomeRecebedor,
+        recebedorVinculo: vinculoRecebedor,
         fotoEntrega,
         comprovantePix: pixParaEnviar,
         fotosProduto: fotosProduto.map((foto) => foto.arquivo),
@@ -242,11 +257,21 @@ export function ComprovanteEntregaForm({
       // mantendo as fotos na tela se falhar.
       const formData = new FormData();
       formData.set("recebedorNome", nomeRecebedor);
+      if (vinculoRecebedor) formData.set("recebedorVinculo", vinculoRecebedor);
       formData.set("fotoEntrega", fotoEntrega);
       if (pixParaEnviar) formData.set("comprovantePix", pixParaEnviar);
       for (const foto of fotosProduto) {
         formData.append("fotoProduto", foto.arquivo);
       }
+      formData.set("registradoEmDispositivo", String(Date.now()));
+      anexarHashes(
+        formData,
+        await calcularHashesComprovante({
+          fotoEntrega,
+          comprovantePix: pixParaEnviar,
+          fotosProduto: fotosProduto.map((foto) => foto.arquivo),
+        })
+      );
 
       let resultado: Awaited<ReturnType<typeof confirmarEntrega>>;
       try {
@@ -311,6 +336,24 @@ export function ComprovanteEntregaForm({
           disabled={pending}
           onChange={(event) => setRecebedorNome(event.target.value)}
           placeholder="Nome completo de quem assinou o canhoto"
+          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#15924A]"
+        />
+
+        <label
+          htmlFor={`vinculo-${entregaId}`}
+          className="mb-2 mt-4 block text-[11px] font-black uppercase tracking-[0.08em] text-slate-500"
+        >
+          Empresa ou vínculo <span className="font-medium normal-case">(opcional)</span>
+        </label>
+        <input
+          id={`vinculo-${entregaId}`}
+          type="text"
+          autoComplete="off"
+          maxLength={120}
+          value={recebedorVinculo}
+          disabled={pending}
+          onChange={(event) => setRecebedorVinculo(event.target.value)}
+          placeholder="Ex.: Oficina do João, funcionário, o próprio cliente"
           className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-[#15924A]"
         />
       </div>

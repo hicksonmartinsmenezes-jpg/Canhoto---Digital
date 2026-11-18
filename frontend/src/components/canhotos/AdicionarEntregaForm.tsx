@@ -10,6 +10,7 @@ import {
   Field,
   inputClass,
 } from "@/components/canhotos/form-fields";
+import { MENSAGEM_SEM_VINCULO, temVinculoFiscal } from "@/lib/vinculo-fiscal";
 import { FORMA_PAGAMENTO_LABEL } from "@/lib/status";
 import {
   formatCep,
@@ -331,6 +332,7 @@ export function AdicionarEntregaForm({
     const valor = parseCurrencyInput(form.valorPagamento);
     if (!valor || valor <= 0) return "Informe um valor de pagamento válido.";
     if (!form.formaPagamento) return "Selecione a forma de pagamento.";
+    if (!temVinculoFiscal(form)) return MENSAGEM_SEM_VINCULO;
     if (unidades.length > 0 && !form.unidadeId) return "Escolha a unidade.";
     const cep = form.cep.replace(/\D/g, "");
     if (cep && cep.length !== 8) return "Informe um CEP válido com 8 dígitos.";
@@ -615,7 +617,7 @@ export function AdicionarEntregaForm({
               </p>
             )}
           </div>
-          <Field label="Nº da NF-e" optional>
+          <Field label="Nº da NF-e">
             <input
               type="text"
               inputMode="numeric"
@@ -627,7 +629,7 @@ export function AdicionarEntregaForm({
               placeholder={form.clienteFinal ? "Consumidor final: sem NF-e" : undefined}
             />
           </Field>
-          <Field label="Nº do pedido" optional>
+          <Field label="Nº do pedido">
             <input
               type="text"
               className={inputClass}
@@ -636,6 +638,10 @@ export function AdicionarEntregaForm({
               maxLength={60}
             />
           </Field>
+          <p className="text-xs font-medium text-slate-500 sm:col-span-2">
+            Informe o nº da NF-e ou o nº do pedido: é o que liga o comprovante
+            de entrega à venda.
+          </p>
           <div className="sm:col-span-2">
             <ClienteFinalCheckbox
               checked={form.clienteFinal}
