@@ -11,12 +11,26 @@ const base: DadosAuditados = {
   valorPagamento: 50,
   formaPagamento: "dinheiro",
   motoboyId: "m1",
+  numeroPedido: "4821",
+  numeroNfe: null,
 };
 
 // toLocaleString usa espaço não separável entre "R$" e o número.
 const normalizar = (s: string) => s.replace(/ /g, " ");
 
 describe("descreverAlteracoes", () => {
+  it("registra a NF-e lançada depois da entrega", () => {
+    expect(
+      descreverAlteracoes(base, { ...base, numeroNfe: "12345" })
+    ).toEqual(["NF-e: sem número → 12345"]);
+  });
+
+  it("registra a troca do número do pedido", () => {
+    expect(
+      descreverAlteracoes(base, { ...base, numeroPedido: "4822" })
+    ).toEqual(["Pedido: 4821 → 4822"]);
+  });
+
   it("não acusa nada quando só mudam campos não auditados", () => {
     expect(descreverAlteracoes(base, { ...base })).toEqual([]);
   });

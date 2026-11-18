@@ -142,8 +142,6 @@ export async function getVerificacaoPorCodigo(
 
   const codigoAtual = codigoVerificacao({
     entregaId: entrega.id,
-    numeroPedido: entrega.numeroPedido ?? "",
-    numeroNfe: entrega.numeroNfe ?? "",
     recebedorNome,
     recebedorVinculo: entrega.recebedorVinculo,
     concluidaEm: entrega.concluidaEm,

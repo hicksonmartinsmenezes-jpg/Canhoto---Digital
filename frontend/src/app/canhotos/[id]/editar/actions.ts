@@ -244,6 +244,8 @@ export async function atualizarEntrega(
           valorPagamento: Number(atual.valorPagamento),
           formaPagamento: atual.formaPagamento,
           motoboyId: atual.motoboyId,
+          numeroPedido: atual.numeroPedido,
+          numeroNfe: atual.numeroNfe,
         },
         {
           data: input.data,
@@ -251,6 +253,8 @@ export async function atualizarEntrega(
           valorPagamento: input.valorPagamento,
           formaPagamento,
           motoboyId: motoboyNovo,
+          numeroPedido: input.numeroPedido.trim() || null,
+          numeroNfe: input.clienteFinal ? null : input.numeroNfe.trim() || null,
         },
         nomes
       );

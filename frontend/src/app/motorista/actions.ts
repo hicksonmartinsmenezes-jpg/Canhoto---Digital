@@ -690,11 +690,7 @@ export async function confirmarEntrega(
       // O código de verificação fica gravado na conclusão, com os dados do
       // pedido como estavam nesse momento.
       const [dadosPedido] = await tx
-        .select({
-          numeroPedido: entregas.numeroPedido,
-          numeroNfe: entregas.numeroNfe,
-          motoboyNome: motoboys.nome,
-        })
+        .select({ motoboyNome: motoboys.nome })
         .from(entregas)
         .leftJoin(motoboys, eq(entregas.motoboyId, motoboys.id))
         .where(eq(entregas.id, entregaId))
@@ -705,8 +701,6 @@ export async function confirmarEntrega(
         .set({
           codigoVerificacao: codigoVerificacao({
             entregaId,
-            numeroPedido: dadosPedido?.numeroPedido ?? "",
-            numeroNfe: dadosPedido?.numeroNfe ?? "",
             recebedorNome,
             recebedorVinculo,
             concluidaEm,

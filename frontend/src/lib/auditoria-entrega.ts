@@ -1,5 +1,6 @@
 // Monta o texto do histórico quando alguém edita dados sensíveis de uma
-// entrega (valor, forma de pagamento, cliente, motorista, data). Fica num
+// entrega (valor, forma de pagamento, cliente, motorista, data, pedido e
+// NF-e). Fica num
 // arquivo puro — sem banco nem "server-only" — para ser testado com Vitest.
 
 import { formatBRL, formatDateBR } from "@/lib/format";
@@ -12,6 +13,8 @@ export interface DadosAuditados {
   valorPagamento: number;
   formaPagamento: FormaPagamento;
   motoboyId: string | null;
+  numeroPedido: string | null;
+  numeroNfe: string | null;
 }
 
 /** Nome do motorista por id; ausente ou null vira "sem motorista". */
@@ -59,6 +62,18 @@ export function descreverAlteracoes(
     mudancas.push(
       `Pagamento: ${FORMA_PAGAMENTO_LABEL[antes.formaPagamento]} → ${FORMA_PAGAMENTO_LABEL[depois.formaPagamento]}`
     );
+  }
+
+  // A NF-e costuma ser lançada depois da entrega: o histórico mostra quando.
+  for (const campo of [
+    { rotulo: "Pedido", antes: antes.numeroPedido, depois: depois.numeroPedido },
+    { rotulo: "NF-e", antes: antes.numeroNfe, depois: depois.numeroNfe },
+  ]) {
+    const de = campo.antes?.trim() ?? "";
+    const para = campo.depois?.trim() ?? "";
+    if (de !== para) {
+      mudancas.push(`${campo.rotulo}: ${de || "sem número"} → ${para || "sem número"}`);
+    }
   }
 
   if ((antes.motoboyId ?? null) !== (depois.motoboyId ?? null)) {

@@ -47,8 +47,6 @@ export default async function ComprovanteEntregaPage({
 
   const codigoCalculado = codigoVerificacao({
     entregaId: entrega.id,
-    numeroPedido: entrega.numeroPedido,
-    numeroNfe: entrega.numeroNfe,
     recebedorNome: entrega.recebedorNome ?? "",
     recebedorVinculo: entrega.recebedorVinculo,
     concluidaEm: entrega.concluidaEm,
@@ -207,9 +205,9 @@ export default async function ComprovanteEntregaPage({
           </p>
           <p className="break-all font-mono text-[10px]">{codigo}</p>
           <p className="mt-2 text-[10px] text-slate-500">
-            O código resume os dados deste comprovante e as impressões digitais
-            dos arquivos. Qualquer alteração nos dados ou nas imagens gera um
-            código diferente.
+            O código resume o registro da entrega — quem recebeu, quando, com
+            qual entregador — e as impressões digitais das imagens. Qualquer
+            alteração nesses dados ou nas imagens gera um código diferente.
           </p>
           <p className="mt-1 text-[10px] text-slate-500">
             Para conferir este comprovante, acesse {enderecoConsulta} e digite o

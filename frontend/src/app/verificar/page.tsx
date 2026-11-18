@@ -173,8 +173,8 @@ function ResultadoVerificacao({
           <ul className="mt-1 list-disc pl-5">
             <li>
               {dados.dadosConferem
-                ? "Os dados do pedido continuam iguais aos da conclusão."
-                : "Dados do pedido foram alterados depois da conclusão."}
+                ? "O registro da entrega continua igual ao da conclusão."
+                : "O registro da entrega foi alterado depois da conclusão."}
             </li>
             <li>
               {arquivosOk
